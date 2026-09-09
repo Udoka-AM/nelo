@@ -1,0 +1,573 @@
+<title>Nelo Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Familjen+Grotesk:wght@600;700&family=Manrope:wght@400;500;700&display=swap">
+
+<style>
+  :root { --accent: #1a6b4c; --accent-dk: #4fb98f; }
+  :root {
+    --paper:  #f5f5f3;
+    --card:   #ffffff;
+    --panel:  #ececea;
+    --sunk:   #e2e2df;
+    --ink:    #15161a;
+    --muted:  #5d6167;
+    --faint:  #8b8f95;
+    --rule:   #d6d7d4;
+    --hair:   #e6e6e3;
+    --warn:   #9b4a26;
+
+    --display: "Familjen Grotesk", ui-sans-serif, system-ui, sans-serif;
+    --body: "Manrope", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --mono: "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0d0e10; --card: #141619; --panel: #191c1f; --sunk: #1f2226;
+      --ink: #eceded; --muted: #969ba1; --faint: #6d7278; --rule: #292d31; --hair: #202428;
+      --warn: #d4855e; --accent: var(--accent-dk);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0d0e10; --card: #141619; --panel: #191c1f; --sunk: #1f2226;
+    --ink: #eceded; --muted: #969ba1; --faint: #6d7278; --rule: #292d31; --hair: #202428;
+    --warn: #d4855e; --accent: var(--accent-dk);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--body); -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+  h1,h2,h3 { margin: 0; font-family: var(--display); text-wrap: balance; }
+  p { margin: 0; }
+  strong { font-weight: 700; }
+  code { font-family: var(--mono); }
+
+  /* &#9472;&#9472; viewport & stage &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472; */
+  #viewport { position: fixed; inset: 0; display: grid; place-items: center; }
+  #stage {
+    width: 1280px; height: 720px; position: relative;
+    transform-origin: center center; background: var(--card);
+    border: 1px solid var(--rule); overflow: hidden;
+  }
+
+  .slide {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    padding: 58px 68px 62px; background: var(--card);
+  }
+  .slide[hidden] { display: none !important; }
+  .slide > * { flex-shrink: 0; }
+
+  /* slide furniture */
+  .kicker {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 18px;
+  }
+  .slide h2 {
+    font-weight: 700; font-size: 46px; line-height: 1.04; letter-spacing: -0.03em;
+    max-width: 22ch;
+  }
+  .slide h2.sm { font-size: 38px; max-width: 26ch; }
+  .deck-sub { font-size: 20px; line-height: 1.45; color: var(--muted); margin-top: 16px; max-width: 62ch; }
+  .grow { flex: 1; }
+  .foot {
+    position: absolute; left: 68px; right: 68px; bottom: 24px;
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--faint);
+    border-top: 1px solid var(--hair); padding-top: 12px;
+  }
+  .src { font-family: var(--mono); font-size: 10px; line-height: 1.6; color: var(--faint); max-width: 90ch; letter-spacing: 0.02em; }
+
+  /* title slide */
+  .title-slide { justify-content: center; }
+  .title-slide h1 { font-weight: 700; font-size: 104px; line-height: 0.94; letter-spacing: -0.045em; }
+  .title-slide h1 span { color: var(--accent); }
+  .title-slide .one { font-size: 26px; line-height: 1.35; color: var(--ink); margin-top: 26px; max-width: 30ch; font-weight: 500; }
+  .title-slide .meta { margin-top: 40px; font-family: var(--mono); font-size: 12.5px; line-height: 2; color: var(--muted); letter-spacing: 0.06em; }
+
+  /* big statement */
+  .statement { font-family: var(--display); font-weight: 700; font-size: 40px; line-height: 1.16; letter-spacing: -0.025em; max-width: 24ch; }
+
+  /* grid and flex children must be allowed to shrink below their min-content width,
+     otherwise long words force the track wide and the text wraps one word per line */
+  .cols > *, .stats > *, .tam > *, .flow > *, ul.pts > li > * { min-width: 0; }
+
+  /* two column */
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 30px; flex: 1; }
+  .cols.wide-left { grid-template-columns: 1.25fr 1fr; }
+  .cols.wide-right { grid-template-columns: 1fr 1.35fr; }
+  .col p + p { margin-top: 13px; }
+  .col p { font-size: 17px; line-height: 1.55; }
+  .col p.m { color: var(--muted); }
+
+  /* stat blocks */
+  .stats { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+  .stats.c2 { grid-template-columns: repeat(2, 1fr); }
+  .stats.c3 { grid-template-columns: repeat(3, 1fr); }
+  .stats.c4 { grid-template-columns: repeat(4, 1fr); }
+  .stat { background: var(--card); padding: 20px 22px 22px; }
+  .stat dt { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+  .stat dd { margin: 10px 0 0; font-family: var(--display); font-weight: 700; font-size: 38px; line-height: 1; letter-spacing: -0.03em; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .stat dd small { display: block; font-family: var(--body); font-weight: 400; font-size: 13.5px; color: var(--muted); letter-spacing: 0; margin-top: 10px; line-height: 1.4; }
+  .stat.plain dd { color: var(--ink); font-size: 30px; }
+
+  /* bullets */
+  ul.pts { list-style: none; margin: 0; padding: 0; display: grid; gap: 15px; }
+  /* NOT display:grid on the li &#8212; a <b> and the text after it would become separate
+     grid items, and the text would be forced into the narrow marker column. */
+  ul.pts li { position: relative; padding-left: 22px; font-size: 17px; line-height: 1.5; }
+  ul.pts li::before { content: ""; position: absolute; left: 0; top: 0.52em; width: 9px; height: 9px; background: var(--accent); }
+  ul.pts li b { font-weight: 700; }
+  ul.pts.sm li { font-size: 15.5px; }
+
+  /* flow diagram */
+  .flow { display: flex; align-items: stretch; gap: 0; margin-top: 26px; }
+  .node {
+    flex: 1; background: var(--panel); border: 1px solid var(--rule);
+    padding: 15px 15px 17px; position: relative;
+  }
+  .node + .node { margin-left: 16px; }
+  .node + .node::before {
+    content: ""; position: absolute; left: -16px; top: 50%;
+    width: 16px; height: 1px; background: var(--rule);
+  }
+  .node .n { font-family: var(--mono); font-size: 10px; color: var(--accent); letter-spacing: 0.14em; }
+  .node b { display: block; font-family: var(--display); font-weight: 700; font-size: 15px; margin: 8px 0 6px; line-height: 1.2; }
+  .node p { font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+  .node.hi { background: var(--card); border-color: var(--accent); border-width: 1.5px; }
+
+  /* table */
+  table { width: 100%; border-collapse: collapse; font-size: 15.5px; }
+  thead th { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); font-weight: 400; text-align: left; padding: 0 16px 9px 0; border-bottom: 1px solid var(--ink); white-space: nowrap; }
+  thead th.num, tbody td.num, tfoot td.num { text-align: right; padding-right: 0; }
+  tbody td { padding: 10px 16px 10px 0; border-bottom: 1px solid var(--hair); }
+  tbody td.num { font-family: var(--mono); font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tbody td.lbl { color: var(--muted); font-size: 14.5px; }
+  tfoot td { padding-top: 12px; font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--accent); font-variant-numeric: tabular-nums; }
+  tfoot td.lbl { font-family: var(--body); font-weight: 700; color: var(--ink); font-size: 15px; }
+
+  /* market rings */
+  .tam { display: grid; gap: 12px; }
+  .tam > div { border: 1px solid var(--rule); padding: 14px 18px 16px; background: var(--panel); }
+  .tam > div.som { border-color: var(--accent); border-width: 1.5px; background: var(--card); }
+  .tam .tag { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+  .tam .v { font-family: var(--display); font-weight: 700; font-size: 26px; letter-spacing: -0.025em; margin: 5px 0 4px; }
+  .tam .som .v { color: var(--accent); }
+  .tam p { font-size: 13.5px; line-height: 1.45; color: var(--muted); }
+
+  /* fill-me placeholder */
+  .fill { border: 1.5px dashed var(--warn); background: transparent; padding: 16px 20px 18px; }
+  .fill .tag { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--warn); }
+  .fill p { font-size: 14.5px; line-height: 1.5; color: var(--muted); margin-top: 8px; }
+
+  .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 16px 20px 18px; }
+  .callout b { display: block; font-family: var(--display); font-weight: 700; font-size: 16px; margin-bottom: 6px; }
+  .callout p { font-size: 15px; line-height: 1.5; color: var(--muted); }
+
+  /* &#9472;&#9472; chrome &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472; */
+  #bar { position: fixed; left: 0; bottom: 0; height: 2px; background: var(--accent); transition: width .18s ease; z-index: 5; }
+  @media (prefers-reduced-motion: reduce) { #bar { transition: none; } }
+
+  #hud {
+    position: fixed; right: 14px; bottom: 12px; z-index: 6;
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 11px; color: var(--faint); letter-spacing: 0.1em;
+  }
+  #hud button {
+    font: inherit; letter-spacing: inherit; color: var(--muted); background: var(--panel);
+    border: 1px solid var(--rule); padding: 4px 9px; cursor: pointer;
+  }
+  #hud button:hover { color: var(--accent); border-color: var(--accent); }
+  #hud .count { font-variant-numeric: tabular-nums; }
+
+  /* overview */
+  #grid {
+    position: fixed; inset: 0; z-index: 20; background: var(--paper);
+    overflow-y: auto; padding: 28px; display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; align-content: start;
+  }
+  #grid[hidden] { display: none !important; }
+  #grid button {
+    background: var(--card); border: 1px solid var(--rule); cursor: pointer;
+    padding: 14px 16px 16px; text-align: left; font: inherit; color: inherit;
+    display: flex; flex-direction: column; gap: 7px; min-height: 118px;
+  }
+  #grid button:hover, #grid button:focus-visible { border-color: var(--accent); outline: none; }
+  #grid .gn { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; color: var(--accent); }
+  #grid .gt { font-family: var(--display); font-weight: 700; font-size: 15.5px; line-height: 1.2; }
+  #grid .gs { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+</style>
+
+<div id="viewport"><div id="stage">
+<section class="slide title-slide" data-title="Nelo" data-sub="Title">
+  <h1>Ne<span>lo</span></h1>
+  <p class="one">Accept payments on the phone you already own. Money lands in your own currency, in your own bank. And it keeps working when the network doesn't.</p>
+  <div class="meta">
+    CLOCK IN &nbsp;&#183;&nbsp; A Solana Mobile hackathon presented by Radiants<br>
+    Android &nbsp;&#183;&nbsp; Solana Mobile Stack &nbsp;&#183;&nbsp; USDC<br>
+    <span style="color:var(--warn)">[ team names and roles ]</span>
+  </div>
+</section>
+
+<section class="slide" data-title="One in four" data-sub="The problem" hidden>
+  <div class="kicker">The problem</div>
+  <h2>A quarter of card payments in this market simply fail.</h2>
+  <div class="cols wide-left">
+    <div class="col">
+      <p>Adaeze sells phone accessories. Her bank terminal took a deposit, a wait, and a fee she never stops noticing &#8212; and it stops working whenever the network drops, which is most afternoons.</p>
+      <p>On those afternoons she takes cash, or she loses the sale.</p>
+      <p class="m">This is one worked example of a condition that recurs wherever card acceptance is expensive and authorisation networks are unreliable &#8212; Lagos, Buenos Aires, Manila, Karachi, Lima.</p>
+    </div>
+    <div class="col">
+      <dl class="stats c2">
+        <div class="stat"><dt>Failure rate, 15 May 2026</dt><dd>29.23%<small>&#8776;157,000 declined transactions in one day</small></dd></div>
+        <div class="stat"><dt>Daily average</dt><dd>15%<small>Reaching 25% at peak periods</small></dd></div>
+      </dl>
+      <div class="callout" style="margin-top:16px">
+        <b>The regulator agrees</b>
+        <p>The central bank has mandated dual routing with automatic failover &#8212; because the single path keeps breaking.</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Nelo</span><span class="src">Nigerian POS failure rates, 2026 reporting &#183; CBN dual-routing directive</span></div>
+</section>
+
+<section class="slide" data-title="Two facts, one year" data-sub="Why now" hidden>
+  <div class="kicker">Why now</div>
+  <h2>Two things landed in the last year. Nobody has put them together.</h2>
+  <div class="cols">
+    <div class="col">
+      <dl class="stats" style="grid-template-columns:1fr">
+        <div class="stat"><dt>June 2025 &#8212; Solana mainnet</dt><dd class="plain" style="font-size:22px">secp256r1 precompile<small>A Solana program can now natively verify a NIST P-256 signature on chain, at <code>Secp256r1SigVerify111&#8230;</code></small></dd></div>
+      </dl>
+    </div>
+    <div class="col">
+      <dl class="stats" style="grid-template-columns:1fr">
+        <div class="stat"><dt>Android &#8212; every modern device</dt><dd class="plain" style="font-size:22px">StrongBox uses P-256<small>The one curve uniformly supported by Android's secure element. The same curve behind passkeys, Face ID and Windows Hello.</small></dd></div>
+      </dl>
+    </div>
+  </div>
+  <p class="statement" style="margin-top:32px">The secure element signs. The chain verifies. There is no trusted server anywhere in the value path.</p>
+  <div class="foot"><span>Nelo</span><span class="src">SIMD-0075 &#183; Android Open Source Project, hardware-backed Keystore</span></div>
+</section>
+
+<section class="slide" data-title="The product" data-sub="What it is" hidden>
+  <div class="kicker">The product</div>
+  <h2 class="sm">A card machine with no card machine.</h2>
+  <p class="deck-sub">Everything the merchant sees is in their own currency. Nothing in the product says the word <em>crypto</em>. Onboarding is a phone number and a bank account.</p>
+  <dl class="stats c3" style="margin-top:28px">
+    <div class="stat plain"><dt>Merchant app</dt><dd style="font-size:19px">The terminal<small>Enter an amount, take the payment by code or by tap, keep the day-book, watch the payout land.</small></dd></div>
+    <div class="stat plain"><dt>Settlement</dt><dd style="font-size:19px">Invisible off-ramp<small>Converts and disburses to their own bank or mobile money, nightly by default. The merchant never off-ramps anything.</small></dd></div>
+    <div class="stat plain"><dt>Offline path</dt><dd style="font-size:19px">Sales without a network<small>Both phones in airplane mode. The differentiator, and the reason a merchant stays.</small></dd></div>
+  </dl>
+  <div class="callout" style="margin-top:24px">
+    <b>Built for the counter, works between people</b>
+    <p>The voucher does not know what a merchant is &#8212; it names a payer, an amount and a payee. The same primitive settles a sale and a transfer between friends. Merchant acquisition is linear; peer transfer is not.</p>
+  </div>
+  <div class="foot"><span>Nelo</span><span></span></div>
+</section>
+
+<section class="slide" data-title="How it works" data-sub="Mechanism" hidden>
+  <div class="kicker">How it works</div>
+  <h2 class="sm">Offline mode is a prepaid balance, not a promise to pay.</h2>
+  <div class="flow">
+    <div class="node"><span class="n">01</span><b>Lock</b><p>Payer locks funds into an on-chain vault while online. You cannot spend offline what you have not already locked.</p></div>
+    <div class="node hi"><span class="n">02</span><b>Sign</b><p>StrongBox signs a 202-byte voucher with a P-256 key that provably lives in secure hardware.</p></div>
+    <div class="node"><span class="n">03</span><b>Hand over</b><p>NFC or QR at version 10. Neither phone has a network. The merchant verifies the signature locally.</p></div>
+    <div class="node hi"><span class="n">04</span><b>Adjudicate</b><p>On reconnect the program checks the signature via the precompile, then a 128-slot replay window.</p></div>
+    <div class="node"><span class="n">05</span><b>Settle</b><p>USDC moves. A licensed partner converts and pays the merchant's bank in local currency.</p></div>
+  </div>
+  <div class="cols" style="margin-top:26px;gap:36px">
+    <div class="col">
+      <ul class="pts sm">
+        <li><b>Solvency is an on-chain fact</b> before the sale, not a hope after it.</li>
+        <li><b>Replay is impossible</b> &#8212; a repeated sequence is rejected deterministically, for everyone, identically.</li>
+      </ul>
+    </div>
+    <div class="col">
+      <ul class="pts sm">
+        <li><b>Withdrawal is timelocked</b> so nobody can spend offline then race home to empty the vault.</li>
+        <li><b>Residual risk is insured</b> &#8212; the same way card schemes have priced floor limits for fifty years.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>Nelo</span><span class="src">Replay window follows the standard IPsec anti-replay construction</span></div>
+</section>
+
+<section class="slide" data-title="Phone and Solana" data-sub="Why here" hidden>
+  <div class="kicker">Why a phone, why Solana</div>
+  <h2 class="sm">Neither half of this works anywhere else.</h2>
+  <div class="cols" style="margin-top:24px">
+    <div class="col">
+      <div class="callout"><b>Only on a phone</b>
+        <p>The claim requires a secure element and a short-range radio in the same device at the same instant. There is no laptop version, no web version, and nothing that can be retrofitted to a transaction after the fact.</p>
+      </div>
+      <p class="m" style="margin-top:16px">The rules forbid "a website in a wrapper". Nelo could not be one if it tried.</p>
+    </div>
+    <div class="col">
+      <div class="callout"><b>Only on Solana</b>
+        <p>The secp256r1 precompile is what lets the chain verify a secure-element signature directly. Sub-cent fees and sub-second finality are what make a $3 sale economic. Remove either and the design collapses back into trusting a server.</p>
+      </div>
+      <p class="m" style="margin-top:16px">Solana carries roughly 35% of global on-chain stablecoin transfers by count.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Nelo</span><span></span></div>
+</section>
+
+<section class="slide" data-title="Market" data-sub="Size" hidden>
+  <div class="kicker">Market</div>
+  <h2 class="sm">The behaviour already exists. The rails are unreliable.</h2>
+  <div class="cols wide-right" style="margin-top:22px">
+    <div class="col">
+      <div class="tam">
+        <div><span class="tag">TAM &#8212; mPOS terminals</span><div class="v">$40.7B</div><p>Forecast 2026, growing fastest in Asia-Pacific at 22%+ CAGR, driven by informal retail that was cash-only until sub-$50 readers arrived. Nelo removes even that $50.</p></div>
+        <div><span class="tag">SAM &#8212; stablecoin-ready markets</span><div class="v">$730B</div><p>S&amp;P's projection for USD stablecoin holdings across 45 emerging markets. Two thirds of global supply is already held there.</p></div>
+        <div class="som"><span class="tag">SOM &#8212; the beachhead</span><div class="v">One cluster</div><p>Fifty merchants in a single trading market, recruited on foot. Density beats reach: traders in a market talk to each other constantly.</p></div>
+      </div>
+    </div>
+    <div class="col">
+      <dl class="stats c2">
+        <div class="stat"><dt>SSA mobile money, 2025</dt><dd>$1.4T<small>66% of global transaction value</small></dd></div>
+        <div class="stat"><dt>Active 30-day accounts</dt><dd>347M<small>The most of any region on earth</small></dd></div>
+        <div class="stat"><dt>Solana stablecoin volume</dt><dd>$650B<small>February 2026, single month</small></dd></div>
+        <div class="stat"><dt>Merchants preferring stablecoins</dt><dd>75%<small>Of those planning crypto acceptance</small></dd></div>
+      </dl>
+      <p class="m" style="margin-top:18px;font-size:15px">Currency is a setting, not a market. A new country is a payout partner and a price feed &#8212; not a rebuild.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Nelo</span><span class="src">GSMA State of the Industry 2026 &#183; S&amp;P Global &#183; Deloitte 2025 merchant survey &#183; 2026 Solana stablecoin reporting</span></div>
+</section>
+
+<section class="slide" data-title="Business model" data-sub="How money is made" hidden>
+  <div class="kicker">Business model</div>
+  <h2 class="sm">Basis points on volume, spread on payout, then lending.</h2>
+  <div class="cols wide-left" style="margin-top:20px">
+    <div class="col">
+      <table>
+        <thead><tr><th>Assumption</th><th class="num">Value</th></tr></thead>
+        <tbody>
+          <tr><td class="lbl">Merchant daily turnover</td><td class="num">$95</td></tr>
+          <tr><td class="lbl">Share captured on Nelo</td><td class="num">40%</td></tr>
+          <tr><td class="lbl">Platform fee</td><td class="num">0.50%</td></tr>
+          <tr><td class="lbl">Payout spread</td><td class="num">0.50%</td></tr>
+          <tr><td class="lbl">Less: insurance reserve</td><td class="num">(0.20%)</td></tr>
+          <tr><td class="lbl">Less: Trust Stake rebate</td><td class="num">(0.10%)</td></tr>
+        </tbody>
+        <tfoot>
+          <tr><td class="lbl">Net take rate</td><td class="num">0.70%</td></tr>
+          <tr><td class="lbl">Per merchant / month</td><td class="num">&#8776; $8</td></tr>
+        </tfoot>
+      </table>
+    </div>
+    <div class="col">
+      <dl class="stats" style="grid-template-columns:1fr">
+        <div class="stat"><dt>At 1,000 merchants</dt><dd>$8k<small>Per month</small></dd></div>
+        <div class="stat"><dt>At 25,000 merchants</dt><dd>$200k<small>Per month</small></dd></div>
+      </dl>
+      <p class="m" style="margin-top:18px;font-size:15px">Thin per merchant, and entirely normal for acquiring. The business is volume and retention &#8212; and the retention argument is that a merchant who got paid on an afternoon the bank terminal was down does not go back.</p>
+      <p class="m" style="margin-top:12px;font-size:15px">Lending against observed cashflow is where acquirers actually make money. It is unlocked by owning the record, not by charging more.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Nelo</span><span class="src">Illustrative model with stated assumptions &#8212; not a forecast. Every input needs replacing with a measured number.</span></div>
+</section>
+
+<section class="slide" data-title="The Trust Stake" data-sub="SKR integration" hidden>
+  <div class="kicker">SKR integration &#8212; the $10,000 specialist award</div>
+  <h2 class="sm">The rebate is not a reward. It is collateral the merchant is paid to post.</h2>
+  <p class="deck-sub">Nelo carries offline risk. A merchant who stakes is underwriting part of their own exposure, which reduces the reserve Nelo must hold. They are compensated for taking risk the platform would otherwise carry &#8212; a deductible, not a bribe.</p>
+  <div class="cols" style="margin-top:24px">
+    <div class="col">
+      <ul class="pts sm">
+        <li><b>Funded from revenue, never minted.</b> 20% of the platform fee buys SKR on the open market. Zero volume, zero cost.</li>
+        <li><b>It arrives already staked</b> &#8212; an accrual of collateral, not a payout.</li>
+        <li><b>It raises the offline limit</b> on a sublinear, reputation-weighted, hard-capped curve. Trust cannot simply be bought.</li>
+      </ul>
+    </div>
+    <div class="col">
+      <ul class="pts sm">
+        <li><b>It is first-loss capital.</b> The stake absorbs a conflict before the platform reserve does.</li>
+        <li><b>It earns while it sits</b> &#8212; delegated to a Guardian, so risk capital is productive.</li>
+        <li><b>Unstaking waits out the settlement horizon</b>, so nobody can unstake to escape a pending loss.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:22px">
+    <b>Remove SKR and the risk model gets strictly worse</b>
+    <p>The floor limit has nothing to key off, and the reserve must grow. That is the difference between an integration and a sticker &#8212; and it uses SKR's actual designed utility, staking and Guardian delegation, rather than inventing a parallel one.</p>
+  </div>
+  <div class="foot"><span>Nelo</span><span></span></div>
+</section>
+
+<section class="slide" data-title="Distribution" data-sub="Getting users" hidden>
+  <div class="kicker">Distribution</div>
+  <h2 class="sm">Fifty merchants on foot, then let the network do the rest.</h2>
+  <div class="cols" style="margin-top:24px">
+    <div class="col">
+      <ul class="pts sm">
+        <li><b>Cluster by cluster.</b> Win one row of stalls completely before opening a second city. Merchants in a market talk constantly &#8212; density beats reach.</li>
+        <li><b>Peer transfer as the spreading agent.</b> Every customer who pays offline has the app, and every one of them can pay a friend.</li>
+        <li><b>The dApp Store placement</b> a winner receives seeds the customer side with users who already hold wallets.</li>
+      </ul>
+    </div>
+    <div class="col">
+      <ul class="pts sm">
+        <li><b>The Trust Stake is a retention loop.</b> A merchant with staked collateral and a raised limit has a structural reason to keep volume here.</li>
+        <li><b>Payout partners become a channel.</b> Disbursement providers already have merchant relationships and an interest in volume &#8212; the integration that gates you at the start distributes you later.</li>
+      </ul>
+      <div class="callout" style="margin-top:20px">
+        <b>The first hundred are doorstep work</b>
+        <p>Not marketing. It is also the product research &#8212; you learn more from the tenth merchant refusing than from any amount of design.</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>Nelo</span><span></span></div>
+</section>
+
+<section class="slide" data-title="What ran" data-sub="Demo evidence" hidden>
+  <div class="kicker">What actually ran</div>
+  <h2 class="sm">What was built, what was tested, and what is stubbed.</h2>
+  <p class="deck-sub">Judges punish a discovered stub far harder than a declared one. Name every one.</p>
+  <div class="cols" style="margin-top:22px">
+    <div class="col">
+      <div class="fill"><span class="tag">Fill after build &#8212; shipped</span>
+        <p>Vault program address on devnet/mainnet &#183; StrongBox signature verified on chain &#183; deliberate double-spend rejected &#183; offline sale completed with both phones in airplane mode &#183; number of real transactions in a real shop &#183; signed APK and dApp Store listing.</p>
+      </div>
+    </div>
+    <div class="col">
+      <div class="fill"><span class="tag">Fill after build &#8212; declared stubs</span>
+        <p>Whether the payout leg is live or sandboxed &#183; which currencies have a real price feed &#183; what the offline floor limit was set to in testing &#183; anything demonstrated on devnet rather than mainnet.</p>
+      </div>
+      <p class="m" style="margin-top:18px;font-size:15px">Put the repo link and the 3-minute video link on this slide.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Nelo</span><span></span></div>
+</section>
+
+<section class="slide" data-title="Roadmap" data-sub="Next 90 days" hidden>
+  <div class="kicker">Roadmap</div>
+  <h2 class="sm">Ninety days after the hackathon.</h2>
+  <dl class="stats c3" style="margin-top:26px">
+    <div class="stat plain"><dt>Days 0&#8211;30</dt><dd style="font-size:19px">Close the fiat leg<small>Convert the payout sandbox into a live agreement in one corridor. Publish to the dApp Store within the 30-day window. Fifty merchants trading daily.</small></dd></div>
+    <div class="stat plain"><dt>Days 30&#8211;60</dt><dd style="font-size:19px">Harden and measure<small>Independent audit of the vault program. Real reserve model against observed offline loss. Trust Stake live with Guardian delegation.</small></dd></div>
+    <div class="stat plain"><dt>Days 60&#8211;90</dt><dd style="font-size:19px">Second cluster, second currency<small>Prove that a new market is a payout partner and a price feed rather than a rebuild. That is the whole scaling thesis, tested once.</small></dd></div>
+  </dl>
+  <div class="callout" style="margin-top:26px">
+    <b>The one blocking dependency</b>
+    <p>A licensed disbursement partner in the launch corridor. Everything else in the stack is open or self-serve. If that agreement does not land, the product is a demo with a stubbed settlement leg &#8212; which is why it is chased on day one, not month two.</p>
+  </div>
+  <div class="foot"><span>Nelo</span><span></span></div>
+</section>
+
+<section class="slide" data-title="Team and ask" data-sub="Close" hidden>
+  <div class="kicker">Team</div>
+  <h2 class="sm">Who built it, and what unlocks the next stage.</h2>
+  <div class="cols" style="margin-top:24px">
+    <div class="col">
+      <div class="fill"><span class="tag">Fill &#8212; team</span>
+        <p>Four roles: Android/Kotlin for the secure element and NFC; Rust/Anchor for the vault and the trust model; design, because UX is a quarter of the score and a POS is where crypto apps look worst; and someone commercial to unblock the payout partner.</p>
+      </div>
+    </div>
+    <div class="col">
+      <ul class="pts sm">
+        <li><b>An introduction</b> to a licensed disbursement partner in one emerging market.</li>
+        <li><b>A design partner</b> &#8212; one market association or merchant cluster willing to run fifty terminals.</li>
+        <li><b>A security review</b> of the vault program before real money moves through it.</li>
+      </ul>
+      <p class="m" style="margin-top:20px;font-size:15px">Everything else &#8212; the chain, the secure element, the standard &#8212; already exists. What is missing is a team willing to write Android-native code against a payments risk model, and one commercial relationship.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Nelo</span><span class="src">CLOCK IN 2026 &#183; Solana Mobile &#215; Radiants</span></div>
+</section>
+</div></div>
+<div id="bar" style="width:0"></div>
+<div id="hud"><button id="prev" title="Previous (&#8592;)">&#8592;</button><button id="next" title="Next (&#8594;)">&#8594;</button><span class="count" id="count">1</span><button id="ov" title="Overview (O)">GRID</button><button id="fs" title="Fullscreen (F)">FULL</button></div>
+<div id="grid" hidden></div>
+<script>
+(function () {
+  var stage = document.getElementById('stage');
+  var slides = Array.prototype.slice.call(stage.querySelectorAll('.slide'));
+  var bar = document.getElementById('bar');
+  var counter = document.getElementById('count');
+  var gridEl = document.getElementById('grid');
+  var i = 0;
+
+  function fit() {
+    var pad = window.innerWidth < 700 ? 8 : 32;
+    var s = Math.min((window.innerWidth - pad) / 1280, (window.innerHeight - pad) / 720);
+    stage.style.transform = 'scale(' + s + ')';
+  }
+
+  function show(n, push) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function (el, k) { el.hidden = (k !== i); });
+    counter.textContent = (i + 1) + ' / ' + slides.length;
+    bar.style.width = ((i + 1) / slides.length * 100) + '%';
+  }
+
+  function toggleGrid(force) {
+    var open = (force === undefined) ? gridEl.hidden : force;
+    gridEl.hidden = !open;
+  }
+
+  slides.forEach(function (el, k) {
+    var b = document.createElement('button');
+    b.innerHTML = '<span class="gn">' + String(k + 1).padStart(2, '0') + '</span>' +
+                  '<span class="gt"></span><span class="gs"></span>';
+    b.querySelector('.gt').textContent = el.dataset.title || ('Slide ' + (k + 1));
+    b.querySelector('.gs').textContent = el.dataset.sub || '';
+    b.addEventListener('click', function () { show(k); toggleGrid(false); });
+    gridEl.appendChild(b);
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var k = e.key;
+    if (k === 'ArrowRight' || k === 'PageDown' || k === ' ' || k === 'Enter') { e.preventDefault(); show(i + 1); toggleGrid(false); }
+    else if (k === 'ArrowLeft' || k === 'PageUp') { e.preventDefault(); show(i - 1); toggleGrid(false); }
+    else if (k === 'Home') { e.preventDefault(); show(0); }
+    else if (k === 'End') { e.preventDefault(); show(slides.length - 1); }
+    else if (k === 'o' || k === 'O') { e.preventDefault(); toggleGrid(); }
+    else if (k === 'Escape') { toggleGrid(false); }
+    else if (k === 'f' || k === 'F') {
+      e.preventDefault();
+      if (document.fullscreenElement) { document.exitFullscreen(); }
+      else if (document.documentElement.requestFullscreen) { document.documentElement.requestFullscreen(); }
+    }
+  });
+
+  document.getElementById('prev').addEventListener('click', function () { show(i - 1); });
+  document.getElementById('next').addEventListener('click', function () { show(i + 1); });
+  document.getElementById('ov').addEventListener('click', function () { toggleGrid(); });
+  document.getElementById('fs').addEventListener('click', function () {
+    if (document.fullscreenElement) { document.exitFullscreen(); }
+    else if (document.documentElement.requestFullscreen) { document.documentElement.requestFullscreen(); }
+  });
+
+  var tx = null;
+  stage.addEventListener('touchstart', function (e) { tx = e.changedTouches[0].clientX; }, { passive: true });
+  stage.addEventListener('touchend', function (e) {
+    if (tx === null) return;
+    var d = e.changedTouches[0].clientX - tx;
+    if (Math.abs(d) > 45) { show(i + (d < 0 ? 1 : -1)); }
+    tx = null;
+  }, { passive: true });
+
+  window.addEventListener('hashchange', function () {
+    var n = parseInt((location.hash || '').replace('#', ''), 10);
+    if (!isNaN(n)) { show(n - 1, false); toggleGrid(false); }
+  });
+
+  window.addEventListener('resize', fit);
+  fit();
+
+  var start = parseInt((location.hash || '').replace('#', ''), 10);
+  show(isNaN(start) ? 0 : start - 1, false);
+})();
+</script>

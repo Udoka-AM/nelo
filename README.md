@@ -8,6 +8,8 @@ Wallet Adapter, mobile-first, meaningfully interacts with Solana. No website in 
 
 📄 **Full build plan:** https://claude.ai/code/artifact/d61c0258-3b7c-43db-ab2f-e89a49f0519d
 
+📊 **Pitch deck:** [`docs/deck/index.html`](docs/deck/index.html) &nbsp;·&nbsp; [hosted](https://claude.ai/code/artifact/ea8d9472-6b93-4129-ba0b-dede30a9bdd4)
+
 ---
 
 ## Status
