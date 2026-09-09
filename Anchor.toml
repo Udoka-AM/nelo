@@ -1,5 +1,8 @@
+skip_local_validator = true
+
 [toolchain]
-package_manager = "yarn"
+anchor_version = "1.2.0"
+solana_version = "4.2.2"
 
 [features]
 resolution = true
@@ -8,12 +11,11 @@ skip-lint = false
 [programs.localnet]
 nelo_vault = "yzDTDHq5cjLW1QZkfH1UEggMtLe8SaNr3MXQgRwpzhu"
 
-[registry]
-url = "https://api.apr.dev"
-
 [provider]
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+test = "cargo test"
+
+[hooks]

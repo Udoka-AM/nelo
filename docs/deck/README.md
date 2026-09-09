@@ -3,8 +3,6 @@
 `index.html` is the deck. It is a single self-contained file — open it in any
 browser, no build and no server needed.
 
-**Hosted:** https://claude.ai/code/artifact/ea8d9472-6b93-4129-ba0b-dede30a9bdd4
-
 ## Presenting
 
 | Key | Action |

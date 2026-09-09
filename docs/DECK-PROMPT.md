@@ -1,7 +1,7 @@
 # Cowork prompt — business slide deck
 
 Paste this into Cowork. Run it once per product, swapping the two lines marked
-`>>> SET THIS`. It is written to be self-contained: the build-plan URL carries all
+`>>> SET THIS`. It is written to be self-contained: the build plan carries all
 the research, numbers and sourcing, so Cowork does not need this conversation.
 
 ---
@@ -10,13 +10,13 @@ the research, numbers and sourcing, so Cowork does not need this conversation.
 Build a business pitch deck as a .pptx file.
 
 >>> SET THIS — product: Nelo
->>> SET THIS — build plan: https://claude.ai/code/artifact/d61c0258-3b7c-43db-ab2f-e89a49f0519d
+>>> SET THIS — build plan: docs/BUILD.md in this repo (attach it to the Cowork session)
 
 (The other two, if you need them:
  Prove — https://claude.ai/code/artifact/5d92c195-45e1-4c98-b226-3b28341231f4
  Bits  — https://claude.ai/code/artifact/b8bd7eaf-b968-4fef-b5a1-41971508a3b8)
 
-FIRST: read the build plan at the URL above. It is the single source of truth for
+FIRST: read the build plan attached above. It is the single source of truth for
 the product, the market figures, the unit economics, the stack and the risks. Every
 number in the deck must come from it — do not invent figures, and do not round them
 into something rosier than the source. Where the plan labels something "model, not

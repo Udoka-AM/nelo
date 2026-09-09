@@ -13,3 +13,5 @@ test-ledger/
 **/*.keystore
 !debug.keystore
 .anchor/
+.yarn/
+.surfpool/

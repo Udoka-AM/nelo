@@ -1,0 +1,6 @@
+# Host toolchain for `cargo test` and IDL builds.
+# The on-chain build uses platform-tools' own pinned rustc, not this.
+[toolchain]
+channel = "1.98.1"
+components = ["rustfmt","clippy"]
+profile = "minimal"
