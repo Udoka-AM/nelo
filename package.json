@@ -1,0 +1,17 @@
+{
+  "name": "nelo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Accept payments on the phone you already own. Settles in local currency. Works offline.",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test && anchor test",
+    "program:build": "anchor build",
+    "program:test": "anchor test"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  },
+  "packageManager": "pnpm@9.15.0"
+}

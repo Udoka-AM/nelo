@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+.expo/
+target/
+test-ledger/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+**/android/app/build/
+**/*.keystore
+!debug.keystore
+.anchor/

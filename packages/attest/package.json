@@ -1,0 +1,5 @@
+{
+  "name": "@nelo/attest",
+  "version": "0.1.0",
+  "description": "Expo native module: StrongBox P-256 keygen, key attestation, and voucher signing (Android only)."
+}
