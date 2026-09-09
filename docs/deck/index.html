@@ -380,29 +380,26 @@
 
 <section class="slide" data-title="The Trust Stake" data-sub="SKR integration" hidden>
   <div class="kicker">SKR integration &#8212; the $10,000 specialist award</div>
-  <h2 class="sm">The rebate is not a reward. It is collateral the merchant is paid to post.</h2>
-  <p class="deck-sub">Nelo carries offline risk. A merchant who stakes is underwriting part of their own exposure, which reduces the reserve Nelo must hold. They are compensated for taking risk the platform would otherwise carry &#8212; a deductible, not a bribe.</p>
-  <div class="cols" style="margin-top:24px">
+  <h2 class="sm">Two mechanisms, and only one of them is an incentive.</h2>
+  <p class="deck-sub">A rebate that arrives automatically, already staked, illiquid, at a fixed rate on volume the merchant was doing anyway is a fee discount wearing an incentive's clothes. So we built both halves, separately.</p>
+  <div class="cols" style="margin-top:22px">
     <div class="col">
-      <ul class="pts sm">
-        <li><b>Funded from revenue, never minted.</b> 20% of the platform fee buys SKR on the open market. Zero volume, zero cost.</li>
-        <li><b>It arrives already staked</b> &#8212; an accrual of collateral, not a payout.</li>
-        <li><b>It raises the offline limit</b> on a sublinear, reputation-weighted, hard-capped curve. Trust cannot simply be bought.</li>
-      </ul>
+      <div class="callout"><b>Collateral &#8212; and it is meant to saturate</b>
+        <p>Stake raises the offline limit on a sublinear, reputation-weighted, hard-capped curve, and acts as first-loss capital before the platform reserve. Past the merchant's largest realistic basket, more stake buys nothing. That is correct.</p>
+      </div>
     </div>
     <div class="col">
-      <ul class="pts sm">
-        <li><b>It is first-loss capital.</b> The stake absorbs a conflict before the platform reserve does.</li>
-        <li><b>It earns while it sits</b> &#8212; delegated to a Guardian, so risk capital is productive.</li>
-        <li><b>Unstaking waits out the settlement horizon</b>, so nobody can unstake to escape a pending loss.</li>
-      </ul>
+      <div class="callout"><b>Earning &#8212; and it must not</b>
+        <p>Bonus accrual for offline volume, for days traded rather than amount, and for referrals that stay active. Anything staked above what the limit needs becomes withdrawable after cooldown.</p>
+      </div>
     </div>
   </div>
-  <div class="callout" style="margin-top:22px">
-    <b>Remove SKR and the risk model gets strictly worse</b>
-    <p>The floor limit has nothing to key off, and the reserve must grow. That is the difference between an integration and a sticker &#8212; and it uses SKR's actual designed utility, staking and Guardian delegation, rather than inventing a parallel one.</p>
+  <div class="callout" style="margin-top:20px">
+    <b>The choice that makes it real: cash, or SKR at a premium</b>
+    <p>Every period the merchant elects how the rebate is paid &#8212; netted into their payout as a lower fee, or paid already staked at a multiplier. The premium is priced from the reserve capital that merchant collateral saves, not picked. A choice a person makes each month is an incentive; an automatic accrual is a discount.</p>
   </div>
-  <div class="foot"><span>Nelo</span><span></span></div>
+  <p class="statement" style="margin-top:16px;font-size:23px;line-height:1.25;max-width:74ch">Trade more days, trade offline, and take it in SKR &#8212; bigger limit, yield on the balance, and the excess comes out.</p>
+  <div class="foot"><span>Nelo</span><span class="src">Multiplier illustrative until the reserve model exists &#183; merchants electing SKR accept price risk, disclosed at the point of election</span></div>
 </section>
 
 <section class="slide" data-title="Distribution" data-sub="Getting users" hidden>
