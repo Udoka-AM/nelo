@@ -8,7 +8,10 @@
 use {
     anchor_lang::{
         prelude::Clock,
-        solana_program::{instruction::Instruction, system_program},
+        solana_program::{
+            instruction::{AccountMeta, Instruction},
+            system_program,
+        },
         AccountDeserialize, InstructionData, ToAccountMetas,
     },
     litesvm::LiteSVM,
@@ -21,12 +24,77 @@ use {
     solana_transaction::versioned::VersionedTransaction,
 };
 
+// SPL programs and their wire formats are built by hand here. The helper crates
+// pull in their own incompatible `Pubkey`, and these three instructions are
+// stable, small, and clearer than a dependency-alignment exercise.
+const SPL_TOKEN_ID: Pubkey =
+    solana_pubkey::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+const ATA_PROGRAM_ID: Pubkey =
+    solana_pubkey::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+const MINT_LEN: usize = 82;
+/// SPL token account: mint(32) ‖ owner(32) ‖ amount(u64) ‖ …
+const TOKEN_AMOUNT_OFFSET: usize = 64;
+
+fn ata(owner: &Pubkey, mint: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(
+        &[owner.as_ref(), SPL_TOKEN_ID.as_ref(), mint.as_ref()],
+        &ATA_PROGRAM_ID,
+    )
+    .0
+}
+
+/// InitializeMint2 — tag 20, no rent sysvar.
+fn initialize_mint_ix(mint: &Pubkey, authority: &Pubkey, decimals: u8) -> Instruction {
+    let mut data = vec![20u8, decimals];
+    data.extend_from_slice(authority.as_ref());
+    data.push(0); // freeze authority: None
+    Instruction {
+        program_id: SPL_TOKEN_ID,
+        accounts: vec![AccountMeta::new(*mint, false)],
+        data,
+    }
+}
+
+/// MintTo — tag 7.
+fn mint_to_ix(mint: &Pubkey, to: &Pubkey, authority: &Pubkey, amount: u64) -> Instruction {
+    let mut data = vec![7u8];
+    data.extend_from_slice(&amount.to_le_bytes());
+    Instruction {
+        program_id: SPL_TOKEN_ID,
+        accounts: vec![
+            AccountMeta::new(*mint, false),
+            AccountMeta::new(*to, false),
+            AccountMeta::new_readonly(*authority, true),
+        ],
+        data,
+    }
+}
+
+/// Associated Token Account: Create — instruction 0.
+fn create_ata_ix(funder: &Pubkey, wallet: &Pubkey, mint: &Pubkey) -> Instruction {
+    Instruction {
+        program_id: ATA_PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new(*funder, true),
+            AccountMeta::new(ata(wallet, mint), false),
+            AccountMeta::new_readonly(*wallet, false),
+            AccountMeta::new_readonly(*mint, false),
+            AccountMeta::new_readonly(system_program::ID, false),
+            AccountMeta::new_readonly(SPL_TOKEN_ID, false),
+        ],
+        data: vec![0u8],
+    }
+}
+
 const SECP256R1_ID: Pubkey =
     solana_pubkey::pubkey!("Secp256r1SigVerify1111111111111111111111111");
 const INSTRUCTIONS_SYSVAR: Pubkey =
     solana_pubkey::pubkey!("Sysvar1nstructions1111111111111111111111111");
 
 const LAMPORTS: u64 = 1_000_000_000;
+/// USDC decimals — every amount below is in base units, so 50_000_000 is $50.
+const DECIMALS: u8 = 6;
+const MINTED: u64 = 1_000_000_000;
 const FLOOR_LIMIT: u64 = 50_000_000;
 const COLLATERAL: u64 = 500_000_000;
 const FAR_FUTURE: i64 = 4_102_444_800; // 2100-01-01
@@ -41,6 +109,23 @@ struct Ctx {
     merchant: Keypair,
     vault: Pubkey,
     device: SigningKey,
+    mint: Pubkey,
+    owner_token: Pubkey,
+    vault_token: Pubkey,
+    merchant_token: Pubkey,
+}
+
+/// Reads the SPL token account. Deliberately not the vault's `balance` field —
+/// the two must agree, and reading the field to check the field proves nothing.
+fn token_balance(ctx: &Ctx, account: &Pubkey) -> u64 {
+    match ctx.svm.get_account(account) {
+        Some(a) if a.data.len() >= TOKEN_AMOUNT_OFFSET + 8 => u64::from_le_bytes(
+            a.data[TOKEN_AMOUNT_OFFSET..TOKEN_AMOUNT_OFFSET + 8]
+                .try_into()
+                .unwrap(),
+        ),
+        _ => 0,
+    }
 }
 
 /// Deterministic device key, so a failure reproduces exactly.
@@ -116,45 +201,95 @@ fn setup() -> Ctx {
 
     let owner = Keypair::new();
     let merchant = Keypair::new();
-    svm.airdrop(&owner.pubkey(), 10 * LAMPORTS).unwrap();
-    // The merchant must exist as a system account to be a payee.
-    svm.airdrop(&merchant.pubkey(), LAMPORTS / 100).unwrap();
+    let mint_kp = Keypair::new();
+    svm.airdrop(&owner.pubkey(), 100 * LAMPORTS).unwrap();
 
+    let mint = mint_kp.pubkey();
     let (vault, _) =
         Pubkey::find_program_address(&[b"vault", owner.pubkey().as_ref()], &nelo_vault::id());
     let device = device_key(7);
 
-    let mut ctx = Ctx { svm, owner, merchant, vault, device };
+    let mut ctx = Ctx {
+        svm,
+        owner,
+        merchant,
+        vault,
+        device,
+        mint,
+        owner_token: ata(&Pubkey::default(), &mint), // fixed up below
+        vault_token: ata(&vault, &mint),
+        merchant_token: Pubkey::default(),
+    };
+    ctx.owner_token = ata(&ctx.owner.pubkey(), &mint);
+    ctx.merchant_token = ata(&ctx.merchant.pubkey(), &mint);
+
     let mut clock: Clock = ctx.svm.get_sysvar();
     clock.unix_timestamp = NOW;
     ctx.svm.set_sysvar(&clock);
+
+    let owner = ctx.owner.insecure_clone();
+
+    // A 6-decimal mint, so the amounts in these tests read as dollars.
+    let rent = ctx.svm.minimum_balance_for_rent_exemption(MINT_LEN);
+    send(
+        &mut ctx,
+        &[
+            solana_system_interface::instruction::create_account(
+                &owner.pubkey(),
+                &mint,
+                rent,
+                MINT_LEN as u64,
+                &SPL_TOKEN_ID,
+            ),
+            initialize_mint_ix(&mint, &owner.pubkey(), DECIMALS),
+        ],
+        &[&owner, &mint_kp],
+    )
+    .expect("create mint");
+
+    // Fund the payer.
+    let owner_token = ctx.owner_token;
+    send(
+        &mut ctx,
+        &[
+            create_ata_ix(&owner.pubkey(), &owner.pubkey(), &mint),
+            mint_to_ix(&mint, &owner_token, &owner.pubkey(), MINTED),
+        ],
+        &[&owner],
+    )
+    .expect("fund owner");
 
     let init = Instruction::new_with_bytes(
         nelo_vault::id(),
         &nelo_vault::instruction::InitializeVault {
             device_pubkey: device_pubkey(&ctx.device),
             attestation_id: [9u8; 32],
-            mint: Pubkey::new_unique(),
             floor_limit: FLOOR_LIMIT,
         }
         .data(),
         nelo_vault::accounts::InitializeVault {
-            owner: ctx.owner.pubkey(),
+            owner: owner.pubkey(),
             vault: ctx.vault,
+            mint,
+            vault_token: ctx.vault_token,
+            token_program: SPL_TOKEN_ID,
+            associated_token_program: ATA_PROGRAM_ID,
             system_program: system_program::ID,
         }
         .to_account_metas(None),
     );
-    let owner = ctx.owner.insecure_clone();
     send(&mut ctx, &[init], &[&owner]).expect("initialize_vault");
 
     let deposit = Instruction::new_with_bytes(
         nelo_vault::id(),
         &nelo_vault::instruction::Deposit { amount: COLLATERAL }.data(),
         nelo_vault::accounts::Deposit {
-            owner: ctx.owner.pubkey(),
+            owner: owner.pubkey(),
             vault: ctx.vault,
-            system_program: system_program::ID,
+            mint,
+            owner_token: ctx.owner_token,
+            vault_token: ctx.vault_token,
+            token_program: SPL_TOKEN_ID,
         }
         .to_account_metas(None),
     );
@@ -183,8 +318,14 @@ fn redeem_ix(ctx: &Ctx, v: &VoucherArgs) -> Instruction {
         nelo_vault::accounts::RedeemVoucher {
             payer: ctx.owner.pubkey(),
             vault: ctx.vault,
+            mint: ctx.mint,
             merchant: ctx.merchant.pubkey(),
+            merchant_token: ctx.merchant_token,
+            vault_token: ctx.vault_token,
             instructions: INSTRUCTIONS_SYSVAR,
+            token_program: SPL_TOKEN_ID,
+            associated_token_program: ATA_PROGRAM_ID,
+            system_program: system_program::ID,
         }
         .to_account_metas(None),
     )
@@ -280,13 +421,13 @@ fn rejects_precompile_data_from_another_instruction() {
 fn redeems_a_valid_voucher() {
     let mut ctx = setup();
     let amount = 10_000_000;
-    let before = ctx.svm.get_account(&ctx.merchant.pubkey()).unwrap().lamports;
+    let before = token_balance(&ctx, &ctx.merchant_token);
 
     let v = voucher(&ctx, 0, amount);
     let device = ctx.device.clone();
     redeem(&mut ctx, &v, &device).expect("valid voucher should redeem");
 
-    let after = ctx.svm.get_account(&ctx.merchant.pubkey()).unwrap().lamports;
+    let after = token_balance(&ctx, &ctx.merchant_token);
     assert_eq!(after - before, amount, "merchant was paid");
 
     let state = vault_state(&ctx);
@@ -381,7 +522,7 @@ fn double_spend_is_refused() {
     redeem(&mut ctx, &first, &device).expect("first spend settles");
 
     let balance_after_first = vault_state(&ctx).balance;
-    let merchant_after_first = ctx.svm.get_account(&ctx.merchant.pubkey()).unwrap().lamports;
+    let merchant_after_first = token_balance(&ctx, &ctx.merchant_token);
 
     // Same sequence, freshly signed, different salt — a genuinely new voucher
     // that reuses a spent slot. This is the attack.
@@ -393,7 +534,7 @@ fn double_spend_is_refused() {
     assert!(res.unwrap_err().contains("SequenceAlreadyRedeemed"));
     assert_eq!(vault_state(&ctx).balance, balance_after_first, "no double debit");
     assert_eq!(
-        ctx.svm.get_account(&ctx.merchant.pubkey()).unwrap().lamports,
+        token_balance(&ctx, &ctx.merchant_token),
         merchant_after_first,
         "no second payout"
     );
@@ -408,8 +549,15 @@ fn withdraw_requires_a_request() {
     let ix = Instruction::new_with_bytes(
         nelo_vault::id(),
         &nelo_vault::instruction::Withdraw { amount: 1_000 }.data(),
-        nelo_vault::accounts::Withdraw { owner: owner.pubkey(), vault: ctx.vault }
-            .to_account_metas(None),
+        nelo_vault::accounts::Withdraw {
+            owner: owner.pubkey(),
+            vault: ctx.vault,
+            mint: ctx.mint,
+            owner_token: ctx.owner_token,
+            vault_token: ctx.vault_token,
+            token_program: SPL_TOKEN_ID,
+        }
+        .to_account_metas(None),
     );
     let res = send(&mut ctx, &[ix], &[&owner]);
     assert!(res.is_err());
@@ -432,12 +580,20 @@ fn withdraw_blocked_until_timelock_elapses() {
     send(&mut ctx, &[request], &[&owner]).expect("request_withdraw");
 
     let (owner_pk, vault_pk) = (owner.pubkey(), ctx.vault);
+    let (mint_pk, owner_token_pk, vault_token_pk) = (ctx.mint, ctx.owner_token, ctx.vault_token);
     let withdraw = move || {
         Instruction::new_with_bytes(
             nelo_vault::id(),
             &nelo_vault::instruction::Withdraw { amount: 100_000_000 }.data(),
-            nelo_vault::accounts::Withdraw { owner: owner_pk, vault: vault_pk }
-                .to_account_metas(None),
+            nelo_vault::accounts::Withdraw {
+                owner: owner_pk,
+                vault: vault_pk,
+                mint: mint_pk,
+                owner_token: owner_token_pk,
+                vault_token: vault_token_pk,
+                token_program: SPL_TOKEN_ID,
+            }
+            .to_account_metas(None),
         )
     };
 
@@ -590,8 +746,15 @@ fn frozen_vault_blocks_withdraw() {
     let withdraw = Instruction::new_with_bytes(
         nelo_vault::id(),
         &nelo_vault::instruction::Withdraw { amount: 1_000_000 }.data(),
-        nelo_vault::accounts::Withdraw { owner: owner.pubkey(), vault: ctx.vault }
-            .to_account_metas(None),
+        nelo_vault::accounts::Withdraw {
+            owner: owner.pubkey(),
+            vault: ctx.vault,
+            mint: ctx.mint,
+            owner_token: ctx.owner_token,
+            vault_token: ctx.vault_token,
+            token_program: SPL_TOKEN_ID,
+        }
+        .to_account_metas(None),
     );
     let res = send(&mut ctx, &[withdraw], &[&owner]);
     assert!(res.is_err(), "a frozen vault must not release collateral to its owner");
@@ -612,10 +775,10 @@ fn frozen_vault_still_pays_honest_merchants() {
     assert_eq!(vault_state(&ctx).status, 1);
 
     let honest = voucher(&ctx, 9, 5_000_000);
-    let before = ctx.svm.get_account(&ctx.merchant.pubkey()).unwrap().lamports;
+    let before = token_balance(&ctx, &ctx.merchant_token);
     redeem(&mut ctx, &honest, &device)
         .expect("an unrelated merchant must still be paid from a frozen vault");
-    let after = ctx.svm.get_account(&ctx.merchant.pubkey()).unwrap().lamports;
+    let after = token_balance(&ctx, &ctx.merchant_token);
     assert_eq!(after - before, 5_000_000);
 }
 

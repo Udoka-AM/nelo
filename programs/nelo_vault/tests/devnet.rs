@@ -13,8 +13,8 @@
 
 use {
     anchor_lang::{
-        solana_program::instruction::Instruction, system_program, InstructionData,
-        ToAccountMetas,
+        solana_program::instruction::{AccountMeta, Instruction},
+        system_program, InstructionData, ToAccountMetas,
     },
     p256::ecdsa::{signature::Signer as _, Signature, SigningKey},
     solana_client::rpc_client::RpcClient,
@@ -28,13 +28,73 @@ use {
 
 const DEVNET: &str = "https://api.devnet.solana.com";
 const SECP256R1_ID: Pubkey = solana_pubkey::pubkey!("Secp256r1SigVerify1111111111111111111111111");
+const SPL_TOKEN_ID: Pubkey = solana_pubkey::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+const ATA_PROGRAM_ID: Pubkey =
+    solana_pubkey::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+const MINT_LEN: u64 = 82;
+const DECIMALS: u8 = 6;
 const INSTRUCTIONS_SYSVAR: Pubkey =
     solana_pubkey::pubkey!("Sysvar1nstructions1111111111111111111111111");
 
-const OWNER_FUNDING: u64 = 60_000_000; // 0.06 SOL
+const OWNER_FUNDING: u64 = 120_000_000; // 0.12 SOL — rent for mint + 3 token accounts
+/// Token base units at 6dp, so these read as dollars.
+const MINTED: u64 = 100_000_000;
 const COLLATERAL: u64 = 20_000_000;
 const FLOOR_LIMIT: u64 = 10_000_000;
 const PAYMENT: u64 = 2_000_000;
+
+fn ata(owner: &Pubkey, mint: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(
+        &[owner.as_ref(), SPL_TOKEN_ID.as_ref(), mint.as_ref()],
+        &ATA_PROGRAM_ID,
+    )
+    .0
+}
+
+fn initialize_mint_ix(mint: &Pubkey, authority: &Pubkey) -> Instruction {
+    let mut data = vec![20u8, DECIMALS];
+    data.extend_from_slice(authority.as_ref());
+    data.push(0);
+    Instruction { program_id: SPL_TOKEN_ID, accounts: vec![AccountMeta::new(*mint, false)], data }
+}
+
+fn mint_to_ix(mint: &Pubkey, to: &Pubkey, authority: &Pubkey, amount: u64) -> Instruction {
+    let mut data = vec![7u8];
+    data.extend_from_slice(&amount.to_le_bytes());
+    Instruction {
+        program_id: SPL_TOKEN_ID,
+        accounts: vec![
+            AccountMeta::new(*mint, false),
+            AccountMeta::new(*to, false),
+            AccountMeta::new_readonly(*authority, true),
+        ],
+        data,
+    }
+}
+
+fn create_ata_ix(funder: &Pubkey, wallet: &Pubkey, mint: &Pubkey) -> Instruction {
+    Instruction {
+        program_id: ATA_PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new(*funder, true),
+            AccountMeta::new(ata(wallet, mint), false),
+            AccountMeta::new_readonly(*wallet, false),
+            AccountMeta::new_readonly(*mint, false),
+            AccountMeta::new_readonly(system_program::ID, false),
+            AccountMeta::new_readonly(SPL_TOKEN_ID, false),
+        ],
+        data: vec![0u8],
+    }
+}
+
+fn token_balance(rpc: &RpcClient, account: &Pubkey) -> u64 {
+    match rpc.get_account(account) {
+        Ok(a) if a.data.len() >= 72 => {
+            u64::from_le_bytes(a.data[64..72].try_into().unwrap())
+        }
+        _ => 0,
+    }
+}
 
 fn device_key(seed: u8) -> SigningKey {
     let mut b = [1u8; 32];
@@ -113,23 +173,54 @@ fn week_one_gate_on_devnet() {
         Pubkey::find_program_address(&[b"vault", owner.pubkey().as_ref()], &program_id);
     println!("owner:  {}\nvault:  {vault}", owner.pubkey());
 
+    let mint_kp = Keypair::new();
+    let mint = mint_kp.pubkey();
+    let owner_token = ata(&owner.pubkey(), &mint);
+    let merchant_token = ata(&merchant.pubkey(), &mint);
+    let vault_token = ata(&vault, &mint);
+
+    send(
+        &rpc,
+        &[solana_system_interface::instruction::transfer(
+            &funder.pubkey(),
+            &owner.pubkey(),
+            OWNER_FUNDING,
+        )],
+        &[&funder],
+    )
+    .expect("fund owner");
+
+    // A 6-decimal test mint. Devnet USDC exists but its mint authority is
+    // Circle's, so a self-contained run needs its own.
+    let rent = rpc
+        .get_minimum_balance_for_rent_exemption(MINT_LEN as usize)
+        .expect("rent");
     send(
         &rpc,
         &[
-            solana_system_interface::instruction::transfer(
-                &funder.pubkey(),
+            solana_system_interface::instruction::create_account(
                 &owner.pubkey(),
-                OWNER_FUNDING,
+                &mint,
+                rent,
+                MINT_LEN,
+                &SPL_TOKEN_ID,
             ),
-            solana_system_interface::instruction::transfer(
-                &funder.pubkey(),
-                &merchant.pubkey(),
-                3_000_000,
-            ),
+            initialize_mint_ix(&mint, &owner.pubkey()),
         ],
-        &[&funder],
+        &[&owner, &mint_kp],
     )
-    .expect("fund owner + merchant");
+    .expect("create mint");
+
+    send(
+        &rpc,
+        &[
+            create_ata_ix(&owner.pubkey(), &owner.pubkey(), &mint),
+            mint_to_ix(&mint, &owner_token, &owner.pubkey(), MINTED),
+        ],
+        &[&owner],
+    )
+    .expect("fund owner token account");
+    println!("✓ mint {mint} created and funded");
 
     // 1. Enrol the device key and open a vault.
     send(
@@ -139,13 +230,16 @@ fn week_one_gate_on_devnet() {
             &nelo_vault::instruction::InitializeVault {
                 device_pubkey: device_pubkey(&device),
                 attestation_id: [9u8; 32],
-                mint: Pubkey::new_unique(),
                 floor_limit: FLOOR_LIMIT,
             }
             .data(),
             nelo_vault::accounts::InitializeVault {
                 owner: owner.pubkey(),
                 vault,
+                mint,
+                vault_token,
+                token_program: SPL_TOKEN_ID,
+                associated_token_program: ATA_PROGRAM_ID,
                 system_program: system_program::ID,
             }
             .to_account_metas(None),
@@ -164,7 +258,10 @@ fn week_one_gate_on_devnet() {
             nelo_vault::accounts::Deposit {
                 owner: owner.pubkey(),
                 vault,
-                system_program: system_program::ID,
+                mint,
+                owner_token,
+                vault_token,
+                token_program: SPL_TOKEN_ID,
             }
             .to_account_metas(None),
         )],
@@ -193,14 +290,20 @@ fn week_one_gate_on_devnet() {
             nelo_vault::accounts::RedeemVoucher {
                 payer: owner.pubkey(),
                 vault,
+                mint,
                 merchant: merchant.pubkey(),
+                merchant_token,
+                vault_token,
                 instructions: INSTRUCTIONS_SYSVAR,
+                token_program: SPL_TOKEN_ID,
+                associated_token_program: ATA_PROGRAM_ID,
+                system_program: system_program::ID,
             }
             .to_account_metas(None),
         )
     };
 
-    let before = rpc.get_balance(&merchant.pubkey()).unwrap();
+    let before = token_balance(&rpc, &merchant_token);
     let sig = send(
         &rpc,
         &[
@@ -210,8 +313,8 @@ fn week_one_gate_on_devnet() {
         &[&owner],
     )
     .expect("redeem_voucher on devnet");
-    let after = rpc.get_balance(&merchant.pubkey()).unwrap();
-    assert_eq!(after - before, PAYMENT, "merchant was paid on devnet");
+    let after = token_balance(&rpc, &merchant_token);
+    assert_eq!(after - before, PAYMENT, "merchant was paid in tokens on devnet");
     println!("✓ voucher redeemed on devnet — precompile verified a StrongBox-shaped\n  P-256 signature on a real validator\n  tx: {sig}");
 
     // 4. The deliberate double-spend. Same sequence, freshly signed.

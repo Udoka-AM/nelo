@@ -151,9 +151,13 @@ Order matters here; each step feeds the next.
    **Done when:** a merchant with a zero SOL balance completes a sale.
 5. **Balance in local currency, held in dollars.** *(Android + Design)*
 6. **The day-book.** The screen a merchant actually lives in. *(Design + Android)*
-7. **Payout leg against the sandbox** — or the declared stub, if week 0's fork went that way.
+7. **SPL/USDC collateral.** **Done** — the vault holds tokens, not lamports.
+   `transfer_checked` against the enrolled mint throughout, and the merchant's token
+   account is created on demand so a first-time payee is not a failed sale.
+
+8. **Payout leg against the sandbox** — or the declared stub, if week 0's fork went that way.
    [`services/settle`](../services/settle/src/index.ts), double-entry ledger. *(Anchor)*
-8. **Trust Stake: staking and the floor-limit curve.** `offline_limit = min(base × (1 +
+9. **Trust Stake: staking and the floor-limit curve.** `offline_limit = min(base × (1 +
    k·√stake) × reputation, hard_cap)`. *(Anchor)*
    **Done when:** staking raises the limit sublinearly and the hard cap holds.
 

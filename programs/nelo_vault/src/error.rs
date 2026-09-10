@@ -16,6 +16,8 @@ pub enum NeloError {
     InsufficientCollateral,
     #[msg("Vault is frozen")]
     VaultFrozen,
+    #[msg("Token mint does not match the mint this vault was enrolled for")]
+    MintMismatch,
 
     // --- replay window ---
     #[msg("Sequence is below the replay window and can no longer be redeemed")]

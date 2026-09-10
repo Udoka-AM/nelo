@@ -1,4 +1,8 @@
 use anchor_lang::prelude::*;
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked},
+};
 use solana_sdk_ids::sysvar::instructions::ID as INSTRUCTIONS_SYSVAR_ID;
 
 use crate::{
@@ -19,16 +23,43 @@ pub struct RedeemVoucher<'info> {
         mut,
         seeds = [VAULT_SEED, vault.owner.as_ref()],
         bump = vault.bump,
+        has_one = mint @ NeloError::MintMismatch,
     )]
     pub vault: Account<'info, Vault>,
 
+    pub mint: InterfaceAccount<'info, Mint>,
+
     /// The payee named in the voucher. A voucher is not bearer.
-    #[account(mut, address = voucher.merchant @ NeloError::MerchantMismatch)]
-    pub merchant: SystemAccount<'info>,
+    /// CHECK: identity only — it is the ATA authority, checked by address below.
+    #[account(address = voucher.merchant @ NeloError::MerchantMismatch)]
+    pub merchant: UncheckedAccount<'info>,
+
+    /// Created on demand: a merchant taking their first Nelo payment has never
+    /// held USDC, and that must not be the thing that fails a sale.
+    #[account(
+        init_if_needed,
+        payer = payer,
+        associated_token::mint = mint,
+        associated_token::authority = merchant,
+        associated_token::token_program = token_program,
+    )]
+    pub merchant_token: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = vault,
+        associated_token::token_program = token_program,
+    )]
+    pub vault_token: InterfaceAccount<'info, TokenAccount>,
 
     /// CHECK: address-checked against the instructions sysvar; read only.
     #[account(address = INSTRUCTIONS_SYSVAR_ID)]
     pub instructions: UncheckedAccount<'info>,
+
+    pub token_program: Interface<'info, TokenInterface>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
 }
 
 pub fn handle_redeem_voucher(ctx: Context<RedeemVoucher>, voucher: VoucherArgs) -> Result<()> {
@@ -69,26 +100,29 @@ pub fn handle_redeem_voucher(ctx: Context<RedeemVoucher>, voucher: VoucherArgs) 
     // --- replay window: this is where a double-spend dies ---
     let vault = &mut ctx.accounts.vault;
     consume_sequence(vault, voucher.seq)?;
-
-    // --- move the collateral ---
     vault.balance = vault
         .balance
         .checked_sub(voucher.amount)
         .ok_or(NeloError::InsufficientCollateral)?;
 
-    // The vault PDA is owned by this program, so lamports move by direct
-    // mutation rather than a system CPI. `balance` is tracked separately from
-    // lamports precisely so rent-exemption is never spent down.
-    let vault_ai = vault.to_account_info();
-    let merchant_ai = ctx.accounts.merchant.to_account_info();
-    **vault_ai.try_borrow_mut_lamports()? = vault_ai
-        .lamports()
-        .checked_sub(voucher.amount)
-        .ok_or(NeloError::InsufficientCollateral)?;
-    **merchant_ai.try_borrow_mut_lamports()? = merchant_ai
-        .lamports()
-        .checked_add(voucher.amount)
-        .ok_or(NeloError::Overflow)?;
+    // --- move the collateral ---
+    let owner = vault.owner;
+    let bump = vault.bump;
+    let seeds: &[&[u8]] = &[VAULT_SEED, owner.as_ref(), &[bump]];
+    transfer_checked(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.key(),
+            TransferChecked {
+                from: ctx.accounts.vault_token.to_account_info(),
+                mint: ctx.accounts.mint.to_account_info(),
+                to: ctx.accounts.merchant_token.to_account_info(),
+                authority: ctx.accounts.vault.to_account_info(),
+            },
+            &[seeds],
+        ),
+        voucher.amount,
+        ctx.accounts.mint.decimals,
+    )?;
 
     Ok(())
 }

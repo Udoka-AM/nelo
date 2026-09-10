@@ -37,8 +37,12 @@ Two facts that cost time if you meet them late, now pinned by tests: `@noble/cur
 does **not** default to low-S on P-256, and a high-S signature does **not** settle on
 chain. Every signing path must normalise; `derToRawSignature()` does it.
 
-Not yet built: the SPL/USDC leg (collateral is native lamports for now), StrongBox on a
-real handset, and every app and service — `apps/*` are empty.
+Collateral is **SPL** — USDC in production. Deposits, redemptions and withdrawals all move
+real tokens, checked against the mint the vault was enrolled for, and a merchant taking
+their first Nelo payment gets a token account created for them rather than a failed sale.
+
+Not yet built: StrongBox on a real handset, the merchant app, and the services —
+`apps/merchant` is empty and `services/*` are stubs.
 
 See [the build sequence](docs/DELIVERABLES.md) for what is next and how each step is
 judged done.
@@ -105,9 +109,10 @@ refused, signature-over-other-bytes refused:
 cargo test -p nelo_vault --test devnet -- --ignored --nocapture
 ```
 
-It is `#[ignore]` so it never runs in the default suite. It costs devnet SOL and uses a
-software P-256 key in place of StrongBox, which isolates "does the chain do what we
-think" from "does the handset do what we think".
+It creates its own 6-decimal mint (devnet USDC exists, but Circle holds its mint
+authority), so a run is self-contained. It is `#[ignore]` so it never runs in the default
+suite. It costs devnet SOL and uses a software P-256 key in place of StrongBox, which
+isolates "does the chain do what we think" from "does the handset do what we think".
 
 > **The program keypair is not in this repo, and must not be.**
 > `target/deploy/nelo_vault-keypair.json` is what controls the program address, and

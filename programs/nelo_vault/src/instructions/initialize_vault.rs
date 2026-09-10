@@ -1,4 +1,8 @@
 use anchor_lang::prelude::*;
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token_interface::{Mint, TokenAccount, TokenInterface},
+};
 
 use crate::{constants::*, state::Vault};
 
@@ -6,6 +10,7 @@ use crate::{constants::*, state::Vault};
 pub struct InitializeVault<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
+
     #[account(
         init,
         payer = owner,
@@ -14,6 +19,23 @@ pub struct InitializeVault<'info> {
         bump
     )]
     pub vault: Account<'info, Vault>,
+
+    /// The settlement mint this vault is enrolled for. USDC in production.
+    pub mint: InterfaceAccount<'info, Mint>,
+
+    /// Collateral lives here, owned by the vault PDA. Created at enrolment so
+    /// deposit and redemption never have to reason about a missing account.
+    #[account(
+        init,
+        payer = owner,
+        associated_token::mint = mint,
+        associated_token::authority = vault,
+        associated_token::token_program = token_program,
+    )]
+    pub vault_token: InterfaceAccount<'info, TokenAccount>,
+
+    pub token_program: Interface<'info, TokenInterface>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
 
@@ -21,12 +43,11 @@ pub fn handle_initialize_vault(
     ctx: Context<InitializeVault>,
     device_pubkey: [u8; 33],
     attestation_id: [u8; 32],
-    mint: Pubkey,
     floor_limit: u64,
 ) -> Result<()> {
     let vault = &mut ctx.accounts.vault;
     vault.owner = ctx.accounts.owner.key();
-    vault.mint = mint;
+    vault.mint = ctx.accounts.mint.key();
     vault.device_pubkey = device_pubkey;
     vault.attestation_id = attestation_id;
     vault.balance = 0;

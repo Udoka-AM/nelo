@@ -2,8 +2,8 @@
 //! withdrawal, and offline vouchers signed by an Android StrongBox P-256 key
 //! and verified on chain by the secp256r1 precompile.
 //!
-//! Week-1 scope, per docs/DELIVERABLES.md. Collateral is native lamports; the
-//! USDC/SPL leg is week 2. A proven double-spend freezes the vault via
+//! Per docs/DELIVERABLES.md.
+//! Collateral is SPL — USDC in production. A proven double-spend freezes the vault via
 //! `report_conflict`; the freeze blocks the payer's exit but deliberately
 //! leaves redemption open, so honest merchants can still claim collateral.
 
@@ -31,14 +31,12 @@ pub mod nelo_vault {
         ctx: Context<InitializeVault>,
         device_pubkey: [u8; 33],
         attestation_id: [u8; 32],
-        mint: Pubkey,
         floor_limit: u64,
     ) -> Result<()> {
         instructions::initialize_vault::handle_initialize_vault(
             ctx,
             device_pubkey,
             attestation_id,
-            mint,
             floor_limit,
         )
     }

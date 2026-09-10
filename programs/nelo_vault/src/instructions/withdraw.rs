@@ -1,4 +1,7 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token_interface::{
+    transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked,
+};
 
 use crate::{constants::*, error::NeloError, state::Vault};
 
@@ -31,13 +34,35 @@ pub fn handle_request_withdraw(ctx: Context<RequestWithdraw>) -> Result<()> {
 pub struct Withdraw<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
+
     #[account(
         mut,
         seeds = [VAULT_SEED, owner.key().as_ref()],
         bump = vault.bump,
         has_one = owner,
+        has_one = mint @ NeloError::MintMismatch,
     )]
     pub vault: Account<'info, Vault>,
+
+    pub mint: InterfaceAccount<'info, Mint>,
+
+    #[account(
+        mut,
+        token::mint = mint,
+        token::authority = owner,
+        token::token_program = token_program,
+    )]
+    pub owner_token: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = vault,
+        associated_token::token_program = token_program,
+    )]
+    pub vault_token: InterfaceAccount<'info, TokenAccount>,
+
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 pub fn handle_withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
@@ -56,16 +81,23 @@ pub fn handle_withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
     // Consume the request, so each withdrawal needs its own timelock.
     vault.unlock_at = 0;
 
-    let vault_ai = vault.to_account_info();
-    let owner_ai = ctx.accounts.owner.to_account_info();
-    **vault_ai.try_borrow_mut_lamports()? = vault_ai
-        .lamports()
-        .checked_sub(amount)
-        .ok_or(NeloError::InsufficientCollateral)?;
-    **owner_ai.try_borrow_mut_lamports()? = owner_ai
-        .lamports()
-        .checked_add(amount)
-        .ok_or(NeloError::Overflow)?;
+    let owner = vault.owner;
+    let bump = vault.bump;
+    let seeds: &[&[u8]] = &[VAULT_SEED, owner.as_ref(), &[bump]];
+    transfer_checked(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.key(),
+            TransferChecked {
+                from: ctx.accounts.vault_token.to_account_info(),
+                mint: ctx.accounts.mint.to_account_info(),
+                to: ctx.accounts.owner_token.to_account_info(),
+                authority: ctx.accounts.vault.to_account_info(),
+            },
+            &[seeds],
+        ),
+        amount,
+        ctx.accounts.mint.decimals,
+    )?;
 
     Ok(())
 }
