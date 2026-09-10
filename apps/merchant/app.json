@@ -23,6 +23,12 @@
     "plugins": [
       "expo-dev-client",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "28555820-8ba2-4037-95ef-955059462a58"
+      }
+    },
+    "owner": "udoka_am"
   }
 }
