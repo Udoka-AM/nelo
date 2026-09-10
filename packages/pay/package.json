@@ -1,0 +1,11 @@
+{
+  "name": "@nelo/pay",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "description": "Solana Pay request URLs and local-currency conversion. Pure, so it is testable off-device.",
+  "scripts": {
+    "test": "node --test test/pay.test.ts"
+  },
+  "files": ["src"]
+}

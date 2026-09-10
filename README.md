@@ -41,8 +41,13 @@ Collateral is **SPL** — USDC in production. Deposits, redemptions and withdraw
 real tokens, checked against the mint the vault was enrolled for, and a merchant taking
 their first Nelo payment gets a token account created for them rather than a failed sale.
 
-Not yet built: StrongBox on a real handset, the merchant app, and the services —
-`apps/merchant` is empty and `services/*` are stubs.
+The merchant terminal takes an amount in local currency and shows a Solana Pay code any
+wallet can pay. All the arithmetic is integer-only and lives in `packages/pay`, tested off
+device: conversion rounds **up** so the merchant is never short, display rounds **down** so
+a balance is never overstated.
+
+Not yet built: StrongBox on a real handset, Mobile Wallet Adapter onboarding, a live price
+feed (the rate is a fixed quote), the day-book, and the services — `services/*` are stubs.
 
 See [the build sequence](docs/DELIVERABLES.md) for what is next and how each step is
 judged done.
@@ -51,8 +56,9 @@ judged done.
 
 ```
 programs/nelo_vault/     Anchor program — vault, replay window, Trust Stake
-apps/merchant/           Expo — the terminal
+apps/merchant/           Expo — the terminal (amount entry, Solana Pay)
 apps/payer/              Expo — vault + offline voucher emitter
+packages/pay/            Solana Pay requests + local-currency arithmetic
 packages/voucher/        202-byte wire format: encode, decode, verify
 packages/attest/         Expo native module — StrongBox P-256 + attestation
 services/relay/          Broadcast queue, retry, multi-RPC failover
