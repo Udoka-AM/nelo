@@ -4,5 +4,14 @@
   "type": "module",
   "main": "./src/index.ts",
   "description": "Voucher wire format: encode, decode, verify. 202 bytes, fixed layout.",
-  "dependencies": { "@noble/curves": "^1.6.0" }
+  "dependencies": {
+    "@noble/curves": "^1.6.0"
+  },
+  "scripts": {
+    "test": "node --test test/voucher.test.ts"
+  },
+  "files": [
+    "src",
+    "vectors"
+  ]
 }
