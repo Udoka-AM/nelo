@@ -22,6 +22,12 @@
     ],
     "plugins": [
       "expo-dev-client"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "7c5911c7-5ebf-4397-81bb-445d9bbd8051"
+      }
+    },
+    "owner": "udoka_am"
   }
 }
