@@ -33,6 +33,10 @@ solana-keypair = "3.1.2"
 p256 = { version = "0.13", features = ["ecdsa"] }
 solana-pubkey = "3"
 serde_json = "1"
+solana-client = "4"
+solana-commitment-config = "3"
+solana-system-interface = "2"
+shellexpand = "3"
 solana-instruction = "3"
 
 [lints.rust]

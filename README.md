@@ -91,6 +91,32 @@ anchor test
 
 That builds the program and runs the Rust test suite. It should pass from a clean clone.
 
+## Devnet
+
+The program is deployed to devnet at
+`29QdPRQC8C5v6C8gMcBqtw9T4RxYyZ1wqThkEj3XJeQx`, upgrade authority
+`BX8kSVjmx9Eihd173hdrRW1Ap61AmixQzqjtc3o5DQfu`.
+
+The week-1 gate has been run there end to end — vault funded, voucher redeemed with the
+device signature verified by the secp256r1 precompile on a real validator, double-spend
+refused, signature-over-other-bytes refused:
+
+```bash
+cargo test -p nelo_vault --test devnet -- --ignored --nocapture
+```
+
+It is `#[ignore]` so it never runs in the default suite. It costs devnet SOL and uses a
+software P-256 key in place of StrongBox, which isolates "does the chain do what we
+think" from "does the handset do what we think".
+
+> **The program keypair is not in this repo, and must not be.**
+> `target/deploy/nelo_vault-keypair.json` is what controls the program address, and
+> `target/` is gitignored — so `rm -rf target/` destroys it and `anchor build` silently
+> generates a new one with a different address. The canonical copy lives at
+> `~/.config/solana/nelo/nelo_vault-program-keypair.json`. If a build ever produces a
+> program id that does not match `declare_id!`, restore from there rather than editing
+> the id. Before mainnet, that key belongs on a hardware wallet.
+
 ## Program tests
 
 Program tests are **Rust + LiteSVM**, in `programs/nelo_vault/tests/`. There is no
