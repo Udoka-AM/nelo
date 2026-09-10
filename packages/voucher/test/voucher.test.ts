@@ -16,6 +16,7 @@ import {
   derToRawSignature,
   encode,
   isLowS,
+  compressPublicKey,
   signedMessage,
   verify,
   SIGNED_LEN,
@@ -183,3 +184,25 @@ function fixedKey(): Uint8Array {
   k[31] = 7;
   return k;
 }
+
+// ------------------------------------------------- public key compression ---
+
+test("compresses an Android uncompressed point to SEC1", () => {
+  // Cross-checked against noble rather than against itself: noble computes the
+  // compressed form independently from the private key.
+  for (const seed of [1, 7, 42, 200]) {
+    const priv = new Uint8Array(32).fill(1);
+    priv[31] = seed;
+    const uncompressed = p256.getPublicKey(priv, false);
+    const expected = p256.getPublicKey(priv, true);
+    assert.equal(uncompressed.length, 65);
+    assert.equal(hex(compressPublicKey(uncompressed)), hex(expected), `seed ${seed}`);
+  }
+});
+
+test("compression rejects malformed points", () => {
+  assert.throws(() => compressPublicKey(new Uint8Array(64)), /65 bytes/);
+  const badPrefix = new Uint8Array(65);
+  badPrefix[0] = 0x02;
+  assert.throws(() => compressPublicKey(badPrefix), /0x04/);
+});

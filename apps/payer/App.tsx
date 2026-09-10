@@ -17,6 +17,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { p256 } from "@noble/curves/p256";
 import { decode, encode, signedMessage, verify, type Voucher } from "@nelo/voucher";
+import * as attest from "@nelo/attest";
 
 type Result = { name: string; ok: boolean; detail: string };
 
@@ -83,10 +84,22 @@ function runChecks(): Result[] {
     return "verified, and rejects tampering";
   });
 
+  if (!attest.isAvailable()) {
+    out.push({
+      name: "StrongBox secure element",
+      ok: false,
+      detail: "native module not loaded — this needs a development build",
+    });
+    return out;
+  }
+
+  const strongBox = attest.isStrongBoxAvailable();
   out.push({
     name: "StrongBox secure element",
-    ok: false,
-    detail: "native module not built yet — week 1, step 2",
+    ok: strongBox,
+    detail: strongBox
+      ? "present — offline vouchers available"
+      : "absent (TEE only) — correct behaviour is online-only on this handset",
   });
 
   return out;
@@ -96,7 +109,60 @@ export default function App() {
   const [results, setResults] = useState<Result[] | null>(null);
 
   useEffect(() => {
-    setResults(runChecks());
+    const sync = runChecks();
+    setResults(sync);
+    if (!attest.isAvailable() || !attest.isStrongBoxAvailable()) return;
+
+    // The end-to-end hardware check: generate a key in the secure element,
+    // sign the voucher's 105 bytes with it, and verify that signature with the
+    // same code a merchant runs offline. This is the one thing no laptop can
+    // answer, and it is where DER encoding and low-S normalisation get tested
+    // against real hardware rather than against a library.
+    void (async () => {
+      const extra: Result[] = [];
+      const alias = "nelo-probe";
+      try {
+        const challenge = new Uint8Array(32).fill(0x5a);
+        const key = await attest.generateAttestedKey(alias, challenge);
+        extra.push({
+          name: "StrongBox keygen + attestation",
+          ok: key.publicKey.length === 33 && key.certChain.length > 0,
+          detail: `33-byte key, ${key.certChain.length}-cert chain`,
+        });
+
+        const probe = {
+          version: 1,
+          vault: fill(32, 0x11),
+          seq: 1n,
+          amount: 1_000_000n,
+          remainingAfter: 0n,
+          merchant: fill(32, 0x22),
+          expiresAt: 1_789_000_000n,
+          salt: fill(8, 0x01),
+        };
+        const msg = signedMessage(probe as Omit<Voucher, "signature" | "devicePubkey">);
+        const signature = await attest.sign(alias, msg);
+        const voucher = { ...probe, signature, devicePubkey: key.publicKey } as Voucher;
+
+        extra.push({
+          name: "Hardware signature verifies",
+          ok: signature.length === 64 && verify(voucher),
+          detail:
+            signature.length === 64
+              ? "64-byte r||s, low-S, verified against the device key"
+              : `expected 64 bytes, got ${signature.length}`,
+        });
+      } catch (e) {
+        extra.push({
+          name: "StrongBox round-trip",
+          ok: false,
+          detail: e instanceof Error ? e.message : String(e),
+        });
+      } finally {
+        await attest.deleteKey(alias).catch(() => {});
+      }
+      setResults([...sync, ...extra]);
+    })();
   }, []);
 
   const passed = results?.filter((r) => r.ok).length ?? 0;

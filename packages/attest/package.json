@@ -1,5 +1,19 @@
 {
   "name": "@nelo/attest",
   "version": "0.1.0",
-  "description": "Expo native module: StrongBox P-256 keygen, key attestation, and voucher signing (Android only)."
+  "type": "module",
+  "main": "./src/index.ts",
+  "description": "Expo native module: StrongBox P-256 keygen, key attestation, and voucher signing (Android only).",
+  "dependencies": {
+    "@nelo/voucher": "workspace:*"
+  },
+  "peerDependencies": {
+    "expo": "*",
+    "react-native": "*"
+  },
+  "files": [
+    "src",
+    "android",
+    "expo-module.config.json"
+  ]
 }

@@ -88,11 +88,15 @@ Order matters here; each step feeds the next.
 2. **StrongBox keygen and signing.** [`packages/attest`](../packages/attest) as a Kotlin Expo
    module: P-256 keygen with an attestation challenge, sign 105 bytes, return the signature.
    *(Android)*
-   **Done when:** a physical device signs a known message and the signature verifies in a
-   Node script. The DER → raw r‖s conversion is **already written and tested**
-   (`derToRawSignature`), so what remains is the Kotlin side and a real handset. Two
-   traps are already pinned by tests: `@noble/curves` does not default to low-S, and a
-   high-S signature does not settle on chain. Normalise on every path.
+   **Written, not yet run.** `packages/attest` has the Kotlin module and the TypeScript
+   interface; `apps/payer` hosts it and its probe screen does the full round-trip —
+   keygen in the secure element, sign the 105 bytes, verify with the merchant's own
+   code. Both conversions (DER → raw r‖s low-S, and uncompressed → compressed key) live
+   in `@nelo/voucher` and are covered by tests that run without a handset.
+   **The Kotlin has never been compiled** — there is no JDK or Android SDK on the dev
+   machine, so it compiles for the first time during the EAS build.
+   **Done when:** the probe screen shows the hardware signature verifying on a real
+   handset.
 
 3. **Capability detection and honest degradation.** Detect StrongBox; where it is absent, fall
    back to **online-only**. *(Android)*

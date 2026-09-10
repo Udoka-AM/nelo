@@ -189,3 +189,23 @@ export function isLowS(rawSignature: Uint8Array): boolean {
   for (let k = 32; k < 64; k++) s = (s << 8n) | BigInt(rawSignature[k]!);
   return s <= P256_ORDER / 2n;
 }
+
+/**
+ * Android hands back an uncompressed SEC1 point (0x04 ‖ X ‖ Y, 65 bytes). The
+ * voucher carries the 33-byte compressed form, and so does the vault's enrolled
+ * `device_pubkey`, so the conversion has to happen somewhere — here, where it
+ * can be tested without a handset.
+ */
+export function compressPublicKey(uncompressed: Uint8Array): Uint8Array {
+  if (uncompressed.length !== 65) {
+    throw new Error(`uncompressed key must be 65 bytes, got ${uncompressed.length}`);
+  }
+  if (uncompressed[0] !== 0x04) {
+    throw new Error(`expected 0x04 uncompressed-point prefix, got 0x${uncompressed[0]!.toString(16)}`);
+  }
+  const out = new Uint8Array(33);
+  // Parity of Y picks the prefix; X alone then determines the point.
+  out[0] = (uncompressed[64]! & 1) === 0 ? 0x02 : 0x03;
+  out.set(uncompressed.subarray(1, 33), 1);
+  return out;
+}
