@@ -20,7 +20,7 @@ pub use instructions::*;
 pub use state::*;
 pub use voucher::VoucherArgs;
 
-declare_id!("yzDTDHq5cjLW1QZkfH1UEggMtLe8SaNr3MXQgRwpzhu");
+declare_id!("29QdPRQC8C5v6C8gMcBqtw9T4RxYyZ1wqThkEj3XJeQx");
 
 #[program]
 pub mod nelo_vault {

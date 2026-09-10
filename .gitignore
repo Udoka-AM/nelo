@@ -15,3 +15,10 @@ test-ledger/
 .anchor/
 .yarn/
 .surfpool/
+
+# Keypairs. target/ is already ignored, but that is incidental — this is the
+# rule. Never commit a keypair, on any cluster, however throwaway it feels.
+*keypair*.json
+id.json
+/keys/
+*.pem

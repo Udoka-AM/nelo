@@ -9,7 +9,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-nelo_vault = "yzDTDHq5cjLW1QZkfH1UEggMtLe8SaNr3MXQgRwpzhu"
+nelo_vault = "29QdPRQC8C5v6C8gMcBqtw9T4RxYyZ1wqThkEj3XJeQx"
 
 [provider]
 cluster = "localnet"
