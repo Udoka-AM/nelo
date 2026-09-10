@@ -46,8 +46,12 @@ wallet can pay. All the arithmetic is integer-only and lives in `packages/pay`, 
 device: conversion rounds **up** so the merchant is never short, display rounds **down** so
 a balance is never overstated.
 
-Not yet built: StrongBox on a real handset, Mobile Wallet Adapter onboarding, a live price
-feed (the rate is a fixed quote), the day-book, and the services — `services/*` are stubs.
+The merchant connects their **own** wallet through Mobile Wallet Adapter, so Nelo never
+holds a key — it learns only an address to pay. The grant is remembered in SecureStore, so
+the terminal opens ready to trade.
+
+Not yet built: StrongBox on a real handset, a live price feed (the rate is a fixed quote),
+payment detection, the day-book, and the services — `services/*` are stubs.
 
 See [the build sequence](docs/DELIVERABLES.md) for what is next and how each step is
 judged done.

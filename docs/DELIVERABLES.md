@@ -138,8 +138,9 @@ Order matters here; each step feeds the next.
 
 **Thu 17 – Wed 23 Sep.** The online path, which is what most of the demo will actually show.
 
-1. **Merchant app shell.** [`apps/merchant`](../apps/merchant) — currently empty. Mobile
-   Wallet Adapter wired, because the rules require it. *(Android)*
+1. **Merchant app shell.** **Done** — [`apps/merchant`](../apps/merchant) has the till,
+   and Mobile Wallet Adapter is wired for connect/restore/disconnect. It bundles under
+   Hermes; the native link is only proven by a build. *(Android)*
 2. **Onboarding: phone number + payout account.** Privy embedded wallet behind the secure
    element. *(Android)*
    **Done when:** a merchant completes setup without ever seeing a key.

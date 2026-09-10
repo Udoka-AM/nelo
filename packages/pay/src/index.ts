@@ -189,3 +189,45 @@ export function formatLocalAmount(minor: bigint, minorDigits: number = 2): strin
   const fraction = (minor % divisor).toString().padStart(minorDigits, "0");
   return `${whole}.${fraction}`;
 }
+
+// ---------------------------------------------------------- base64 ---
+
+const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+/**
+ * Hermes has no Buffer and its atob support varies by RN version, so this is
+ * implemented rather than polyfilled — it runs identically in Node and on the
+ * phone, which means the test below actually covers the device.
+ */
+export function decodeBase64(s: string): Uint8Array {
+  const clean = s.replace(/=+$/, "");
+  const out = new Uint8Array((clean.length * 3) >> 2);
+  let bits = 0;
+  let acc = 0;
+  let index = 0;
+  for (const ch of clean) {
+    const value = B64.indexOf(ch);
+    if (value === -1) throw new Error(`invalid base64 character '${ch}'`);
+    acc = (acc << 6) | value;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      out[index++] = (acc >> bits) & 0xff;
+    }
+  }
+  return out.subarray(0, index);
+}
+
+/**
+ * Mobile Wallet Adapter hands back account addresses base64-encoded; Solana Pay
+ * URLs and every explorer want base58. Getting this wrong produces a valid
+ * looking address that belongs to nobody, and the money goes nowhere
+ * recoverable — so it is converted in one place, and tested.
+ */
+export function base64AddressToBase58(address: string): string {
+  const bytes = decodeBase64(address);
+  if (bytes.length !== 32) {
+    throw new Error(`expected a 32-byte address, decoded ${bytes.length} bytes`);
+  }
+  return encodeBase58(bytes);
+}

@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  base64AddressToBase58,
   decodeBase58,
+  decodeBase64,
   decodeTransferRequest,
   encodeBase58,
   encodeTransferRequest,
@@ -150,4 +152,49 @@ test("formats local amounts for display", () => {
   assert.equal(formatLocalAmount(1_650_250n), "16502.50");
   assert.equal(formatLocalAmount(5n), "0.05");
   assert.equal(formatLocalAmount(150n, 0), "150");
+});
+
+// ------------------------------------------------- MWA address encoding ---
+
+test("decodes base64, padded and unpadded", () => {
+  const cases: [string, number[]][] = [
+    ["", []],
+    ["AA==", [0]],
+    ["AAA=", [0, 0]],
+    ["AAAA", [0, 0, 0]],
+    ["/w==", [255]],
+    ["SGVsbG8=", [72, 101, 108, 108, 111]],
+  ];
+  for (const [input, expected] of cases) {
+    assert.deepEqual([...decodeBase64(input)], expected, `for "${input}"`);
+  }
+});
+
+test("converts an MWA base64 address to base58", () => {
+  // Cross-checked against Node's own base64 decoder, not against itself.
+  const raw = decodeBase58(MERCHANT);
+  const asBase64 = Buffer.from(raw).toString("base64");
+  assert.deepEqual([...decodeBase64(asBase64)], [...raw], "base64 decode agrees with Node");
+  assert.equal(base64AddressToBase58(asBase64), MERCHANT);
+});
+
+test("address conversion survives leading zero bytes", () => {
+  // The System Program is 32 zero bytes — the case a naive decoder truncates.
+  const zeros = new Uint8Array(32);
+  const b64 = Buffer.from(zeros).toString("base64");
+  assert.equal(base64AddressToBase58(b64), "11111111111111111111111111111111");
+});
+
+test("address conversion rejects anything that is not 32 bytes", () => {
+  assert.throws(() => base64AddressToBase58("SGVsbG8="), /32-byte address/);
+  assert.throws(() => base64AddressToBase58("!!!!"), /invalid base64/);
+});
+
+test("a converted address is usable as a Solana Pay recipient", () => {
+  const b64 = Buffer.from(decodeBase58(MERCHANT)).toString("base64");
+  const url = encodeTransferRequest({
+    recipient: base64AddressToBase58(b64),
+    amount: "1.00",
+  });
+  assert.equal(decodeTransferRequest(url).recipient, MERCHANT);
 });
