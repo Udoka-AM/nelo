@@ -1,0 +1,24 @@
+{
+  "name": "@nelo/payer",
+  "version": "0.1.0",
+  "main": "index.ts",
+  "dependencies": {
+    "@nelo/voucher": "workspace:*",
+    "expo": "~57.0.21",
+    "expo-dev-client": "~57.0.18",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start --dev-client",
+    "android": "expo run:android",
+    "build:dev": "eas build -p android --profile development"
+  },
+  "private": true,
+  "description": "Expo dev-build host for the vault and the offline voucher emitter (Android)."
+}

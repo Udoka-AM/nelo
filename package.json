@@ -10,8 +10,9 @@
     "program:test": "anchor test"
   },
   "devDependencies": {
-    "typescript": "^5.6.0",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "eas-cli": "^24.0.0",
+    "typescript": "^5.6.0"
   },
   "packageManager": "pnpm@9.15.0"
 }
