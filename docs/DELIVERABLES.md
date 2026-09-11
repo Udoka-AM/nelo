@@ -146,6 +146,8 @@ Order matters here; each step feeds the next.
    **Done when:** a merchant completes setup without ever seeing a key.
 3. **Enter an amount in local currency, take a payment.** Solana Pay transaction request via
    `@solana/pay`. Pyth or Switchboard for the rate. *(Android)*
+   Amount entry, the Solana Pay code and payment detection are **done**; the rate is still
+   a fixed quote until Pyth lands.
    **Done when:** a customer pays with **an unmodified third-party wallet** and the merchant
    sees the local-currency amount confirm. No Nelo app on the customer side.
 4. **Kora relayer, so nobody needs SOL.** *(Anchor)*

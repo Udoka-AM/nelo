@@ -50,8 +50,13 @@ The merchant connects their **own** wallet through Mobile Wallet Adapter, so Nel
 holds a key — it learns only an address to pay. The grant is remembered in SecureStore, so
 the terminal opens ready to trade.
 
+The terminal watches the chain for the payment and says whether it landed. Finding a
+transaction is not proof: anyone can name your reference, so every payment is validated
+against what was asked — right payee, right mint, enough money, and the transaction did
+not fail. Underpayment is refused.
+
 Not yet built: StrongBox on a real handset, a live price feed (the rate is a fixed quote),
-payment detection, the day-book, and the services — `services/*` are stubs.
+the day-book, and the services — `services/*` are stubs.
 
 See [the build sequence](docs/DELIVERABLES.md) for what is next and how each step is
 judged done.

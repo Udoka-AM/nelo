@@ -14,9 +14,13 @@ import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import QRCode from "react-native-qrcode-svg";
+import * as Crypto from "expo-crypto";
 import { connect, restore, type MerchantWallet } from "./src/wallet";
 import {
+  awaitPayment,
   encodeTransferRequest,
+  referenceFromBytes,
+  type PaymentOutcome,
   formatLocalAmount,
   formatTokenAmount,
   localToTokenBaseUnits,
@@ -28,6 +32,7 @@ import {
 // comes from Mobile Wallet Adapter, and Nelo never holds the key.
 const USDC_DEVNET = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
 const CURRENCY = { code: "NGN", symbol: "₦", minorDigits: 2 };
+const RPC_URL = "https://api.devnet.solana.com";
 const RATE: Rate = { localPerUsd: 165_025_000_000n, scale: 8, minorPerMajor: 100n };
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "·", "0", "⌫"];
@@ -37,6 +42,8 @@ export default function App() {
   const [minor, setMinor] = useState(0n);
   const [charging, setCharging] = useState(false);
   const [merchant, setMerchant] = useState<MerchantWallet | null>(null);
+  const [reference, setReference] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<PaymentOutcome | null>(null);
   const [restoring, setRestoring] = useState(true);
   const [connecting, setConnecting] = useState(false);
 
@@ -71,15 +78,53 @@ export default function App() {
 
   const url = useMemo(() => {
     if (minor === 0n) return null;
-    if (!merchant) return null;
+    if (!merchant || !reference) return null;
     return encodeTransferRequest({
       recipient: merchant.address,
       amount: tokenAmount,
       splToken: USDC_DEVNET,
+      // The marker the terminal watches the chain for.
+      reference: [reference],
       label: "Nelo",
       message: `${CURRENCY.symbol}${formatLocalAmount(minor, CURRENCY.minorDigits)}`,
     });
-  }, [minor, tokenAmount, merchant]);
+  }, [minor, tokenAmount, merchant, reference]);
+
+  // Watch for the payment while the code is on screen.
+  useEffect(() => {
+    if (!charging || !merchant || !reference) return;
+    const controller = new AbortController();
+    setOutcome(null);
+    awaitPayment(
+      RPC_URL,
+      reference,
+      {
+        recipient: merchant.address,
+        splToken: USDC_DEVNET,
+        amountBaseUnits: localToTokenBaseUnits(minor, RATE),
+      },
+      { signal: controller.signal },
+    )
+      .then((result) => {
+        if (!controller.signal.aborted) setOutcome(result);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [charging, merchant, reference, minor]);
+
+  function startCharge() {
+    // A fresh reference per sale, or two customers paying the same price would
+    // be indistinguishable and the second sale would settle the first.
+    setReference(referenceFromBytes(Crypto.getRandomBytes(32)));
+    setOutcome(null);
+    setCharging(true);
+  }
+
+  function endCharge() {
+    setCharging(false);
+    setReference(null);
+    setOutcome(null);
+  }
 
   function press(key: string) {
     if (key === "⌫") {
@@ -128,6 +173,37 @@ export default function App() {
     );
   }
 
+  if (charging && outcome?.status === "paid") {
+    return (
+      <View style={styles.screen}>
+        <StatusBar style="light" />
+        <View style={styles.chargeBody}>
+          <Text style={styles.paidMark}>✓</Text>
+          <Text style={styles.paidTitle}>Paid</Text>
+          <Text style={styles.chargeAmount}>
+            {CURRENCY.symbol}
+            {formatLocalAmount(minor, CURRENCY.minorDigits)}
+          </Text>
+          {outcome.overpaid ? (
+            <Text style={styles.chargeSub}>
+              Customer paid more than asked — {formatTokenAmount(outcome.amountBaseUnits)} USDC
+            </Text>
+          ) : null}
+          <Pressable
+            style={[styles.primary, styles.onboardButton]}
+            onPress={() => {
+              setMinor(0n);
+              endCharge();
+            }}
+            accessibilityRole="button"
+          >
+            <Text style={styles.primaryText}>New sale</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
   if (charging && url) {
     return (
       <View style={styles.screen}>
@@ -142,11 +218,19 @@ export default function App() {
             <QRCode value={url} size={240} backgroundColor="#ffffff" color="#101113" />
           </View>
           <Text style={styles.chargeSub}>{tokenAmount} USDC · any Solana wallet</Text>
-          <Pressable
-            style={styles.secondary}
-            onPress={() => setCharging(false)}
-            accessibilityRole="button"
-          >
+          <View style={styles.statusRow}>
+            {outcome === null ? (
+              <>
+                <ActivityIndicator color="#8d9299" size="small" />
+                <Text style={styles.statusWaiting}>Waiting for payment…</Text>
+              </>
+            ) : outcome.status === "invalid" ? (
+              <Text style={styles.statusBad}>{outcome.reason}</Text>
+            ) : outcome.status === "timeout" ? (
+              <Text style={styles.statusBad}>No payment yet — the code is still valid</Text>
+            ) : null}
+          </View>
+          <Pressable style={styles.secondary} onPress={endCharge} accessibilityRole="button">
             <Text style={styles.secondaryText}>Cancel</Text>
           </Pressable>
         </View>
@@ -185,7 +269,7 @@ export default function App() {
       <Pressable
         style={[styles.primary, minor === 0n && styles.primaryDisabled]}
         disabled={minor === 0n}
-        onPress={() => setCharging(true)}
+        onPress={startCharge}
         accessibilityRole="button"
       >
         <Text style={styles.primaryText}>Charge</Text>
@@ -233,4 +317,9 @@ const styles = StyleSheet.create({
   chargeSub: { color: "#8d9299", fontSize: 14 },
   secondary: { marginTop: 12, paddingVertical: 14, paddingHorizontal: 40 },
   secondaryText: { color: "#8d9299", fontSize: 16 },
+  statusRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 24 },
+  statusWaiting: { color: "#8d9299", fontSize: 14.5 },
+  statusBad: { color: "#d4855e", fontSize: 14.5, textAlign: "center" },
+  paidMark: { color: "#4fb98f", fontSize: 64 },
+  paidTitle: { color: "#4fb98f", fontSize: 22, fontWeight: "700", letterSpacing: 1 },
 });

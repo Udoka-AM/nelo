@@ -5,7 +5,9 @@
   "main": "./src/index.ts",
   "description": "Solana Pay request URLs and local-currency conversion. Pure, so it is testable off-device.",
   "scripts": {
-    "test": "node --test test/pay.test.ts"
+    "test": "node --test \"test/*.test.ts\""
   },
-  "files": ["src"]
+  "files": [
+    "src"
+  ]
 }
