@@ -58,8 +58,13 @@ not fail. Underpayment is refused.
 Settled sales land in a day-book held in SQLite, grouped by the merchant's **own**
 calendar day — a sale at 00:30 belongs to that day's sheet, not to UTC's.
 
-Not yet built: StrongBox on a real handset, a live price feed (the rate is a fixed quote),
-and the services — `services/*` are stubs.
+The rate is quoted through a guarded oracle layer: a price that is stale or whose
+confidence band is too wide is **refused**, not displayed. Two things block a live feed —
+Pyth publishes no NGN pair, and Hermes needs an API key — so the till currently runs a
+configured rate and labels it on screen as not live.
+
+Not yet built: StrongBox on a real handset, a live price feed (see above), and the
+services — `services/*` are stubs.
 
 See [the build sequence](docs/DELIVERABLES.md) for what is next and how each step is
 judged done.

@@ -155,3 +155,12 @@ export {
   type TokenBalance,
   type Validation,
 } from "./detect.ts";
+export {
+  confidenceBps,
+  DEFAULT_GUARDS,
+  fetchHermesQuote,
+  quoteToRate,
+  type OracleQuote,
+  type QuoteGuards,
+  type QuoteResult,
+} from "./oracle.ts";

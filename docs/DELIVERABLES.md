@@ -146,8 +146,16 @@ Order matters here; each step feeds the next.
    **Done when:** a merchant completes setup without ever seeing a key.
 3. **Enter an amount in local currency, take a payment.** Solana Pay transaction request via
    `@solana/pay`. Pyth or Switchboard for the rate. *(Android)*
-   Amount entry, the Solana Pay code and payment detection are **done**; the rate is still
-   a fixed quote until Pyth lands.
+   Amount entry, the Solana Pay code and payment detection are **done**. The oracle layer
+   is done and guarded (staleness, confidence band), but **two things block a live rate**
+   and both are product decisions, not code:
+   - **Pyth publishes no NGN feed.** 39 FX pairs, and the naira is not among them. Of the
+     markets the plan names, Manila (PHP) is covered; Lagos is not. Either pick a covered
+     launch currency, or source NGN from Switchboard or a commercial feed.
+   - **Hermes requires a key.** `hermes.pyth.network` serves feed metadata publicly but
+     returns 401 for prices. Needs an API key or a self-hosted instance.
+
+   Until one of those is settled the till runs a configured rate **and says so on screen**.
    **Done when:** a customer pays with **an unmodified third-party wallet** and the merchant
    sees the local-currency amount confirm. No Nelo app on the customer side.
 4. **Kora relayer, so nobody needs SOL.** *(Anchor)*

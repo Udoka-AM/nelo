@@ -24,6 +24,7 @@ import {
   type Sale,
 } from "@nelo/ledger";
 import { record, recent } from "./src/daybook";
+import { currentRate, type Quoted } from "./src/rate";
 import { connect, restore, type MerchantWallet } from "./src/wallet";
 import {
   awaitPayment,
@@ -33,7 +34,6 @@ import {
   formatLocalAmount,
   formatTokenAmount,
   localToTokenBaseUnits,
-  type Rate,
 } from "@nelo/pay";
 
 // The rate is a fixed quote, NOT a live feed — Pyth replaces this, and until it
@@ -42,7 +42,6 @@ import {
 const USDC_DEVNET = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
 const CURRENCY = { code: "NGN", symbol: "₦", minorDigits: 2 };
 const RPC_URL = "https://api.devnet.solana.com";
-const RATE: Rate = { localPerUsd: 165_025_000_000n, scale: 8, minorPerMajor: 100n };
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "·", "0", "⌫"];
 
@@ -54,6 +53,7 @@ export default function App() {
   const [reference, setReference] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<PaymentOutcome | null>(null);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [quoted, setQuoted] = useState<Quoted | null>(null);
   const [showDaybook, setShowDaybook] = useState(false);
 
   // The merchant's own clock decides which day a sale belongs to.
@@ -71,6 +71,7 @@ export default function App() {
       .catch(() => {})
       .finally(() => setRestoring(false));
     recent().then(setSales).catch(() => {});
+    currentRate(CURRENCY.code).then(setQuoted).catch(() => {});
   }, []);
 
   async function onConnect() {
@@ -91,8 +92,8 @@ export default function App() {
   }
 
   const tokenAmount = useMemo(
-    () => formatTokenAmount(localToTokenBaseUnits(minor, RATE)),
-    [minor],
+    () => (quoted ? formatTokenAmount(localToTokenBaseUnits(minor, quoted.rate)) : "—"),
+    [minor, quoted],
   );
 
   const url = useMemo(() => {
@@ -111,7 +112,7 @@ export default function App() {
 
   // Watch for the payment while the code is on screen.
   useEffect(() => {
-    if (!charging || !merchant || !reference) return;
+    if (!charging || !merchant || !reference || !quoted) return;
     const controller = new AbortController();
     setOutcome(null);
     awaitPayment(
@@ -120,7 +121,7 @@ export default function App() {
       {
         recipient: merchant.address,
         splToken: USDC_DEVNET,
-        amountBaseUnits: localToTokenBaseUnits(minor, RATE),
+        amountBaseUnits: localToTokenBaseUnits(minor, quoted!.rate),
       },
       { signal: controller.signal },
     )
@@ -144,7 +145,7 @@ export default function App() {
       })
       .catch(() => {});
     return () => controller.abort();
-  }, [charging, merchant, reference, minor]);
+  }, [charging, merchant, reference, minor, quoted]);
 
   function startCharge() {
     // A fresh reference per sale, or two customers paying the same price would
@@ -349,6 +350,9 @@ export default function App() {
         <Text style={styles.converted}>
           {minor === 0n ? "Enter an amount" : `${tokenAmount} USDC`}
         </Text>
+        {quoted && !quoted.live ? (
+          <Text style={styles.rateWarning}>{quoted.note ?? "Rate is fixed, not live"}</Text>
+        ) : null}
       </View>
 
       <View style={styles.keypad}>
@@ -366,8 +370,8 @@ export default function App() {
       </View>
 
       <Pressable
-        style={[styles.primary, minor === 0n && styles.primaryDisabled]}
-        disabled={minor === 0n}
+        style={[styles.primary, (minor === 0n || !quoted) && styles.primaryDisabled]}
+        disabled={minor === 0n || !quoted}
         onPress={startCharge}
         accessibilityRole="button"
       >
@@ -388,6 +392,7 @@ const styles = StyleSheet.create({
   currency: { color: "#8d9299", fontSize: 12, letterSpacing: 2, marginBottom: 8 },
   amount: { color: "#e8e9ea", fontSize: 56, fontWeight: "700", letterSpacing: -1.5 },
   converted: { color: "#4fb98f", fontSize: 16, marginTop: 10 },
+  rateWarning: { color: "#d4855e", fontSize: 12.5, marginTop: 8, textAlign: "center" },
   keypad: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
   key: {
     width: "31%",
