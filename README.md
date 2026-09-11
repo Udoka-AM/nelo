@@ -55,8 +55,11 @@ transaction is not proof: anyone can name your reference, so every payment is va
 against what was asked — right payee, right mint, enough money, and the transaction did
 not fail. Underpayment is refused.
 
+Settled sales land in a day-book held in SQLite, grouped by the merchant's **own**
+calendar day — a sale at 00:30 belongs to that day's sheet, not to UTC's.
+
 Not yet built: StrongBox on a real handset, a live price feed (the rate is a fixed quote),
-the day-book, and the services — `services/*` are stubs.
+and the services — `services/*` are stubs.
 
 See [the build sequence](docs/DELIVERABLES.md) for what is next and how each step is
 judged done.
@@ -67,6 +70,7 @@ judged done.
 programs/nelo_vault/     Anchor program — vault, replay window, Trust Stake
 apps/merchant/           Expo — the terminal (amount entry, Solana Pay)
 apps/payer/              Expo — vault + offline voucher emitter
+packages/ledger/         The day-book: sale records, day boundaries, totals
 packages/pay/            Solana Pay requests + local-currency arithmetic
 packages/voucher/        202-byte wire format: encode, decode, verify
 packages/attest/         Expo native module — StrongBox P-256 + attestation

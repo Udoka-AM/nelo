@@ -15,6 +15,15 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "rea
 import { StatusBar } from "expo-status-bar";
 import QRCode from "react-native-qrcode-svg";
 import * as Crypto from "expo-crypto";
+import {
+  closeOfDay,
+  dayLabel,
+  formatTime,
+  groupByDay,
+  localDayKey,
+  type Sale,
+} from "@nelo/ledger";
+import { record, recent } from "./src/daybook";
 import { connect, restore, type MerchantWallet } from "./src/wallet";
 import {
   awaitPayment,
@@ -44,6 +53,15 @@ export default function App() {
   const [merchant, setMerchant] = useState<MerchantWallet | null>(null);
   const [reference, setReference] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<PaymentOutcome | null>(null);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [showDaybook, setShowDaybook] = useState(false);
+
+  // The merchant's own clock decides which day a sale belongs to.
+  const tz = useMemo(() => -new Date().getTimezoneOffset(), []);
+  const today = useMemo(
+    () => closeOfDay(sales, localDayKey(Date.now(), tz), tz),
+    [sales, tz],
+  );
   const [restoring, setRestoring] = useState(true);
   const [connecting, setConnecting] = useState(false);
 
@@ -52,6 +70,7 @@ export default function App() {
       .then(setMerchant)
       .catch(() => {})
       .finally(() => setRestoring(false));
+    recent().then(setSales).catch(() => {});
   }, []);
 
   async function onConnect() {
@@ -105,8 +124,23 @@ export default function App() {
       },
       { signal: controller.signal },
     )
-      .then((result) => {
-        if (!controller.signal.aborted) setOutcome(result);
+      .then(async (result) => {
+        if (controller.signal.aborted) return;
+        setOutcome(result);
+        if (result.status !== "paid") return;
+        // `record` is keyed on the reference and ignores duplicates, so a
+        // remount cannot book the same takings twice.
+        await record({
+          reference,
+          signature: result.signature,
+          localMinor: minor,
+          currency: CURRENCY.code,
+          amountBaseUnits: result.amountBaseUnits,
+          mint: USDC_DEVNET,
+          at: Date.now(),
+          overpaid: result.overpaid,
+        });
+        setSales(await recent());
       })
       .catch(() => {});
     return () => controller.abort();
@@ -169,6 +203,54 @@ export default function App() {
             </Text>
           </Pressable>
         </View>
+      </View>
+    );
+  }
+
+  if (showDaybook) {
+    const days = groupByDay(sales, tz);
+    return (
+      <View style={styles.screen}>
+        <StatusBar style="light" />
+        <View style={styles.bookHeader}>
+          <Text style={styles.bookTitle}>Day-book</Text>
+          <Pressable onPress={() => setShowDaybook(false)} accessibilityRole="button">
+            <Text style={styles.secondaryText}>Done</Text>
+          </Pressable>
+        </View>
+        <ScrollView contentContainerStyle={styles.bookBody}>
+          {days.length === 0 ? (
+            <Text style={styles.empty}>No sales yet. Takings appear here as they settle.</Text>
+          ) : (
+            days.map(({ day, sales: daySales, totals }) => (
+              <View key={day} style={styles.daySection}>
+                <View style={styles.dayHeader}>
+                  <Text style={styles.dayName}>{dayLabel(day, Date.now(), tz)}</Text>
+                  <Text style={styles.dayTotal}>
+                    {CURRENCY.symbol}
+                    {formatLocalAmount(totals.localMinor, CURRENCY.minorDigits)}
+                  </Text>
+                </View>
+                <Text style={styles.dayCount}>
+                  {totals.count} {totals.count === 1 ? "sale" : "sales"}
+                  {totals.overpaidCount > 0 ? ` · ${totals.overpaidCount} overpaid` : ""}
+                </Text>
+                {daySales.map((sale) => (
+                  <View key={sale.reference} style={styles.saleRow}>
+                    <Text style={styles.saleTime}>{formatTime(sale.at, tz)}</Text>
+                    <Text style={styles.saleAmount}>
+                      {CURRENCY.symbol}
+                      {formatLocalAmount(sale.localMinor, CURRENCY.minorDigits)}
+                    </Text>
+                    <Text style={styles.saleToken}>
+                      {formatTokenAmount(sale.amountBaseUnits)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ))
+          )}
+        </ScrollView>
       </View>
     );
   }
@@ -241,6 +323,23 @@ export default function App() {
   return (
     <View style={styles.screen}>
       <StatusBar style="light" />
+      <Pressable
+        style={styles.todayBar}
+        onPress={() => setShowDaybook(true)}
+        accessibilityRole="button"
+        accessibilityLabel="Open the day-book"
+      >
+        <Text style={styles.todayLabel}>Today</Text>
+        <Text style={styles.todayValue}>
+          {CURRENCY.symbol}
+          {formatLocalAmount(today.localMinor, CURRENCY.minorDigits)}
+          <Text style={styles.todayCount}>
+            {"  "}
+            {today.count} {today.count === 1 ? "sale" : "sales"}
+          </Text>
+        </Text>
+      </Pressable>
+
       <View style={styles.amountBox}>
         <Text style={styles.currency}>{CURRENCY.code}</Text>
         <Text style={styles.amount} numberOfLines={1} adjustsFontSizeToFit>
@@ -322,4 +421,41 @@ const styles = StyleSheet.create({
   statusBad: { color: "#d4855e", fontSize: 14.5, textAlign: "center" },
   paidMark: { color: "#4fb98f", fontSize: 64 },
   paidTitle: { color: "#4fb98f", fontSize: 22, fontWeight: "700", letterSpacing: 1 },
+  todayBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: "#17191b",
+  },
+  todayLabel: { color: "#8d9299", fontSize: 13, letterSpacing: 1 },
+  todayValue: { color: "#e8e9ea", fontSize: 16, fontWeight: "700" },
+  todayCount: { color: "#8d9299", fontSize: 13, fontWeight: "400" },
+  bookHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 18,
+  },
+  bookTitle: { color: "#e8e9ea", fontSize: 26, fontWeight: "700", letterSpacing: -0.6 },
+  bookBody: { paddingBottom: 40 },
+  empty: { color: "#8d9299", fontSize: 15.5, lineHeight: 24, marginTop: 28 },
+  daySection: { marginBottom: 26 },
+  dayHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
+  dayName: { color: "#e8e9ea", fontSize: 17, fontWeight: "700" },
+  dayTotal: { color: "#4fb98f", fontSize: 17, fontWeight: "700" },
+  dayCount: { color: "#8d9299", fontSize: 13, marginTop: 2, marginBottom: 8 },
+  saleRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    paddingVertical: 11,
+    borderTopWidth: 1,
+    borderTopColor: "#282b2f",
+    gap: 12,
+  },
+  saleTime: { color: "#8d9299", fontSize: 13.5, width: 46 },
+  saleAmount: { color: "#e8e9ea", fontSize: 15.5, flex: 1 },
+  saleToken: { color: "#8d9299", fontSize: 13 },
 });

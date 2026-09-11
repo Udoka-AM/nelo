@@ -1,0 +1,11 @@
+{
+  "name": "@nelo/ledger",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "description": "The day-book: sale records, day boundaries and totals. Pure, so it is testable off-device.",
+  "scripts": {
+    "test": "node --test \"test/*.test.ts\""
+  },
+  "files": ["src"]
+}

@@ -153,7 +153,9 @@ Order matters here; each step feeds the next.
 4. **Kora relayer, so nobody needs SOL.** *(Anchor)*
    **Done when:** a merchant with a zero SOL balance completes a sale.
 5. **Balance in local currency, held in dollars.** *(Android + Design)*
-6. **The day-book.** The screen a merchant actually lives in. *(Design + Android)*
+6. **The day-book.** **Done** — SQLite, grouped by the merchant's local day, with
+   close-of-day totals. `packages/ledger` holds the arithmetic and is tested off-device.
+   *(Design + Android)*
 7. **SPL/USDC collateral.** **Done** — the vault holds tokens, not lamports.
    `transfer_checked` against the enrolled mint throughout, and the merchant's token
    account is created on demand so a first-time payee is not a failed sale.

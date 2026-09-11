@@ -20,6 +20,9 @@ importers:
 
   apps/merchant:
     dependencies:
+      '@nelo/ledger':
+        specifier: workspace:*
+        version: link:../../packages/ledger
       '@nelo/pay':
         specifier: workspace:*
         version: link:../../packages/pay
@@ -41,6 +44,9 @@ importers:
       expo-secure-store:
         specifier: ~57.0.3
         version: 57.0.3(expo@57.0.21)
+      expo-sqlite:
+        specifier: ~57.0.2
+        version: 57.0.2(expo@57.0.21)(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
       expo-status-bar:
         specifier: ~57.0.1
         version: 57.0.1(expo@57.0.21)(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
@@ -106,6 +112,8 @@ importers:
       react-native:
         specifier: '*'
         version: 0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3)
+
+  packages/ledger: {}
 
   packages/pay: {}
 
@@ -1649,6 +1657,9 @@ packages:
   avvio@9.3.0:
     resolution: {integrity: sha512-g2tQ7LE7oOSqDfwEm3M+ZCMTJc7KiZCdJ4UwyZJb5ckTKyYu50OYmvv0mCFXPuYXoM4zkSt8zM9XQ9KCvxA74A==}
 
+  await-lock@2.2.2:
+    resolution: {integrity: sha512-aDczADvlvTGajTDjcjpJMqRkOF6Qdz3YbPZm/PyW6tKPkx2hlYBzxMhEywM/tU72HrVZjgl5VCdRuMlA7pZ8Gw==}
+
   b4a@1.8.1:
     resolution: {integrity: sha512-aiqre1Nr0B/6DgE2N5vwTc+2/oQZ4Wh1t4NznYY4E00y8LCt6NqdRv81so00oo27D8MVKTpUa/MwUUtBLXCoDw==}
     peerDependencies:
@@ -2301,6 +2312,13 @@ packages:
   expo-server@57.0.3:
     resolution: {integrity: sha512-aK+LdKzauHSGmsOStZtyxdzv0zWssCkxTw3m4QuOhfDSJsZaMRTd9O41d8ixU/QfELTbaJ0oRNcF7JFV/7O9YQ==}
     engines: {node: '>=20.16.0'}
+
+  expo-sqlite@57.0.2:
+    resolution: {integrity: sha512-5KVbT7BQFZlIcQBXKWvwBERK3ODF6PSqct27GQKukZzAjsx2B97R+mwtYqrTUtUbw71VJrQrdr9Yl2OWYC7UpA==}
+    peerDependencies:
+      expo: '*'
+      react: '*'
+      react-native: '*'
 
   expo-status-bar@57.0.1:
     resolution: {integrity: sha512-Xwaq1gAoVRWx5dPG5VhT5RSbnI9OilhZnO5qoPBnUaBAa5VzRzfdS8q0/bsPt0jR2DKLtGuP0bQ6efMJ4RIMDg==}
@@ -6508,6 +6526,8 @@ snapshots:
       '@fastify/error': 4.2.0
       fastq: 1.20.3
 
+  await-lock@2.2.2: {}
+
   b4a@1.8.1: {}
 
   babel-plugin-polyfill-corejs2@0.4.17(@babel/core@7.29.7):
@@ -7263,6 +7283,13 @@ snapshots:
       expo: 57.0.21(@babel/core@7.29.7)(@expo/dom-webview@57.0.1)(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)(typescript@6.0.3)
 
   expo-server@57.0.3: {}
+
+  expo-sqlite@57.0.2(expo@57.0.21)(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3))(react@19.2.3):
+    dependencies:
+      await-lock: 2.2.2
+      expo: 57.0.21(@babel/core@7.29.7)(@expo/dom-webview@57.0.1)(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)(typescript@6.0.3)
+      react: 19.2.3
+      react-native: 0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3)
 
   expo-status-bar@57.0.1(expo@57.0.21)(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3))(react@19.2.3):
     dependencies:
