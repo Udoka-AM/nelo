@@ -170,6 +170,29 @@ Order matters here; each step feeds the next.
 
 8. **Payout leg against the sandbox** — or the declared stub, if week 0's fork went that way.
    [`services/settle`](../services/settle/src/index.ts), double-entry ledger. *(Anchor)*
+   **The ledger half is done.** `services/settle` holds a real double-entry journal:
+   every transaction balances **per currency** (a payout touches dollars and naira in
+   one event, and netting a dollar against a naira would balance while being nonsense),
+   posting is **idempotent** on an id the outside world already made unique — an
+   on-chain signature, a partner reference — and the journal is append-only, so a
+   mistake is corrected by posting its reversal rather than by an edit.
+   The full payout lifecycle is there: instruct, settle, fail-and-reverse. The
+   merchant's dollar claim is discharged at *instruction*, not at confirmation, so the
+   same dollars cannot pay out twice while the partner is working; a failure returns
+   them exactly. `reconcileCustody` compares the journal against what the chain
+   actually holds — the one check that catches a missed sale or a double-posted payout.
+   **The partner is a declared stub**, and it is built so it cannot be mistaken for
+   anything else: `fidelity: "stub"` on the partner, on every quote and on every
+   result, references prefixed `STUB-`, and `assertMovesRealMoney()` to refuse it at
+   any boundary touching real funds. **This is the fork, pre-taken** — week 0's
+   decision is now a choice of which object to construct, not a week of work.
+   **39 tests pass** (`node --test` in `services/settle`), covering the balance rules,
+   idempotency under replay, the rounding (fee plus net always adds back to the sale;
+   the spread is a difference, never a percentage, so rounding cannot invent a minor
+   unit), the reversal, and reconciliation drift in both directions.
+   **Not done:** the partner adapter itself, which is what the sandbox access is for,
+   and there is no HTTP surface yet — the service is a library the relay and the app
+   will call.
 9. **Trust Stake: staking and the floor-limit curve.** `offline_limit = min(base × (1 +
    k·√stake) × reputation, hard_cap)`. *(Anchor)*
    **Written.** `programs/nelo_vault/src/curve.rs` holds the curve — integer-only,
