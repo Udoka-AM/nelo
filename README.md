@@ -83,9 +83,27 @@ answer. 17 tests cover the curve off chain: sublinearity at every doubling, the 
 against an absurd stake, reputation and coefficient, and `isqrt` brute-forced against
 its floor property.
 
+The payout leg has a real ledger under it. `services/settle` is double-entry: every
+transaction balances **per currency**, because a payout touches dollars and naira in one
+event and netting one against the other would balance while being nonsense. Posting is
+**idempotent** on an id the outside world already made unique — an on-chain signature, a
+partner reference — since a webhook firing twice is the normal case, not the edge one.
+The journal is append-only; a mistake is corrected by posting its reversal.
+
+The merchant's dollar claim is discharged when a payout is **instructed**, not when the
+partner confirms, so the same dollars cannot pay out twice while it is in flight — and a
+failure returns them exactly. `reconcileCustody` checks the journal against what the
+chain actually holds, which is the one test that catches a missed sale or a double post.
+
+The disbursement partner is a **declared stub**, and it is built so it cannot be mistaken
+for a real one: `fidelity: "stub"` on every quote and every result, references prefixed
+`STUB-`, and `assertMovesRealMoney()` to refuse it at any boundary touching real funds.
+Swapping in a licensed partner is a constructor change. 39 tests pass off-device.
+
 Not yet built: StrongBox on a real handset, a live price feed (see above), slashing
 (the freeze blocks the exit, but nothing moves the stake to a reserve yet — there is no
-reserve account), and the services — `services/*` are stubs.
+reserve account), the payout partner adapter itself, and `services/relay`, which is
+still a stub.
 
 > **The on-chain Trust Stake tests have never been run.** There is no Solana toolchain
 > on the dev machine, so no `.so` can be built and LiteSVM cannot load the program. The
@@ -108,7 +126,7 @@ packages/pay/            Solana Pay requests + local-currency arithmetic
 packages/voucher/        202-byte wire format: encode, decode, verify
 packages/attest/         Expo native module — StrongBox P-256 + attestation
 services/relay/          Broadcast queue, retry, multi-RPC failover
-services/settle/         Double-entry ledger + payout partner
+services/settle/         Double-entry ledger, payout lifecycle, partner interface
 docs/BUILD.md            The build plan
 docs/DELIVERABLES.md     The build sequence, step by step
 docs/deck/               The pitch deck
