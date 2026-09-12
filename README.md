@@ -63,8 +63,35 @@ confidence band is too wide is **refused**, not displayed. Two things block a li
 Pyth publishes no NGN pair, and Hermes needs an API key — so the till currently runs a
 configured rate and labels it on screen as not live.
 
-Not yet built: StrongBox on a real handset, a live price feed (see above), and the
-services — `services/*` are stubs.
+The offline limit is **bought, not fixed**. Staked SKR lifts it through a sublinear,
+hard-capped curve — `min(base × (1 + k·√stake) × reputation, hard_cap)` — so trust
+cannot simply be purchased and no merchant creates unbounded exposure. Past the point
+where the limit covers their largest realistic basket, more collateral buys nothing,
+which is correct for collateral and exactly why earning is a separate mechanism.
+
+The stake is valued **at redemption**, with a visible haircut, so a falling price
+shrinks the limit rather than leaving a merchant holding a ceiling their collateral no
+longer supports. Requested stake stops backing the limit the moment it is requested,
+not when it is collected, and the unstake cooldown is pinned to the settlement horizon
+— a payer must not be able to unstake out from under a loss still in flight.
+
+Every number the curve is shaped by — base, `k`, the hard cap, the haircut, the
+cooldown — is **configuration**, in a `RiskConfig` account under a risk authority held
+separately from the upgrade authority. They fall out of the reserve model, which does
+not exist yet; baking in three plausible-looking constants would be inventing its
+answer. 17 tests cover the curve off chain: sublinearity at every doubling, the cap
+against an absurd stake, reputation and coefficient, and `isqrt` brute-forced against
+its floor property.
+
+Not yet built: StrongBox on a real handset, a live price feed (see above), slashing
+(the freeze blocks the exit, but nothing moves the stake to a reserve yet — there is no
+reserve account), and the services — `services/*` are stubs.
+
+> **The on-chain Trust Stake tests have never been run.** There is no Solana toolchain
+> on the dev machine, so no `.so` can be built and LiteSVM cannot load the program. The
+> curve itself is proven off chain; the ~19 staking assertions in
+> `programs/nelo_vault/tests/vault.rs` compile but have not executed. Run `anchor test`
+> on a machine with the toolchain before trusting them.
 
 See [the build sequence](docs/DELIVERABLES.md) for what is next and how each step is
 judged done.
@@ -73,6 +100,7 @@ judged done.
 
 ```
 programs/nelo_vault/     Anchor program — vault, replay window, Trust Stake
+  src/curve.rs           The floor-limit curve: sublinear, capped, integer-only
 apps/merchant/           Expo — the terminal (amount entry, Solana Pay)
 apps/payer/              Expo — vault + offline voucher emitter
 packages/ledger/         The day-book: sale records, day boundaries, totals
@@ -124,6 +152,12 @@ That builds the program and runs the Rust test suite. It should pass from a clea
 The program is deployed to devnet at
 `29QdPRQC8C5v6C8gMcBqtw9T4RxYyZ1wqThkEj3XJeQx`, upgrade authority
 `BX8kSVjmx9Eihd173hdrRW1Ap61AmixQzqjtc3o5DQfu`.
+
+> **The deployed build predates the Trust Stake.** `Vault` gained four fields and the
+> program gained a `RiskConfig` account, so the devnet program needs redeploying before
+> the devnet gate will run again — and `redeem_voucher` now takes the risk config, which
+> must be initialised once per deployment. Vaults opened by the old build cannot be
+> deserialised by the new one; on devnet, open fresh ones.
 
 The week-1 gate has been run there end to end — vault funded, voucher redeemed with the
 device signature verified by the secp256r1 precompile on a real validator, double-spend

@@ -55,6 +55,13 @@ pub fn handle_initialize_vault(
     vault.seq_bitmap = 0;
     vault.floor_limit = floor_limit;
     vault.unlock_at = 0;
+    // Neutral reputation and no stake: the curve is a no-op until the merchant
+    // stakes or the risk authority has something to say, so a vault opens at
+    // exactly the limit it was enrolled with.
+    vault.stake = 0;
+    vault.reputation_bps = REPUTATION_NEUTRAL_BPS;
+    vault.pending_unstake = 0;
+    vault.unstake_unlock_at = 0;
     vault.status = VAULT_STATUS_ACTIVE;
     vault.bump = ctx.bumps.vault;
     Ok(())

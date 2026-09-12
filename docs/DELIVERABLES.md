@@ -172,12 +172,39 @@ Order matters here; each step feeds the next.
    [`services/settle`](../services/settle/src/index.ts), double-entry ledger. *(Anchor)*
 9. **Trust Stake: staking and the floor-limit curve.** `offline_limit = min(base × (1 +
    k·√stake) × reputation, hard_cap)`. *(Anchor)*
-   **Done when:** staking raises the limit sublinearly and the hard cap holds.
+   **Written.** `programs/nelo_vault/src/curve.rs` holds the curve — integer-only,
+   normalised so `k` is a number a person can reason about, and saturating into the
+   cap rather than failing a redemption. `stake` / `request_unstake` / `unstake` move
+   real SPL, and the limit is computed **at redemption** from a stake revalued at that
+   moment, so a falling SKR price shrinks the limit rather than the merchant keeping a
+   ceiling their collateral no longer supports.
+   Requested stake leaves the curve when the request is made, not when it is collected
+   — otherwise the cooldown buys the payer a free window at a limit they have already
+   sold. The cooldown floor is pinned to the settlement horizon for the same reason.
+   **The parameters are configuration, not constants.** `base`, `k`, the hard cap, the
+   haircut and the cooldown live in a `RiskConfig` account under a risk authority held
+   separately from the upgrade authority, because they fall out of the reserve model
+   below and that model is a commercial artefact. Three plausible-looking numbers in
+   the binary would be inventing its answer.
+   **Verified off chain: 17 tests** — sublinearity at every doubling, the cap holding
+   against an absurd stake, reputation and coefficient, saturation past the cap, the
+   haircut, and `isqrt` brute-forced against its floor property.
+   **The on-chain tests are written but have not been run.** There is no Solana
+   toolchain on the dev machine — `release.anza.xyz` is unreachable from it — so no
+   `.so` can be built and LiteSVM cannot load the program. They compile (`cargo check
+   --tests` is clean against a stub binary); they have never executed.
+   **Done when:** `anchor test` is green on a machine with the toolchain. Until then
+   treat the ~19 on-chain assertions as unproven.
+   **Still open:** slashing. The freeze blocks the exit, so stake cannot walk away from
+   a loss it backs — but nothing yet *moves* it to a reserve, because there is no
+   reserve account. That is the other half of "first-loss capital".
 
 > **Gate — Wed 23 Sep.** A sale runs end to end, in local currency, on a phone, with a wallet
 > you did not write. **Model the reserve requirement this week** — the SKR premium is priced
 > off it, and the deck asserts that. An unmodelled multiplier is a number this panel will ask
-> about.
+> about. **Still outstanding.** The curve now has somewhere to put the answer — `RiskConfig`
+> is set and revised by instruction, so the model lands as configuration rather than a
+> redeploy — but the answer itself does not exist yet.
 
 ---
 
