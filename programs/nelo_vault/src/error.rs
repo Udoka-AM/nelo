@@ -53,6 +53,26 @@ pub enum NeloError {
     #[msg("The two vouchers are identical — that is a replay, not a conflict")]
     NotAConflict,
 
+    // --- Trust Stake ---
+    #[msg("Risk parameters are invalid")]
+    BadRiskParams,
+    #[msg("Signer is not the risk authority")]
+    NotRiskAuthority,
+    #[msg("Reputation is outside the permitted range")]
+    ReputationOutOfRange,
+    #[msg("Unstake cooldown is shorter than the settlement horizon")]
+    CooldownTooShort,
+    #[msg("Token mint does not match the mint this platform stakes")]
+    StakeMintMismatch,
+    #[msg("Vault has insufficient stake")]
+    InsufficientStake,
+    #[msg("No unstake has been requested")]
+    UnstakeNotRequested,
+    #[msg("Unstake cooldown has not elapsed")]
+    UnstakeCooldownActive,
+    #[msg("Amount must be greater than zero")]
+    ZeroAmount,
+
     #[msg("Arithmetic overflow")]
     Overflow,
 }
