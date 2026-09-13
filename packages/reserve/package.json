@@ -1,0 +1,12 @@
+{
+  "name": "@nelo/reserve",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "description": "The reserve requirement model: offline exposure, the insurance line, and the ceiling on the SKR premium.",
+  "scripts": {
+    "test": "node --test \"test/*.test.ts\"",
+    "report": "node src/report.ts"
+  },
+  "files": ["src"]
+}
