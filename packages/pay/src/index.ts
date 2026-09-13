@@ -148,13 +148,23 @@ export {
   encodeBase58,
 } from "./base58.ts";
 export {
+  awaitPayment,
+  fetchTransaction,
+  findReference,
   referenceFromBytes,
   validatePayment,
   type ExpectedPayment,
   type ParsedTransaction,
+  type PaymentOutcome,
   type TokenBalance,
   type Validation,
 } from "./detect.ts";
+export {
+  fetchTokenBalance,
+  sumTokenAccounts,
+  type ParsedTokenAccount,
+} from "./balance.ts";
+export { rpc } from "./rpc.ts";
 export {
   confidenceBps,
   DEFAULT_GUARDS,

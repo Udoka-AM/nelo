@@ -161,6 +161,18 @@ Order matters here; each step feeds the next.
 4. **Kora relayer, so nobody needs SOL.** *(Anchor)*
    **Done when:** a merchant with a zero SOL balance completes a sale.
 5. **Balance in local currency, held in dollars.** *(Android + Design)*
+   **Done.** The till reads the merchant's USDC balance and shows it in their own
+   currency, alongside what is actually held — both, because the dollar underneath is
+   the product decision and not a formatting one. Conversion rounds **down**, so a
+   displayed balance is never larger than what is there, and the row says "at a fixed
+   rate" rather than "held in dollars" while the oracle is not live.
+   Read via `getTokenAccountsByOwner`, so there is no associated-token-address
+   derivation to get wrong; a merchant who has never been paid has no token account at
+   all and that reads as zero rather than an error. A malformed entry is skipped and an
+   RPC failure leaves the previous figure on screen — a till must not go down over a
+   number, and a confident zero is worse than a stale one. Refreshed on connect and
+   after each settled sale, never on a timer: background polling spends a prepaid data
+   bundle on a figure nobody is reading. 8 tests, off-device.
 6. **The day-book.** **Done** — SQLite, grouped by the merchant's local day, with
    close-of-day totals. `packages/ledger` holds the arithmetic and is tested off-device.
    *(Design + Android)*
