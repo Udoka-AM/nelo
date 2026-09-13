@@ -61,6 +61,13 @@ not fail. Underpayment is refused.
 Settled sales land in a day-book held in SQLite, grouped by the merchant's **own**
 calendar day — a sale at 00:30 belongs to that day's sheet, not to UTC's.
 
+The balance is **held in dollars and shown in the merchant's currency**, and the till says
+both. That is the product decision, not a formatting one: a trader in a devaluing currency
+who holds overnight is better off in a dollar asset converted at payout, and they should be
+able to see that is what is happening. The conversion rounds **down**, so the figure on
+screen is never larger than what is actually there, and an RPC failure leaves the last known
+number up rather than replacing it with a confident zero.
+
 The rate is quoted through a guarded oracle layer: a price that is stale or whose
 confidence band is too wide is **refused**, not displayed. Two things block a live feed —
 Pyth publishes no NGN pair, and Hermes needs an API key — so the till currently runs a
