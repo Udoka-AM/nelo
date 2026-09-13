@@ -15,6 +15,9 @@ deliverables, and the week-by-week steps with acceptance criteria.
 📊 **Pitch deck:** [`docs/deck/index.html`](docs/deck/index.html) — a single self-contained
 file. Open it in any browser; no build and no server.
 
+💵 **Reserve model:** [`docs/RESERVE.md`](docs/RESERVE.md) — what the offline guarantee costs,
+what the insurance line has to be, and what the SKR premium can honestly be priced at.
+
 ---
 
 ## Status
@@ -100,6 +103,16 @@ for a real one: `fidelity: "stub"` on every quote and every result, references p
 `STUB-`, and `assertMovesRealMoney()` to refuse it at any boundary touching real funds.
 Swapping in a licensed partner is a constructor change. 39 tests pass off-device.
 
+The reserve requirement is **modelled** — [`packages/reserve`](packages/reserve), written up
+in [`docs/RESERVE.md`](docs/RESERVE.md). It turns the plan's own exposure formula into a number
+and checks the two things the plan asserts; both come back short. The 0.20% insurance line does
+not cover expected loss at these inputs, and reserve relief funds an SKR premium of about
+1.001× rather than the illustrative 1.5×. It also finds the Trust Stake curve *raises* required
+reserve below $250 of staked value, which is what should set `k`.
+
+Eleven of its inputs are guesses, and it says which before it says anything else. It states what
+would have to be true, not what is.
+
 Not yet built: StrongBox on a real handset, a live price feed (see above), slashing
 (the freeze blocks the exit, but nothing moves the stake to a reserve yet — there is no
 reserve account), the payout partner adapter itself, and `services/relay`, which is
@@ -123,6 +136,7 @@ apps/merchant/           Expo — the terminal (amount entry, Solana Pay)
 apps/payer/              Expo — vault + offline voucher emitter
 packages/ledger/         The day-book: sale records, day boundaries, totals
 packages/pay/            Solana Pay requests + local-currency arithmetic
+packages/reserve/        The insurance line: exposure, reserve, premium ceiling
 packages/voucher/        202-byte wire format: encode, decode, verify
 packages/attest/         Expo native module — StrongBox P-256 + attestation
 services/relay/          Broadcast queue, retry, multi-RPC failover

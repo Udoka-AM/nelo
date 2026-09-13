@@ -225,9 +225,19 @@ Order matters here; each step feeds the next.
 > **Gate — Wed 23 Sep.** A sale runs end to end, in local currency, on a phone, with a wallet
 > you did not write. **Model the reserve requirement this week** — the SKR premium is priced
 > off it, and the deck asserts that. An unmodelled multiplier is a number this panel will ask
-> about. **Still outstanding.** The curve now has somewhere to put the answer — `RiskConfig`
-> is set and revised by instruction, so the model lands as configuration rather than a
-> redeploy — but the answer itself does not exist yet.
+> about.
+>
+> **The model exists** — [`packages/reserve`](../packages/reserve), written up in
+> [`docs/RESERVE.md`](RESERVE.md), 16 tests. Four findings, all of which change something:
+> the 0.20% reserve line does not cover expected loss (28.1 bps implied, so the 0.70% net take
+> rate is overstated by ~8 bps); the Trust Stake curve **raises** required reserve below $250
+> of staked value, which constrains `k`; the hard cap needs $81,000 of stake to bind, so it
+> binds nothing; and reserve relief funds a premium of about **1.001×, not 1.5×** — the deck
+> must stop describing it as priced off capital relief.
+>
+> **Eleven inputs are still guesses** and the model says so before it says anything else. The
+> one worth measuring is how many merchants a payer can reach in one offline session: the
+> reserve is super-linear in it, and an afternoon in the committed shop would settle it.
 
 ---
 
