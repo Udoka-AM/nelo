@@ -7,8 +7,9 @@ use solana_sdk_ids::sysvar::instructions::ID as INSTRUCTIONS_SYSVAR_ID;
 
 use crate::{
     constants::*,
+    curve::{offline_limit, stake_value, CurveParams},
     error::NeloError,
-    state::Vault,
+    state::{RiskConfig, Vault},
     voucher::{assert_precompile_verified, consume_sequence, VoucherArgs},
 };
 
@@ -26,6 +27,12 @@ pub struct RedeemVoucher<'info> {
         has_one = mint @ NeloError::MintMismatch,
     )]
     pub vault: Account<'info, Vault>,
+
+    /// Risk parameters, read live. The stake is therefore revalued *at
+    /// redemption* rather than at the moment it was posted — SKR moves, and a
+    /// collateral model that pretends otherwise is not a collateral model.
+    #[account(seeds = [RISK_CONFIG_SEED], bump = config.bump)]
+    pub config: Account<'info, RiskConfig>,
 
     pub mint: InterfaceAccount<'info, Mint>,
 
@@ -79,10 +86,27 @@ pub fn handle_redeem_voucher(ctx: Context<RedeemVoucher>, voucher: VoucherArgs) 
     let now = Clock::get()?.unix_timestamp;
     require!(now <= voucher.expires_at, NeloError::VoucherExpired);
 
-    require!(
-        voucher.amount <= ctx.accounts.vault.floor_limit,
-        NeloError::AboveFloorLimit
+    // The floor limit is bought, not fixed: the enrolled base, lifted
+    // sublinearly by staked value and weighted by reputation, under a hard cap.
+    // With no stake and neutral reputation this is exactly `vault.floor_limit`.
+    let config = &ctx.accounts.config;
+    let vault_ref = &ctx.accounts.vault;
+    let value = stake_value(
+        vault_ref.effective_stake(),
+        config.stake_price,
+        config.haircut_bps,
     );
+    let limit = offline_limit(
+        CurveParams {
+            base: vault_ref.floor_limit,
+            k_bps: config.k_bps,
+            stake_reference: config.stake_reference,
+            reputation_bps: vault_ref.reputation_bps,
+            hard_cap: config.hard_cap,
+        },
+        value,
+    );
+    require!(voucher.amount <= limit, NeloError::AboveFloorLimit);
     require!(
         voucher.amount <= ctx.accounts.vault.balance,
         NeloError::InsufficientCollateral

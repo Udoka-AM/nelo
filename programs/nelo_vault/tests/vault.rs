@@ -15,7 +15,7 @@ use {
         AccountDeserialize, InstructionData, ToAccountMetas,
     },
     litesvm::LiteSVM,
-    nelo_vault::{state::Vault, voucher::VoucherArgs},
+    nelo_vault::{instructions::risk_config::RiskParams, state::Vault, voucher::VoucherArgs},
     p256::ecdsa::{signature::Signer as P256Signer, Signature, SigningKey},
     solana_keypair::Keypair,
     solana_message::{Message, VersionedMessage},
@@ -97,6 +97,23 @@ const DECIMALS: u8 = 6;
 const MINTED: u64 = 1_000_000_000;
 const FLOOR_LIMIT: u64 = 50_000_000;
 const COLLATERAL: u64 = 500_000_000;
+
+// ---- Trust Stake ----
+// SKR at nine decimals, so 1_000_000_000 base units is one whole token.
+const STAKE_DECIMALS: u8 = 9;
+const ONE_SKR: u64 = 1_000_000_000;
+const STAKE_MINTED: u64 = 4_000 * ONE_SKR;
+/// $2.00 per SKR, quoted per VALUATION_UNIT of stake base units...
+const STAKE_PRICE: u64 = 2_000_000;
+/// ...halved by a 50% haircut, so a staked SKR is valued at $1.
+const HAIRCUT_BPS: u16 = 5_000;
+/// $100 of stake value is one reference unit.
+const STAKE_REFERENCE: u64 = 100_000_000;
+/// k = 1.0: one reference unit of stake doubles the base limit.
+const K_BPS: u32 = 10_000;
+/// $200 — reachable in a test, so the cap is proven rather than asserted.
+const HARD_CAP: u64 = 200_000_000;
+const UNSTAKE_COOLDOWN: i64 = 24 * 60 * 60;
 const FAR_FUTURE: i64 = 4_102_444_800; // 2100-01-01
 /// litesvm starts at unix epoch 0, where nothing can be "in the past".
 const NOW: i64 = 1_789_000_000; // ~Sep 2026
@@ -113,6 +130,11 @@ struct Ctx {
     owner_token: Pubkey,
     vault_token: Pubkey,
     merchant_token: Pubkey,
+    risk_authority: Keypair,
+    risk_config: Pubkey,
+    stake_mint: Pubkey,
+    owner_stake_token: Pubkey,
+    vault_stake_token: Pubkey,
 }
 
 /// Reads the SPL token account. Deliberately not the vault's `balance` field —
@@ -202,11 +224,15 @@ fn setup() -> Ctx {
     let owner = Keypair::new();
     let merchant = Keypair::new();
     let mint_kp = Keypair::new();
+    let stake_mint_kp = Keypair::new();
+    let risk_authority = Keypair::new();
     svm.airdrop(&owner.pubkey(), 100 * LAMPORTS).unwrap();
 
     let mint = mint_kp.pubkey();
+    let stake_mint = stake_mint_kp.pubkey();
     let (vault, _) =
         Pubkey::find_program_address(&[b"vault", owner.pubkey().as_ref()], &nelo_vault::id());
+    let (risk_config, _) = Pubkey::find_program_address(&[b"risk"], &nelo_vault::id());
     let device = device_key(7);
 
     let mut ctx = Ctx {
@@ -219,9 +245,15 @@ fn setup() -> Ctx {
         owner_token: ata(&Pubkey::default(), &mint), // fixed up below
         vault_token: ata(&vault, &mint),
         merchant_token: Pubkey::default(),
+        risk_authority,
+        risk_config,
+        stake_mint,
+        owner_stake_token: Pubkey::default(),
+        vault_stake_token: ata(&vault, &stake_mint),
     };
     ctx.owner_token = ata(&ctx.owner.pubkey(), &mint);
     ctx.merchant_token = ata(&ctx.merchant.pubkey(), &mint);
+    ctx.owner_stake_token = ata(&ctx.owner.pubkey(), &stake_mint);
 
     let mut clock: Clock = ctx.svm.get_sysvar();
     clock.unix_timestamp = NOW;
@@ -258,6 +290,48 @@ fn setup() -> Ctx {
         &[&owner],
     )
     .expect("fund owner");
+
+    // The stake mint, and a stake balance for the payer.
+    let owner_stake_token = ctx.owner_stake_token;
+    send(
+        &mut ctx,
+        &[
+            solana_system_interface::instruction::create_account(
+                &owner.pubkey(),
+                &stake_mint,
+                rent,
+                MINT_LEN as u64,
+                &SPL_TOKEN_ID,
+            ),
+            initialize_mint_ix(&stake_mint, &owner.pubkey(), STAKE_DECIMALS),
+        ],
+        &[&owner, &stake_mint_kp],
+    )
+    .expect("create stake mint");
+    send(
+        &mut ctx,
+        &[
+            create_ata_ix(&owner.pubkey(), &owner.pubkey(), &stake_mint),
+            mint_to_ix(&stake_mint, &owner_stake_token, &owner.pubkey(), STAKE_MINTED),
+        ],
+        &[&owner],
+    )
+    .expect("fund owner stake");
+
+    // The platform risk parameters. Every number here is configuration, not a
+    // compile-time constant — see RiskConfig.
+    let init_risk = Instruction::new_with_bytes(
+        nelo_vault::id(),
+        &nelo_vault::instruction::InitializeRiskConfig { params: risk_params(&ctx) }.data(),
+        nelo_vault::accounts::InitializeRiskConfig {
+            payer: owner.pubkey(),
+            config: ctx.risk_config,
+            stake_mint,
+            system_program: system_program::ID,
+        }
+        .to_account_metas(None),
+    );
+    send(&mut ctx, &[init_risk], &[&owner]).expect("initialize_risk_config");
 
     let init = Instruction::new_with_bytes(
         nelo_vault::id(),
@@ -318,6 +392,7 @@ fn redeem_ix(ctx: &Ctx, v: &VoucherArgs) -> Instruction {
         nelo_vault::accounts::RedeemVoucher {
             payer: ctx.owner.pubkey(),
             vault: ctx.vault,
+            config: ctx.risk_config,
             mint: ctx.mint,
             merchant: ctx.merchant.pubkey(),
             merchant_token: ctx.merchant_token,
@@ -866,4 +941,403 @@ fn high_s_signature_does_not_settle() {
          chain is not the thing enforcing it"
     );
     assert_eq!(vault_state(&ctx).balance, COLLATERAL, "nothing moved");
+}
+
+// ----------------------------------------------------------- Trust Stake ---
+
+fn risk_params(ctx: &Ctx) -> RiskParams {
+    RiskParams {
+        authority: ctx.risk_authority.pubkey(),
+        k_bps: K_BPS,
+        stake_reference: STAKE_REFERENCE,
+        hard_cap: HARD_CAP,
+        stake_price: STAKE_PRICE,
+        haircut_bps: HAIRCUT_BPS,
+        unstake_cooldown: UNSTAKE_COOLDOWN,
+    }
+}
+
+fn stake(ctx: &mut Ctx, amount: u64) -> Result<(), String> {
+    let ix = Instruction::new_with_bytes(
+        nelo_vault::id(),
+        &nelo_vault::instruction::Stake { amount }.data(),
+        nelo_vault::accounts::Stake {
+            owner: ctx.owner.pubkey(),
+            vault: ctx.vault,
+            config: ctx.risk_config,
+            stake_mint: ctx.stake_mint,
+            owner_stake_token: ctx.owner_stake_token,
+            vault_stake_token: ctx.vault_stake_token,
+            token_program: SPL_TOKEN_ID,
+            associated_token_program: ATA_PROGRAM_ID,
+            system_program: system_program::ID,
+        }
+        .to_account_metas(None),
+    );
+    let owner = ctx.owner.insecure_clone();
+    send(ctx, &[ix], &[&owner])
+}
+
+fn request_unstake(ctx: &mut Ctx, amount: u64) -> Result<(), String> {
+    let ix = Instruction::new_with_bytes(
+        nelo_vault::id(),
+        &nelo_vault::instruction::RequestUnstake { amount }.data(),
+        nelo_vault::accounts::RequestUnstake {
+            owner: ctx.owner.pubkey(),
+            vault: ctx.vault,
+            config: ctx.risk_config,
+        }
+        .to_account_metas(None),
+    );
+    let owner = ctx.owner.insecure_clone();
+    send(ctx, &[ix], &[&owner])
+}
+
+fn unstake(ctx: &mut Ctx) -> Result<(), String> {
+    let ix = Instruction::new_with_bytes(
+        nelo_vault::id(),
+        &nelo_vault::instruction::Unstake {}.data(),
+        nelo_vault::accounts::Unstake {
+            owner: ctx.owner.pubkey(),
+            vault: ctx.vault,
+            config: ctx.risk_config,
+            stake_mint: ctx.stake_mint,
+            owner_stake_token: ctx.owner_stake_token,
+            vault_stake_token: ctx.vault_stake_token,
+            token_program: SPL_TOKEN_ID,
+        }
+        .to_account_metas(None),
+    );
+    let owner = ctx.owner.insecure_clone();
+    send(ctx, &[ix], &[&owner])
+}
+
+fn set_reputation(ctx: &mut Ctx, signer: &Keypair, reputation_bps: u16) -> Result<(), String> {
+    let ix = Instruction::new_with_bytes(
+        nelo_vault::id(),
+        &nelo_vault::instruction::SetReputation { reputation_bps }.data(),
+        nelo_vault::accounts::SetReputation {
+            authority: signer.pubkey(),
+            config: ctx.risk_config,
+            vault: ctx.vault,
+        }
+        .to_account_metas(None),
+    );
+    let owner = ctx.owner.insecure_clone();
+    send(ctx, &[ix], &[&owner, signer])
+}
+
+fn update_risk_config(
+    ctx: &mut Ctx,
+    signer: &Keypair,
+    params: RiskParams,
+) -> Result<(), String> {
+    let ix = Instruction::new_with_bytes(
+        nelo_vault::id(),
+        &nelo_vault::instruction::UpdateRiskConfig { params }.data(),
+        nelo_vault::accounts::UpdateRiskConfig {
+            authority: signer.pubkey(),
+            config: ctx.risk_config,
+        }
+        .to_account_metas(None),
+    );
+    let owner = ctx.owner.insecure_clone();
+    send(ctx, &[ix], &[&owner, signer])
+}
+
+fn publish_stake_price(
+    ctx: &mut Ctx,
+    signer: &Keypair,
+    stake_price: u64,
+    haircut_bps: u16,
+) -> Result<(), String> {
+    let ix = Instruction::new_with_bytes(
+        nelo_vault::id(),
+        &nelo_vault::instruction::PublishStakePrice { stake_price, haircut_bps }.data(),
+        nelo_vault::accounts::UpdateRiskConfig {
+            authority: signer.pubkey(),
+            config: ctx.risk_config,
+        }
+        .to_account_metas(None),
+    );
+    let owner = ctx.owner.insecure_clone();
+    send(ctx, &[ix], &[&owner, signer])
+}
+
+/// The effective limit is never written to an account — it is computed at
+/// redemption, from a stake valued at that moment. So it is proven the only way
+/// that actually means anything: a voucher *at* the limit settles, and a
+/// voucher one base unit above it is refused.
+fn assert_limit(ctx: &mut Ctx, seq: u64, limit: u64) {
+    let device = ctx.device.clone();
+
+    let over = voucher(ctx, seq, limit + 1);
+    let res = redeem(ctx, &over, &device);
+    assert!(res.is_err(), "{} is above the limit {limit} and must be refused", limit + 1);
+    assert!(res.unwrap_err().contains("AboveFloorLimit"));
+
+    let at = voucher(ctx, seq, limit);
+    redeem(ctx, &at, &device)
+        .unwrap_or_else(|e| panic!("a voucher at the limit {limit} should redeem: {e}"));
+}
+
+// --- the negative ones first ---
+
+#[test]
+fn rejects_a_cooldown_shorter_than_the_settlement_horizon() {
+    let mut ctx = setup();
+    let authority = ctx.risk_authority.insecure_clone();
+    // One hour. Vouchers signed before the request have not been presented
+    // yet, so this would let a payer unstake out from under a loss in flight.
+    let params = RiskParams { unstake_cooldown: 3_600, ..risk_params(&ctx) };
+
+    let res = update_risk_config(&mut ctx, &authority, params);
+    assert!(res.is_err());
+    assert!(res.unwrap_err().contains("CooldownTooShort"));
+}
+
+#[test]
+fn rejects_a_zero_stake_reference() {
+    let mut ctx = setup();
+    let authority = ctx.risk_authority.insecure_clone();
+    // Would be a division by zero inside a redemption.
+    let params = RiskParams { stake_reference: 0, ..risk_params(&ctx) };
+
+    let res = update_risk_config(&mut ctx, &authority, params);
+    assert!(res.is_err());
+    assert!(res.unwrap_err().contains("BadRiskParams"));
+}
+
+#[test]
+fn only_the_risk_authority_can_move_the_parameters() {
+    let mut ctx = setup();
+    let impostor = Keypair::new();
+    ctx.svm.airdrop(&impostor.pubkey(), LAMPORTS).unwrap();
+    let params = RiskParams { hard_cap: u64::MAX, ..risk_params(&ctx) };
+
+    let res = update_risk_config(&mut ctx, &impostor, params);
+    assert!(res.is_err());
+    assert!(res.unwrap_err().contains("NotRiskAuthority"));
+}
+
+#[test]
+fn only_the_risk_authority_can_publish_reputation() {
+    let mut ctx = setup();
+    let owner = ctx.owner.insecure_clone();
+    // Not even the vault's own owner. Reputation you can set yourself is not
+    // reputation.
+    let res = set_reputation(&mut ctx, &owner, 20_000);
+    assert!(res.is_err());
+    assert!(res.unwrap_err().contains("NotRiskAuthority"));
+}
+
+#[test]
+fn rejects_reputation_above_the_permitted_range() {
+    let mut ctx = setup();
+    let authority = ctx.risk_authority.insecure_clone();
+    let res = set_reputation(&mut ctx, &authority, 20_001);
+    assert!(res.is_err());
+    assert!(res.unwrap_err().contains("ReputationOutOfRange"));
+}
+
+#[test]
+fn cannot_request_more_stake_than_is_held() {
+    let mut ctx = setup();
+    stake(&mut ctx, 100 * ONE_SKR).expect("stake");
+    let res = request_unstake(&mut ctx, 101 * ONE_SKR);
+    assert!(res.is_err());
+    assert!(res.unwrap_err().contains("InsufficientStake"));
+}
+
+// --- and then the curve, on chain ---
+
+/// The week-2 gate: staking raises the limit, and it raises it sublinearly.
+#[test]
+fn staking_raises_the_offline_limit() {
+    let mut ctx = setup();
+
+    // Before staking, the enrolled base is the whole story.
+    let device = ctx.device.clone();
+    let over = voucher(&ctx, 0, FLOOR_LIMIT + 1);
+    assert!(redeem(&mut ctx, &over, &device).is_err(), "base limit holds");
+
+    // $100 of stake value — one reference unit — so 1 + √1 = 2.
+    stake(&mut ctx, 100 * ONE_SKR).expect("stake");
+    assert_eq!(vault_state(&ctx).stake, 100 * ONE_SKR);
+    assert_limit(&mut ctx, 0, 2 * FLOOR_LIMIT);
+}
+
+/// Four times the stake must buy **twice** the uplift, not four times it. This
+/// is the property that stops trust simply being bought.
+#[test]
+fn staking_is_sublinear_on_chain() {
+    let mut ctx = setup();
+
+    stake(&mut ctx, 400 * ONE_SKR).expect("stake");
+    // $400 of value is four reference units: 1 + √4 = 3, so $150 not $250.
+    assert_limit(&mut ctx, 0, 150_000_000);
+
+    let single_uplift = 2 * FLOOR_LIMIT - FLOOR_LIMIT; // from the test above
+    let quad_uplift = 150_000_000 - FLOOR_LIMIT;
+    assert_eq!(quad_uplift, 2 * single_uplift, "4× stake, 2× uplift");
+}
+
+#[test]
+fn the_hard_cap_holds_on_chain() {
+    let mut ctx = setup();
+
+    // $1,600 of value is sixteen reference units: 1 + √16 = 5, which would be
+    // $250. The cap says $200.
+    stake(&mut ctx, 1_600 * ONE_SKR).expect("stake");
+    assert_limit(&mut ctx, 0, HARD_CAP);
+}
+
+#[test]
+fn reputation_scales_the_limit_on_chain() {
+    let mut ctx = setup();
+    let authority = ctx.risk_authority.insecure_clone();
+
+    stake(&mut ctx, 100 * ONE_SKR).expect("stake");
+    set_reputation(&mut ctx, &authority, 5_000).expect("set reputation");
+
+    // The curve says $100; a halved reputation says $50.
+    assert_limit(&mut ctx, 0, FLOOR_LIMIT);
+}
+
+/// A stake is revalued when the claim is made, not when it was posted. SKR
+/// moves, and a collateral model that pretends otherwise is not one.
+#[test]
+fn a_falling_price_shrinks_the_limit_at_redemption() {
+    let mut ctx = setup();
+    let authority = ctx.risk_authority.insecure_clone();
+    let device = ctx.device.clone();
+
+    stake(&mut ctx, 400 * ONE_SKR).expect("stake");
+
+    // At $2.00/SKR the merchant is good for $150.
+    let at_old_price = voucher(&ctx, 0, 150_000_000);
+
+    // The price halves before the voucher is presented. $400 of value becomes
+    // $200 — two reference units, 1 + √2 ≈ 2.414 — so $150 no longer settles.
+    publish_stake_price(&mut ctx, &authority, STAKE_PRICE / 2, HAIRCUT_BPS).expect("publish");
+
+    let res = redeem(&mut ctx, &at_old_price, &device);
+    assert!(res.is_err(), "a stake worth half as much must not hold the same limit");
+    assert!(res.unwrap_err().contains("AboveFloorLimit"));
+}
+
+// --- the exit ---
+
+/// The attack the cooldown exists to stop, and the reason the requested amount
+/// leaves the curve at request time rather than at collection time: otherwise a
+/// payer opens a request, keeps trading at the ceiling the stake was buying,
+/// and collects it at the end of the cooldown.
+#[test]
+fn requesting_an_unstake_drops_the_limit_immediately() {
+    let mut ctx = setup();
+    let device = ctx.device.clone();
+
+    stake(&mut ctx, 100 * ONE_SKR).expect("stake");
+    request_unstake(&mut ctx, 100 * ONE_SKR).expect("request");
+
+    assert_eq!(vault_state(&ctx).effective_stake(), 0, "stake left the curve at once");
+
+    let v = voucher(&ctx, 0, 2 * FLOOR_LIMIT);
+    let res = redeem(&mut ctx, &v, &device);
+    assert!(res.is_err(), "the uplift must be gone the moment it is requested");
+    assert!(res.unwrap_err().contains("AboveFloorLimit"));
+}
+
+#[test]
+fn unstake_is_blocked_until_the_cooldown_elapses() {
+    let mut ctx = setup();
+    stake(&mut ctx, 100 * ONE_SKR).expect("stake");
+    request_unstake(&mut ctx, 100 * ONE_SKR).expect("request");
+
+    let res = unstake(&mut ctx);
+    assert!(res.is_err());
+    assert!(res.unwrap_err().contains("UnstakeCooldownActive"));
+
+    warp(&mut ctx, UNSTAKE_COOLDOWN - 60); // one minute short
+    let res = unstake(&mut ctx);
+    assert!(res.is_err(), "a minute short is still short");
+    assert!(res.unwrap_err().contains("UnstakeCooldownActive"));
+}
+
+#[test]
+fn unstake_requires_a_request() {
+    let mut ctx = setup();
+    stake(&mut ctx, 100 * ONE_SKR).expect("stake");
+
+    let res = unstake(&mut ctx);
+    assert!(res.is_err());
+    assert!(res.unwrap_err().contains("UnstakeNotRequested"));
+}
+
+/// The exit has to work. A balance that is never spendable is not earnings.
+#[test]
+fn unstake_returns_the_tokens_after_the_cooldown() {
+    let mut ctx = setup();
+    let before = token_balance(&ctx, &ctx.owner_stake_token);
+
+    stake(&mut ctx, 100 * ONE_SKR).expect("stake");
+    assert_eq!(token_balance(&ctx, &ctx.owner_stake_token), before - 100 * ONE_SKR);
+
+    request_unstake(&mut ctx, 100 * ONE_SKR).expect("request");
+    warp(&mut ctx, UNSTAKE_COOLDOWN);
+    unstake(&mut ctx).expect("unstake after the cooldown");
+
+    assert_eq!(token_balance(&ctx, &ctx.owner_stake_token), before, "tokens came back");
+    assert_eq!(vault_state(&ctx).stake, 0);
+    assert_eq!(vault_state(&ctx).pending_unstake, 0, "request consumed");
+}
+
+/// Stake is first-loss capital against exactly the event that froze the vault.
+/// Capital that can leave after the loss is not collateral.
+#[test]
+fn a_frozen_vault_cannot_unstake() {
+    let mut ctx = setup();
+    let device = ctx.device.clone();
+
+    stake(&mut ctx, 100 * ONE_SKR).expect("stake");
+    request_unstake(&mut ctx, 100 * ONE_SKR).expect("request");
+    warp(&mut ctx, UNSTAKE_COOLDOWN);
+
+    // Prove a double-spend and freeze the vault.
+    let a = voucher(&ctx, 4, 10_000_000);
+    let mut b = voucher(&ctx, 4, 20_000_000);
+    b.salt = [2u8; 8];
+    report_conflict(&mut ctx, &a, &b, &device, &device).expect("conflict proof");
+    assert_eq!(vault_state(&ctx).status, 1, "frozen");
+
+    let res = unstake(&mut ctx);
+    assert!(res.is_err(), "the stake must not escape the loss it backs");
+    assert!(res.unwrap_err().contains("VaultFrozen"));
+}
+
+#[test]
+fn a_frozen_vault_cannot_stake_more() {
+    let mut ctx = setup();
+    let device = ctx.device.clone();
+
+    let a = voucher(&ctx, 4, 10_000_000);
+    let mut b = voucher(&ctx, 4, 20_000_000);
+    b.salt = [2u8; 8];
+    report_conflict(&mut ctx, &a, &b, &device, &device).expect("conflict proof");
+
+    let res = stake(&mut ctx, 100 * ONE_SKR);
+    assert!(res.is_err());
+    assert!(res.unwrap_err().contains("VaultFrozen"));
+}
+
+/// A vault that has never staked must behave exactly as it did before the
+/// curve existed. This is the migration property, and it is why the curve is
+/// safe to add to a program that is already deployed.
+#[test]
+fn an_unstaked_vault_keeps_its_enrolled_limit() {
+    let mut ctx = setup();
+    let state = vault_state(&ctx);
+    assert_eq!(state.stake, 0);
+    assert_eq!(state.reputation_bps, 10_000, "neutral at enrolment");
+    assert_limit(&mut ctx, 0, FLOOR_LIMIT);
 }

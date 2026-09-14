@@ -2,6 +2,16 @@
   "name": "@nelo/settle",
   "version": "0.1.0",
   "type": "module",
-  "scripts": { "dev": "node --watch src/index.ts" },
-  "dependencies": { "fastify": "^5.0.0" }
+  "scripts": {
+    "dev": "node --watch src/index.ts",
+    "test": "node --test \"test/*.test.ts\""
+  },
+  "dependencies": {
+    "fastify": "^5.0.0"
+  },
+  "main": "./src/index.ts",
+  "description": "Double-entry ledger, the payout lifecycle, and the disbursement partner behind one interface.",
+  "files": [
+    "src"
+  ]
 }
