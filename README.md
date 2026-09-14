@@ -15,6 +15,9 @@ deliverables, and the week-by-week steps with acceptance criteria.
 📊 **Pitch deck:** [`docs/deck/index.html`](docs/deck/index.html) — a single self-contained
 file. Open it in any browser; no build and no server.
 
+💵 **Reserve model:** [`docs/RESERVE.md`](docs/RESERVE.md) — what the offline guarantee costs,
+what the insurance line has to be, and what the SKR premium can honestly be priced at.
+
 ---
 
 ## Status
@@ -58,13 +61,75 @@ not fail. Underpayment is refused.
 Settled sales land in a day-book held in SQLite, grouped by the merchant's **own**
 calendar day — a sale at 00:30 belongs to that day's sheet, not to UTC's.
 
+The balance is **held in dollars and shown in the merchant's currency**, and the till says
+both. That is the product decision, not a formatting one: a trader in a devaluing currency
+who holds overnight is better off in a dollar asset converted at payout, and they should be
+able to see that is what is happening. The conversion rounds **down**, so the figure on
+screen is never larger than what is actually there, and an RPC failure leaves the last known
+number up rather than replacing it with a confident zero.
+
 The rate is quoted through a guarded oracle layer: a price that is stale or whose
 confidence band is too wide is **refused**, not displayed. Two things block a live feed —
 Pyth publishes no NGN pair, and Hermes needs an API key — so the till currently runs a
 configured rate and labels it on screen as not live.
 
-Not yet built: StrongBox on a real handset, a live price feed (see above), and the
-services — `services/*` are stubs.
+The offline limit is **bought, not fixed**. Staked SKR lifts it through a sublinear,
+hard-capped curve — `min(base × (1 + k·√stake) × reputation, hard_cap)` — so trust
+cannot simply be purchased and no merchant creates unbounded exposure. Past the point
+where the limit covers their largest realistic basket, more collateral buys nothing,
+which is correct for collateral and exactly why earning is a separate mechanism.
+
+The stake is valued **at redemption**, with a visible haircut, so a falling price
+shrinks the limit rather than leaving a merchant holding a ceiling their collateral no
+longer supports. Requested stake stops backing the limit the moment it is requested,
+not when it is collected, and the unstake cooldown is pinned to the settlement horizon
+— a payer must not be able to unstake out from under a loss still in flight.
+
+Every number the curve is shaped by — base, `k`, the hard cap, the haircut, the
+cooldown — is **configuration**, in a `RiskConfig` account under a risk authority held
+separately from the upgrade authority. They fall out of the reserve model, which does
+not exist yet; baking in three plausible-looking constants would be inventing its
+answer. 17 tests cover the curve off chain: sublinearity at every doubling, the cap
+against an absurd stake, reputation and coefficient, and `isqrt` brute-forced against
+its floor property.
+
+The payout leg has a real ledger under it. `services/settle` is double-entry: every
+transaction balances **per currency**, because a payout touches dollars and naira in one
+event and netting one against the other would balance while being nonsense. Posting is
+**idempotent** on an id the outside world already made unique — an on-chain signature, a
+partner reference — since a webhook firing twice is the normal case, not the edge one.
+The journal is append-only; a mistake is corrected by posting its reversal.
+
+The merchant's dollar claim is discharged when a payout is **instructed**, not when the
+partner confirms, so the same dollars cannot pay out twice while it is in flight — and a
+failure returns them exactly. `reconcileCustody` checks the journal against what the
+chain actually holds, which is the one test that catches a missed sale or a double post.
+
+The disbursement partner is a **declared stub**, and it is built so it cannot be mistaken
+for a real one: `fidelity: "stub"` on every quote and every result, references prefixed
+`STUB-`, and `assertMovesRealMoney()` to refuse it at any boundary touching real funds.
+Swapping in a licensed partner is a constructor change. 39 tests pass off-device.
+
+The reserve requirement is **modelled** — [`packages/reserve`](packages/reserve), written up
+in [`docs/RESERVE.md`](docs/RESERVE.md). It turns the plan's own exposure formula into a number
+and checks the two things the plan asserts; both come back short. The 0.20% insurance line does
+not cover expected loss at these inputs, and reserve relief funds an SKR premium of about
+1.001× rather than the illustrative 1.5×. It also finds the Trust Stake curve *raises* required
+reserve below $250 of staked value, which is what should set `k`.
+
+Eleven of its inputs are guesses, and it says which before it says anything else. It states what
+would have to be true, not what is.
+
+Not yet built: StrongBox on a real handset, a live price feed (see above), slashing
+(the freeze blocks the exit, but nothing moves the stake to a reserve yet — there is no
+reserve account), the payout partner adapter itself, and `services/relay`, which is
+still a stub.
+
+> **The on-chain Trust Stake tests have never been run.** There is no Solana toolchain
+> on the dev machine, so no `.so` can be built and LiteSVM cannot load the program. The
+> curve itself is proven off chain; the ~19 staking assertions in
+> `programs/nelo_vault/tests/vault.rs` compile but have not executed. Run `anchor test`
+> on a machine with the toolchain before trusting them.
 
 See [the build sequence](docs/DELIVERABLES.md) for what is next and how each step is
 judged done.
@@ -73,14 +138,16 @@ judged done.
 
 ```
 programs/nelo_vault/     Anchor program — vault, replay window, Trust Stake
+  src/curve.rs           The floor-limit curve: sublinear, capped, integer-only
 apps/merchant/           Expo — the terminal (amount entry, Solana Pay)
 apps/payer/              Expo — vault + offline voucher emitter
 packages/ledger/         The day-book: sale records, day boundaries, totals
 packages/pay/            Solana Pay requests + local-currency arithmetic
+packages/reserve/        The insurance line: exposure, reserve, premium ceiling
 packages/voucher/        202-byte wire format: encode, decode, verify
 packages/attest/         Expo native module — StrongBox P-256 + attestation
 services/relay/          Broadcast queue, retry, multi-RPC failover
-services/settle/         Double-entry ledger + payout partner
+services/settle/         Double-entry ledger, payout lifecycle, partner interface
 docs/BUILD.md            The build plan
 docs/DELIVERABLES.md     The build sequence, step by step
 docs/deck/               The pitch deck
@@ -124,6 +191,12 @@ That builds the program and runs the Rust test suite. It should pass from a clea
 The program is deployed to devnet at
 `29QdPRQC8C5v6C8gMcBqtw9T4RxYyZ1wqThkEj3XJeQx`, upgrade authority
 `BX8kSVjmx9Eihd173hdrRW1Ap61AmixQzqjtc3o5DQfu`.
+
+> **The deployed build predates the Trust Stake.** `Vault` gained four fields and the
+> program gained a `RiskConfig` account, so the devnet program needs redeploying before
+> the devnet gate will run again — and `redeem_voucher` now takes the risk config, which
+> must be initialised once per deployment. Vaults opened by the old build cannot be
+> deserialised by the new one; on devnet, open fresh ones.
 
 The week-1 gate has been run there end to end — vault funded, voucher redeemed with the
 device signature verified by the secp256r1 precompile on a real validator, double-spend

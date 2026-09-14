@@ -6,11 +6,12 @@
  * word crypto, and nothing about the flow requires the customer to install
  * anything.
  *
- * Week 2 scope: amount entry, conversion, and the Solana Pay code. Mobile
- * Wallet Adapter onboarding, the day-book and payout come next — see
+ * Week 2 scope: amount entry, conversion, the Solana Pay code, the day-book,
+ * and the balance — held in dollars, shown in the merchant's own currency.
+ * Onboarding behind an embedded wallet and the payout leg come next; see
  * docs/DELIVERABLES.md.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import QRCode from "react-native-qrcode-svg";
@@ -23,6 +24,7 @@ import {
   localDayKey,
   type Sale,
 } from "@nelo/ledger";
+import { currentBalance, type Balance } from "./src/balance";
 import { record, recent } from "./src/daybook";
 import { currentRate, type Quoted } from "./src/rate";
 import { connect, restore, type MerchantWallet } from "./src/wallet";
@@ -54,6 +56,7 @@ export default function App() {
   const [outcome, setOutcome] = useState<PaymentOutcome | null>(null);
   const [sales, setSales] = useState<Sale[]>([]);
   const [quoted, setQuoted] = useState<Quoted | null>(null);
+  const [balance, setBalance] = useState<Balance | null>(null);
   const [showDaybook, setShowDaybook] = useState(false);
 
   // The merchant's own clock decides which day a sale belongs to.
@@ -90,6 +93,26 @@ export default function App() {
       setConnecting(false);
     }
   }
+
+  // Held in dollars, shown in the merchant's currency. Refreshed when the
+  // wallet connects and after every sale that settles — not on a timer, because
+  // a till that polls in the background is a till that burns a prepaid data
+  // bundle for a number nobody is looking at.
+  const refreshBalance = useCallback(async () => {
+    if (!merchant || !quoted) return;
+    try {
+      setBalance(
+        await currentBalance(RPC_URL, merchant.address, USDC_DEVNET, quoted.rate, quoted.live),
+      );
+    } catch {
+      // Leave the last known figure on screen. Replacing it with a confident
+      // zero because the network blinked is worse than showing it stale.
+    }
+  }, [merchant, quoted]);
+
+  useEffect(() => {
+    void refreshBalance();
+  }, [refreshBalance]);
 
   const tokenAmount = useMemo(
     () => (quoted ? formatTokenAmount(localToTokenBaseUnits(minor, quoted.rate)) : "—"),
@@ -142,10 +165,12 @@ export default function App() {
           overpaid: result.overpaid,
         });
         setSales(await recent());
+        // The money has landed; the balance on the till should say so.
+        void refreshBalance();
       })
       .catch(() => {});
     return () => controller.abort();
-  }, [charging, merchant, reference, minor, quoted]);
+  }, [charging, merchant, reference, minor, quoted, refreshBalance]);
 
   function startCharge() {
     // A fresh reference per sale, or two customers paying the same price would
@@ -324,6 +349,26 @@ export default function App() {
   return (
     <View style={styles.screen}>
       <StatusBar style="light" />
+      <View style={styles.balanceBar}>
+        <View>
+          <Text style={styles.balanceLabel}>BALANCE</Text>
+          <Text style={styles.balanceValue}>
+            {CURRENCY.symbol}
+            {balance ? formatLocalAmount(balance.localMinor, CURRENCY.minorDigits) : "—"}
+          </Text>
+        </View>
+        <View style={styles.balanceAside}>
+          {/* Held in dollars, shown in naira. The merchant is told both: the
+              familiar number is the point, and so is what is underneath it. */}
+          <Text style={styles.balanceHeld}>
+            {balance ? `${formatTokenAmount(balance.baseUnits)} USDC` : "…"}
+          </Text>
+          <Text style={styles.balanceNote}>
+            {balance && !balance.liveRate ? "at a fixed rate" : "held in dollars"}
+          </Text>
+        </View>
+      </View>
+
       <Pressable
         style={styles.todayBar}
         onPress={() => setShowDaybook(true)}
@@ -426,6 +471,27 @@ const styles = StyleSheet.create({
   statusBad: { color: "#d4855e", fontSize: 14.5, textAlign: "center" },
   paidMark: { color: "#4fb98f", fontSize: 64 },
   paidTitle: { color: "#4fb98f", fontSize: 22, fontWeight: "700", letterSpacing: 1 },
+  balanceBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: "#17191b",
+    marginBottom: 8,
+  },
+  balanceLabel: { color: "#8d9299", fontSize: 11, letterSpacing: 2 },
+  balanceValue: {
+    color: "#e8e9ea",
+    fontSize: 27,
+    fontWeight: "700",
+    letterSpacing: -0.6,
+    marginTop: 3,
+  },
+  balanceAside: { alignItems: "flex-end" },
+  balanceHeld: { color: "#4fb98f", fontSize: 14 },
+  balanceNote: { color: "#8d9299", fontSize: 11.5, marginTop: 3 },
   todayBar: {
     flexDirection: "row",
     justifyContent: "space-between",

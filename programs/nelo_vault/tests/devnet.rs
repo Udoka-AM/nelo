@@ -36,7 +36,7 @@ const DECIMALS: u8 = 6;
 const INSTRUCTIONS_SYSVAR: Pubkey =
     solana_pubkey::pubkey!("Sysvar1nstructions1111111111111111111111111");
 
-const OWNER_FUNDING: u64 = 120_000_000; // 0.12 SOL — rent for mint + 3 token accounts
+const OWNER_FUNDING: u64 = 150_000_000; // 0.15 SOL — rent for 2 mints, 3 token accounts, risk config
 /// Token base units at 6dp, so these read as dollars.
 const MINTED: u64 = 100_000_000;
 const COLLATERAL: u64 = 20_000_000;
@@ -171,7 +171,8 @@ fn week_one_gate_on_devnet() {
     let device = device_key(7);
     let (vault, _) =
         Pubkey::find_program_address(&[b"vault", owner.pubkey().as_ref()], &program_id);
-    println!("owner:  {}\nvault:  {vault}", owner.pubkey());
+    let (risk_config, _) = Pubkey::find_program_address(&[b"risk"], &program_id);
+    println!("owner:  {}\nvault:  {vault}\nrisk:   {risk_config}", owner.pubkey());
 
     let mint_kp = Keypair::new();
     let mint = mint_kp.pubkey();
@@ -221,6 +222,53 @@ fn week_one_gate_on_devnet() {
     )
     .expect("fund owner token account");
     println!("✓ mint {mint} created and funded");
+
+    // 0. The platform risk config is a singleton PDA, so on a chain that has
+    //    seen a previous run it already exists. Initialising is therefore
+    //    best-effort: this gate stakes nothing, and with zero stake the curve
+    //    is the identity, so only the hard cap has to clear FLOOR_LIMIT.
+    let stake_mint_kp = Keypair::new();
+    let stake_mint = stake_mint_kp.pubkey();
+    let init_risk = send(
+        &rpc,
+        &[
+            solana_system_interface::instruction::create_account(
+                &owner.pubkey(),
+                &stake_mint,
+                rent,
+                MINT_LEN,
+                &SPL_TOKEN_ID,
+            ),
+            initialize_mint_ix(&stake_mint, &owner.pubkey()),
+            Instruction::new_with_bytes(
+                program_id,
+                &nelo_vault::instruction::InitializeRiskConfig {
+                    params: nelo_vault::instructions::risk_config::RiskParams {
+                        authority: owner.pubkey(),
+                        k_bps: 10_000,
+                        stake_reference: 100_000_000,
+                        hard_cap: 1_000_000_000,
+                        stake_price: 0,
+                        haircut_bps: 5_000,
+                        unstake_cooldown: 24 * 60 * 60,
+                    },
+                }
+                .data(),
+                nelo_vault::accounts::InitializeRiskConfig {
+                    payer: owner.pubkey(),
+                    config: risk_config,
+                    stake_mint,
+                    system_program: system_program::ID,
+                }
+                .to_account_metas(None),
+            ),
+        ],
+        &[&owner, &stake_mint_kp],
+    );
+    match init_risk {
+        Ok(_) => println!("✓ risk config initialised"),
+        Err(e) => println!("• risk config already present ({e})"),
+    }
 
     // 1. Enrol the device key and open a vault.
     send(
@@ -290,6 +338,7 @@ fn week_one_gate_on_devnet() {
             nelo_vault::accounts::RedeemVoucher {
                 payer: owner.pubkey(),
                 vault,
+                config: risk_config,
                 mint,
                 merchant: merchant.pubkey(),
                 merchant_token,

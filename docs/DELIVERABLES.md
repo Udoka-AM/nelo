@@ -161,6 +161,18 @@ Order matters here; each step feeds the next.
 4. **Kora relayer, so nobody needs SOL.** *(Anchor)*
    **Done when:** a merchant with a zero SOL balance completes a sale.
 5. **Balance in local currency, held in dollars.** *(Android + Design)*
+   **Done.** The till reads the merchant's USDC balance and shows it in their own
+   currency, alongside what is actually held — both, because the dollar underneath is
+   the product decision and not a formatting one. Conversion rounds **down**, so a
+   displayed balance is never larger than what is there, and the row says "at a fixed
+   rate" rather than "held in dollars" while the oracle is not live.
+   Read via `getTokenAccountsByOwner`, so there is no associated-token-address
+   derivation to get wrong; a merchant who has never been paid has no token account at
+   all and that reads as zero rather than an error. A malformed entry is skipped and an
+   RPC failure leaves the previous figure on screen — a till must not go down over a
+   number, and a confident zero is worse than a stale one. Refreshed on connect and
+   after each settled sale, never on a timer: background polling spends a prepaid data
+   bundle on a figure nobody is reading. 8 tests, off-device.
 6. **The day-book.** **Done** — SQLite, grouped by the merchant's local day, with
    close-of-day totals. `packages/ledger` holds the arithmetic and is tested off-device.
    *(Design + Android)*
@@ -170,14 +182,74 @@ Order matters here; each step feeds the next.
 
 8. **Payout leg against the sandbox** — or the declared stub, if week 0's fork went that way.
    [`services/settle`](../services/settle/src/index.ts), double-entry ledger. *(Anchor)*
+   **The ledger half is done.** `services/settle` holds a real double-entry journal:
+   every transaction balances **per currency** (a payout touches dollars and naira in
+   one event, and netting a dollar against a naira would balance while being nonsense),
+   posting is **idempotent** on an id the outside world already made unique — an
+   on-chain signature, a partner reference — and the journal is append-only, so a
+   mistake is corrected by posting its reversal rather than by an edit.
+   The full payout lifecycle is there: instruct, settle, fail-and-reverse. The
+   merchant's dollar claim is discharged at *instruction*, not at confirmation, so the
+   same dollars cannot pay out twice while the partner is working; a failure returns
+   them exactly. `reconcileCustody` compares the journal against what the chain
+   actually holds — the one check that catches a missed sale or a double-posted payout.
+   **The partner is a declared stub**, and it is built so it cannot be mistaken for
+   anything else: `fidelity: "stub"` on the partner, on every quote and on every
+   result, references prefixed `STUB-`, and `assertMovesRealMoney()` to refuse it at
+   any boundary touching real funds. **This is the fork, pre-taken** — week 0's
+   decision is now a choice of which object to construct, not a week of work.
+   **39 tests pass** (`node --test` in `services/settle`), covering the balance rules,
+   idempotency under replay, the rounding (fee plus net always adds back to the sale;
+   the spread is a difference, never a percentage, so rounding cannot invent a minor
+   unit), the reversal, and reconciliation drift in both directions.
+   **Not done:** the partner adapter itself, which is what the sandbox access is for,
+   and there is no HTTP surface yet — the service is a library the relay and the app
+   will call.
 9. **Trust Stake: staking and the floor-limit curve.** `offline_limit = min(base × (1 +
    k·√stake) × reputation, hard_cap)`. *(Anchor)*
-   **Done when:** staking raises the limit sublinearly and the hard cap holds.
+   **Written.** `programs/nelo_vault/src/curve.rs` holds the curve — integer-only,
+   normalised so `k` is a number a person can reason about, and saturating into the
+   cap rather than failing a redemption. `stake` / `request_unstake` / `unstake` move
+   real SPL, and the limit is computed **at redemption** from a stake revalued at that
+   moment, so a falling SKR price shrinks the limit rather than the merchant keeping a
+   ceiling their collateral no longer supports.
+   Requested stake leaves the curve when the request is made, not when it is collected
+   — otherwise the cooldown buys the payer a free window at a limit they have already
+   sold. The cooldown floor is pinned to the settlement horizon for the same reason.
+   **The parameters are configuration, not constants.** `base`, `k`, the hard cap, the
+   haircut and the cooldown live in a `RiskConfig` account under a risk authority held
+   separately from the upgrade authority, because they fall out of the reserve model
+   below and that model is a commercial artefact. Three plausible-looking numbers in
+   the binary would be inventing its answer.
+   **Verified off chain: 17 tests** — sublinearity at every doubling, the cap holding
+   against an absurd stake, reputation and coefficient, saturation past the cap, the
+   haircut, and `isqrt` brute-forced against its floor property.
+   **The on-chain tests are written but have not been run.** There is no Solana
+   toolchain on the dev machine — `release.anza.xyz` is unreachable from it — so no
+   `.so` can be built and LiteSVM cannot load the program. They compile (`cargo check
+   --tests` is clean against a stub binary); they have never executed.
+   **Done when:** `anchor test` is green on a machine with the toolchain. Until then
+   treat the ~19 on-chain assertions as unproven.
+   **Still open:** slashing. The freeze blocks the exit, so stake cannot walk away from
+   a loss it backs — but nothing yet *moves* it to a reserve, because there is no
+   reserve account. That is the other half of "first-loss capital".
 
 > **Gate — Wed 23 Sep.** A sale runs end to end, in local currency, on a phone, with a wallet
 > you did not write. **Model the reserve requirement this week** — the SKR premium is priced
 > off it, and the deck asserts that. An unmodelled multiplier is a number this panel will ask
 > about.
+>
+> **The model exists** — [`packages/reserve`](../packages/reserve), written up in
+> [`docs/RESERVE.md`](RESERVE.md), 16 tests. Four findings, all of which change something:
+> the 0.20% reserve line does not cover expected loss (28.1 bps implied, so the 0.70% net take
+> rate is overstated by ~8 bps); the Trust Stake curve **raises** required reserve below $250
+> of staked value, which constrains `k`; the hard cap needs $81,000 of stake to bind, so it
+> binds nothing; and reserve relief funds a premium of about **1.001×, not 1.5×** — the deck
+> must stop describing it as priced off capital relief.
+>
+> **Eleven inputs are still guesses** and the model says so before it says anything else. The
+> one worth measuring is how many merchants a payer can reach in one offline session: the
+> reserve is super-linear in it, and an afternoon in the committed shop would settle it.
 
 ---
 
