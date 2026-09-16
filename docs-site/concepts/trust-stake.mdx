@@ -1,0 +1,130 @@
+---
+title: "The Trust Stake"
+description: "The offline limit is bought, not fixed — sublinearly, under a hard cap, revalued at redemption."
+---
+
+The floor limit used to be a number written once at enrolment. It is now bought:
+
+```
+offline_limit = min(base × (1 + k·√stake_value) × reputation, hard_cap)
+```
+
+computed **at redemption**, not at enrolment.
+
+## Three properties, each a test
+
+<CardGroup cols={3}>
+  <Card title="Sublinear" icon="chart-line">
+    4× the stake buys **2×** the uplift, not 4×. Trust cannot simply be purchased.
+  </Card>
+  <Card title="Capped" icon="ban">
+    No merchant creates unbounded exposure, whatever they stake and whatever reputation is published.
+  </Card>
+  <Card title="Saturating" icon="circle-stop">
+    Past the point where the limit covers their largest basket, more collateral buys nothing.
+  </Card>
+</CardGroup>
+
+That last one is **correct behaviour for a collateral system** — an over-collateralised merchant is wasting money — and it is exactly why the earning side of the Trust Stake has to be a separate mechanism rather than the same dial.
+
+## `k` is a number you can reason about
+
+The raw formula has a problem: `k` carries units of `1/√value`, which makes it impossible to sanity-check. So the curve normalises against a reference:
+
+```
+multiplier = 1 + k · √(stake_value / stake_reference)
+```
+
+Now `k_bps = 10_000` means **one reference unit of stake doubles the base limit**. That is a sentence a person can argue with.
+
+```rust
+// programs/nelo_vault/src/curve.rs — integer fixed-point, no floats
+let ratio_bps  = stake_value * BPS / stake_reference;
+let sqrt_bps   = isqrt(ratio_bps * BPS);           // √ratio × BPS
+let mult_bps   = BPS + k_bps * sqrt_bps / BPS;
+let limit      = base * mult_bps * reputation_bps / (BPS * BPS);
+limit.min(hard_cap)
+```
+
+Integer throughout. `isqrt` is Newton's method entered from above so it descends monotonically, starting at `2^ceil(bits/2)` — a handful of iterations instead of the ~128 a naive start would cost, because compute budget is not free on chain.
+
+<Tip>
+The whole function is saturating rather than checked. Every path ends in `min(.., hard_cap)`, so an overflow can only clamp to the cap — and a merchant held at their ceiling is the right answer to absurd inputs. A `checked_*` here would instead **fail the redemption of a legitimate voucher**.
+</Tip>
+
+## Valued at redemption, with a visible haircut
+
+SKR moves. A collateral model that pretends its collateral is stable is not a collateral model.
+
+```rust
+stake_value = stake × stake_price / VALUATION_UNIT × (10_000 − haircut_bps) / 10_000
+```
+
+Both inputs are read **live from `RiskConfig` at redemption**, so a stake posted at a high price is revalued when the claim is actually made. The haircut is stored separately from the price rather than folded into it, so the discount is auditable instead of invisible.
+
+## Requested stake leaves the curve immediately
+
+<Warning>
+`request_unstake` removes the amount from the curve **at request time**, not at collection.
+
+Otherwise the cooldown hands the payer a free window: request the whole stake, keep trading at the ceiling that stake was buying, and collect it at the end. The cooldown would be buying them the attack instead of preventing it.
+</Warning>
+
+```rust
+pub fn effective_stake(&self) -> u64 {
+    self.stake.saturating_sub(self.pending_unstake)
+}
+```
+
+The cooldown floor is pinned to the settlement horizon for the same reason — vouchers signed before the request have not been presented yet:
+
+```rust
+pub const MIN_UNSTAKE_COOLDOWN_SECONDS: i64 = WITHDRAW_TIMELOCK_SECONDS;
+```
+
+And a frozen vault cannot unstake at all. First-loss capital that can leave after the loss is not first-loss capital.
+
+## The parameters are configuration, not constants
+
+`base`, `k`, the hard cap, the haircut and the cooldown live in a `RiskConfig` account under a **risk authority held separately from the program upgrade authority**.
+
+That separation is the point: publishing a price is routine and frequent, and it must not need the key that can replace the program.
+
+| Field | What it sets |
+|---|---|
+| `authority` | Who may revise these — also the rotation path |
+| `stake_mint` | SKR. Set once; changing it would orphan staked tokens |
+| `k_bps` | Uplift at one reference unit of stake |
+| `stake_reference` | The stake value at which `k_bps` applies in full |
+| `hard_cap` | Ceiling on any single vault's offline limit |
+| `stake_price` | Settlement units per `VALUATION_UNIT` of stake, pre-haircut. A TWAP |
+| `haircut_bps` | Conservative discount, held visibly |
+| `unstake_cooldown` | Must be ≥ the settlement horizon |
+
+They are configuration because they **fall out of the reserve model**, and that model is a commercial artefact rather than a code one. Baking in three plausible-looking numbers would be inventing the answer to the question the model exists to settle.
+
+## What the model says about these parameters
+
+The model now exists — and it has opinions. See [the reserve model](/economics/reserve-model) in full, but the two that land directly here:
+
+<Warning>
+**The curve raises required reserve below ~$250 of staked value.** Staking lifts the limit, the limit is multiplied by every merchant the payer can reach, and √ has an unbounded slope at zero — so a small stake adds more exposure than it absorbs.
+
+The crossover is `s* = (M·base·k/2)² / ref`. It moves as `k²`, so halving `k` quarters it. Either require a minimum stake, or lower `k`.
+</Warning>
+
+<Warning>
+**The hard cap currently binds nothing.** At base $50 and `k = 1.0`, reaching a $500 cap takes **$81,000** of staked value. The cap and `k` have to be set together.
+</Warning>
+
+Both are `RiskConfig` updates rather than redeploys — which is why they were left as configuration in the first place.
+
+## Reputation
+
+Published by the risk authority from settled volume, dispute rate and tenure — none of which the program can see. Bounded on chain at `REPUTATION_MAX_BPS = 20_000` so a wrong or compromised authority cannot lift every merchant at once, and a vault opens at `REPUTATION_NEUTRAL_BPS = 10_000` so the curve is a **no-op until someone has something to say**.
+
+Reputation decays with inactivity. The decay is applied by republishing, which is why `set_reputation` exists as an instruction rather than the value being set once at enrolment.
+
+## The migration property
+
+A vault that has never staked behaves **exactly** as it did before the curve existed: stake `0`, reputation neutral → `limit == vault.floor_limit`. That is what made the curve safe to add to a program that was already deployed, and it is a committed test.

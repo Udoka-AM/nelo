@@ -1,0 +1,71 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Nelo",
+  "description": "Accept payments on the phone you already own. Money lands in your own currency, in your own bank. And it keeps working when the network doesn't.",
+  "colors": {
+    "primary": "#2e8f6a",
+    "light": "#6fd3aa",
+    "dark": "#4fb98f"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get started",
+        "pages": [
+          "introduction",
+          "quickstart",
+          "architecture"
+        ]
+      },
+      {
+        "group": "How it works",
+        "pages": [
+          "concepts/trust-model",
+          "concepts/voucher-format",
+          "concepts/replay-and-double-spend",
+          "concepts/trust-stake"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "reference/vault-program",
+          "reference/packages",
+          "reference/services",
+          "reference/apps"
+        ]
+      },
+      {
+        "group": "Economics",
+        "pages": [
+          "economics/reserve-model",
+          "economics/unit-economics"
+        ]
+      },
+      {
+        "group": "Operations",
+        "pages": [
+          "operations/deployment",
+          "operations/testing",
+          "operations/status"
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/Udoka-AM/nelo"
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/Udoka-AM/nelo",
+      "website": "https://udokaam.dev"
+    }
+  }
+}

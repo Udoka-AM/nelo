@@ -1,0 +1,108 @@
+---
+title: "Project status"
+description: "What is built, what is proven, what is stubbed, and what is not started."
+---
+
+Nelo is a hackathon project built against a four-week plan. This page is the honest ledger of where it actually is.
+
+<Note>
+Three states are kept apart, because conflating them is how a demo ends up claiming something untrue:
+
+- **Proven** — a test that has actually executed, or a run on devnet
+- **Written** — code exists and compiles, but has never run
+- **Declared stub** — deliberately not real, and labelled as such at every call site
+</Note>
+
+## Where it stands
+
+<CardGroup cols={2}>
+  <Card title="The trust model" icon="shield-check">
+    **Proven, on devnet.** Vault, voucher redemption with the signature verified by the precompile on a real validator, 128-slot replay window, timelocked withdrawal, conflict freeze, double-spend refused.
+
+    Caveat: run with a *software* P-256 key, not StrongBox.
+  </Card>
+  <Card title="The ordinary sale" icon="receipt">
+    **Written.** Till, MWA wallet, Solana Pay, payment validation, day-book, balance, SPL collateral.
+
+    Caveat: never bundled. See [Testing](/operations/testing).
+  </Card>
+  <Card title="Trust Stake" icon="coins">
+    **Curve proven off-chain** (17 tests). Staking, cooldown and risk config **written, never executed** — the ~19 on-chain tests have not run.
+  </Card>
+  <Card title="Settlement" icon="book">
+    **Ledger proven** (39 tests) — double-entry, idempotent, reversible, reconcilable. Partner is a **declared stub**.
+  </Card>
+</CardGroup>
+
+## By component
+
+| Component | State |
+|---|---|
+| `programs/nelo_vault` — trust model | ✅ Proven on devnet |
+| `programs/nelo_vault` — Trust Stake | ⚠️ Written, on-chain tests never run |
+| `packages/voucher` | ✅ Proven, both sides, golden vectors |
+| `packages/pay` | ✅ Proven (54 tests) |
+| `packages/ledger` | ✅ Proven (13 tests) |
+| `packages/reserve` | ✅ Proven (16 tests) |
+| `services/settle` — ledger | ✅ Proven (39 tests) |
+| `services/settle` — partner | 🟡 Declared stub |
+| `packages/attest` | ⚠️ Written, never compiled |
+| `apps/merchant` | ⚠️ Written, never bundled |
+| `apps/payer` | ⚠️ Written, never bundled |
+| `services/relay` | ❌ Stub — one line |
+| Live price feed | ❌ Blocked on a product decision |
+| Onboarding (embedded wallet) | ❌ Not started |
+| Gasless relayer | ❌ Not started |
+| Slashing | ❌ Not started |
+| CI | ❌ None |
+
+## The three things that block the most
+
+<Steps>
+  <Step title="Get a build onto a handset">
+    Everything app-side is unverified until this happens, and `@nelo/attest`'s Kotlin has never been compiled at all. A first EAS build surfaces an entire class of bug in its first thirty seconds — one of which [has already been found by hand](/operations/testing#what-that-gap-already-cost).
+  </Step>
+  <Step title="Run `anchor test` somewhere with the toolchain">
+    40 LiteSVM tests exist and have never executed. Until they do, the Trust Stake is written rather than proven.
+  </Step>
+  <Step title="Settle the payout partner">
+    No licensed partner has been signed. The ledger is real and the stub is honest, so the fork is cheap — but the real leg cannot be built against an API nobody has access to.
+  </Step>
+</Steps>
+
+## Decisions waiting on a person
+
+<AccordionGroup>
+  <Accordion title="Which launch currency, or which oracle" icon="money-bill-transfer">
+    Pyth publishes **no NGN feed** — 39 FX pairs, and the naira is not among them. Of the markets the plan names, Manila (PHP) is covered; Lagos is not.
+
+    Either pick a covered launch currency, or source NGN from Switchboard or a commercial feed. Hermes also requires an API key for prices. Until one is settled, the till runs a configured rate and says so on screen.
+  </Accordion>
+
+  <Accordion title="The reserve line, and the premium claim" icon="calculator">
+    [The reserve model](/economics/reserve-model) finds the 0.20% insurance line does not cover expected loss — 28.1 bps implied — and that reserve relief funds a premium of ~1.001×, not the illustrative 1.5×.
+
+    Both are changes to documents and one constant, not to the architecture. Both should be settled before the deck goes out.
+  </Accordion>
+
+  <Accordion title="k and the hard cap, together" icon="sliders">
+    The curve raises required reserve below ~$250 of staked value, and the $500 hard cap needs $81,000 of stake to bind. Neither parameter can be fixed without the other.
+
+    Both are `RiskConfig` updates rather than redeploys.
+  </Accordion>
+
+  <Accordion title="Whether to widen the conflict proof" icon="scale-unbalanced">
+    `report_conflict` only freezes on two vouchers at the **same** sequence. Successive sequences with inconsistent `remaining_after` do not trigger it, and that residual is what the insurance line prices.
+
+    Accepting that pair as proof would shorten the window a compromised device keeps trading in. It changes the fraud model, so it is flagged rather than taken.
+  </Accordion>
+</AccordionGroup>
+
+## What is deliberately not built
+
+Named rather than discovered, because a named stub reads as confidence and a discovered one reads as spin:
+
+- **Slashing.** The freeze blocks the exit, so stake cannot walk away from a loss it backs — but nothing yet *moves* it to a reserve, because there is no reserve account. That is the other half of "first-loss capital".
+- **The payout partner adapter.** The interface exists; the implementation waits on sandbox access.
+- **An HTTP surface on `settle`.** It is a library the relay and the app will call, not a server.
+- **The offline transport.** QR and NFC, cached enrolment and revocation lists, the offline queue — all week-3 work.

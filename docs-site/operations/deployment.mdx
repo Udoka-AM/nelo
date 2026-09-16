@@ -1,0 +1,114 @@
+---
+title: "Deployment"
+description: "Devnet, the program keypair, and what has to happen before the next redeploy."
+---
+
+## Devnet
+
+| | |
+|---|---|
+| Program ID | `29QdPRQC8C5v6C8gMcBqtw9T4RxYyZ1wqThkEj3XJeQx` |
+| Upgrade authority | `BX8kSVjmx9Eihd173hdrRW1Ap61AmixQzqjtc3o5DQfu` |
+| Cluster | devnet |
+
+<Warning>
+**The deployed build predates the Trust Stake.**
+
+`Vault` gained four fields (`stake`, `reputation_bps`, `pending_unstake`, `unstake_unlock_at`) and `redeem_voucher` gained the `RiskConfig` account. Vaults opened by the old build **cannot be deserialised** by the new one.
+
+On devnet, redeploy and open fresh vaults.
+</Warning>
+
+## Redeploy checklist
+
+<Steps>
+  <Step title="Restore the program keypair">
+    From `~/.config/solana/nelo/nelo_vault-program-keypair.json` — see the warning below. Do **not** let a build generate a new one.
+  </Step>
+  <Step title="Build and deploy">
+    ```bash
+    anchor build
+    anchor deploy --provider.cluster devnet
+    ```
+    If the program id does not match `declare_id!`, stop and restore the keypair rather than editing the id.
+  </Step>
+  <Step title="Initialise the risk config — once per deployment">
+    `redeem_voucher` requires the `RiskConfig` PDA at seeds `[b"risk"]`. **No voucher can redeem until it exists.**
+
+    Validated on the way in: `stake_reference != 0` (it divides), `hard_cap != 0` (a zero cap refuses every voucher on the platform), `haircut_bps <= 10_000`, `unstake_cooldown >= 24h`.
+  </Step>
+  <Step title="Re-run the devnet gate">
+    ```bash
+    cargo test -p nelo_vault --test devnet -- --ignored --nocapture
+    ```
+    It creates a fresh owner and its own mint each run, so it is self-contained. The harness initialises the risk config best-effort — on a chain that has seen a previous run, it already exists.
+  </Step>
+</Steps>
+
+## The program keypair
+
+<Warning>
+**The program keypair is not in this repo, and must not be.**
+
+`target/deploy/nelo_vault-keypair.json` is what controls the program address, and `target/` is gitignored — so `rm -rf target/` destroys it and `anchor build` silently generates a new one **with a different address**.
+
+The canonical copy lives at `~/.config/solana/nelo/nelo_vault-program-keypair.json`. If a build ever produces a program id that does not match `declare_id!`, restore from there rather than editing the id.
+
+Before mainnet, that key belongs on a hardware wallet.
+</Warning>
+
+## Authorities, and why they are separate
+
+| Authority | Holds | Frequency |
+|---|---|---|
+| Program upgrade | Replacing the program | Rare, high-stakes |
+| Risk (`RiskConfig.authority`) | Prices, reputation, curve parameters | Routine, frequent |
+
+They are deliberately different keys. Publishing a stake price is an operation that happens often, and it must not need the key that can replace the program. `update_risk_config` carries an `authority` field, so rotation needs no extra instruction.
+
+<Note>
+Three authorities were specified to be generated separately from the start — program, enrolment, risk. Keeping them apart after the fact is much harder than starting that way.
+</Note>
+
+## The apps
+
+Both are Expo development builds. **Expo Go cannot load them** — `@nelo/attest` is a native module.
+
+```bash
+cd apps/payer    && npx eas build -p android --profile development
+cd apps/merchant && npx eas build -p android --profile development
+```
+
+<Warning>
+**Neither has ever been built.** The Kotlin in `@nelo/attest` compiles for the first time during that EAS build, and neither app has ever been bundled. Budget for the first build to fail on things no test can catch — see [Testing](/operations/testing) for one that already did.
+</Warning>
+
+Check a handset's capability without building anything:
+
+```bash
+adb shell pm list features | grep -i strongbox
+```
+
+StrongBox is API 28+ and absent on much budget hardware — which is the hardware this product targets. A handset without it degrades to online-only; that is an ordinary case, not an error.
+
+## Release
+
+Not yet done, and week-4 work:
+
+- **Signed release APK.** Done when it installs from scratch on a handset that has *never* had a dev build, and completes a sale.
+- **dApp Store publish.** Requires a Publisher Portal account and a funded keypair.
+- **Repo clean.** `git clone` → `pnpm install` → `anchor test` green on a machine that has never seen the project. Done when someone outside the team does exactly that and it works.
+
+## Environment
+
+```bash
+cp .env.example .env
+```
+
+| Variable | For |
+|---|---|
+| `HELIUS_API_KEY` | RPC. Two keys were specified — one for the app, one for the relay — so it is visible which is burning credits |
+
+<Warning>
+**Never commit a keypair, a mnemonic, or a real API key.** `.env` is gitignored; keep it that way.
+</Warning>
