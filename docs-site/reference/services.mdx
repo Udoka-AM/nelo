@@ -1,0 +1,110 @@
+---
+title: "Services"
+description: "The double-entry ledger behind the payout leg, and the relay that isn't built yet."
+---
+
+## `@nelo/settle`
+
+The record of who is owed what. An auditor, a payout partner and a merchant with a complaint all read this, and all three must see the same number — so the rules are enforced in the ledger rather than trusted to its callers.
+
+### Three rules, each a test
+
+<AccordionGroup>
+  <Accordion title="Every transaction balances, per currency" icon="scale-balanced">
+    A payout touches USDC and naira in the same economic event. A ledger that balanced them *together* would net a dollar against a naira and call it square.
+
+    Each currency balances on its own. Debits are positive, credits negative, and the check is "these sum to zero" — which is impossible to fudge.
+  </Accordion>
+
+  <Accordion title="Posting is idempotent" icon="rotate">
+    Retries are the **normal** case, not the edge one: a partner webhook arrives twice, a relay resends, an operator re-runs a batch.
+
+    Every transaction carries an id the outside world already made unique — an on-chain signature, a partner reference. A generated id defeats the point, because a retry generates a different one. Re-posting an id changes nothing and returns `{ posted: false, reason: "duplicate" }`.
+  </Accordion>
+
+  <Accordion title="The journal is append-only" icon="lock">
+    Nothing is edited or deleted. A mistake is corrected by posting its reversal, so the history of what was believed, and when, survives.
+  </Accordion>
+</AccordionGroup>
+
+### The chart of accounts
+
+Declared, not inferred. A ledger that opens an account whenever it sees a new string will happily balance a typo against itself and report a clean trial balance with the money in the wrong place.
+
+| Account | Type |
+|---|---|
+| `assets:custody` | USDC held on merchants' behalf |
+| `assets:partner_receivable:<partner>` | Owed to us by a disbursement partner |
+| `liabilities:payable:<merchant>` | Owed to a merchant, in dollars |
+| `liabilities:disbursement_payable:<merchant>` | Owed in local currency, once instructed |
+| `liabilities:rebate_payable:<merchant>` | Accrued Trust Stake rebate |
+| `liabilities:insurance_reserve` | Set aside against the offline guarantee |
+| `revenue:platform_fee`, `revenue:payout_spread` | |
+| `expense:rebate`, `expense:reserve_funding` | |
+
+Sub-accounts inherit their parent's type: `liabilities:payable:m1` is a liability because `liabilities:payable` is.
+
+### The payout lifecycle
+
+```ts
+settleSale(ledger, { signature, merchantId, grossMinor, ... })
+instructPayout(ledger, { payoutId, partnerRate, merchantRate, ... })
+settlePayout(ledger, { payoutId, partnerReference, ... })
+failPayout(ledger, { payoutId, split, reason, ... })
+reconcileCustody(ledger, currency, observedOnChain)
+```
+
+<Warning>
+**The merchant's dollar claim is discharged when a payout is *instructed*, not when the partner confirms.**
+
+The money really has left. A balance still showing it would let the same dollars pay out twice while the partner is still working.
+</Warning>
+
+A failure reverses the instruction **exactly** and the merchant is whole again — a failed payout that strands a shopkeeper's money is the worst thing this service can do. The reversal is a new entry, not a deletion: the record shows it was attempted and why it did not land.
+
+After settlement, what remains on the partner receivable is the **spread** — real money the partner still owes, settled on their own remittance cycle. Leaving it visible rather than writing it off at instruction time is the difference between knowing what you are owed and hoping.
+
+### The spread is a difference, never a percentage
+
+```ts
+splitPayout(tokenMinor, partnerRate, merchantRate)
+// spread = partnerLocal − merchantLocal
+```
+
+Both sides round down independently and the spread absorbs the remainder, so rounding **cannot invent or destroy a minor unit**. Quoting a merchant a better rate than the partner gives is refused loudly — that is a pricing mistake, not something to discover in a month's revenue figures.
+
+The same principle in `splitSale`: `net` is computed by subtraction, not by its own percentage, so fee and merchant share always add back to exactly what the customer paid.
+
+### Reconciliation
+
+```ts
+reconcileCustody(ledger, "USDC", observedOnChain)
+// → { expectedMinor, observedMinor, driftMinor, balanced }
+```
+
+The one check that catches everything else — a missed sale, a double-posted payout, a sweep nobody recorded. Run it at close of day, and treat **any** drift as an incident. "Small" drift is still a transaction you cannot explain.
+
+### The partner is a declared stub
+
+<Warning>
+No disbursement partner has been signed. The only implementation is `DeclaredStubPartner`, and it is built so it **cannot be mistaken for a real one**:
+
+- `fidelity: "stub"` on the partner, on every quote, and on every result
+- References prefixed `STUB-`, unmistakable in a log, a ledger memo or a screenshot
+- `assertMovesRealMoney(partner)` throws for anything that is not `"live"`
+- Configured destinations **reject**, so the failure path is exercised rather than assumed — a payout that cannot fail in testing will fail for the first time in front of a merchant
+</Warning>
+
+Swapping in a licensed partner is a constructor change. That is deliberate: it pre-takes the project's declared fork — *"either stub the settlement leg and say so on camera, or pivot the demo"* — so the decision costs a line rather than a week.
+
+**39 tests.**
+
+---
+
+## `@nelo/relay`
+
+<Warning>
+**Not built.** Still a one-line stub.
+</Warning>
+
+Intended scope: broadcast queue, retry, multi-RPC failover, and durable nonce accounts so a queued offline transfer never expires before it settles. It is week-3 work.

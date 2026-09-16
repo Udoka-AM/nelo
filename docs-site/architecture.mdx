@@ -1,0 +1,116 @@
+---
+title: "Architecture"
+description: "Every moving part, what it is responsible for, and where the boundaries are."
+---
+
+Nelo is a pnpm + Cargo monorepo. One Anchor program, two Expo apps, five TypeScript packages, two services.
+
+## The shape of it
+
+```
+programs/nelo_vault/     Anchor program — vault, replay window, Trust Stake
+  src/curve.rs             The floor-limit curve: sublinear, capped, integer-only
+
+apps/merchant/           Expo — the till (amount entry, Solana Pay, day-book, balance)
+apps/payer/              Expo — vault + offline voucher emitter, StrongBox probe
+
+packages/voucher/        202-byte wire format: encode, decode, verify
+packages/pay/            Solana Pay requests + local-currency arithmetic
+packages/ledger/         The day-book: sale records, day boundaries, totals
+packages/attest/         Expo native module — StrongBox P-256 + attestation
+packages/reserve/        The insurance line: exposure, reserve, premium ceiling
+
+services/settle/         Double-entry ledger, payout lifecycle, partner interface
+services/relay/          Broadcast queue, retry, multi-RPC failover  (stub)
+```
+
+## The one organising principle
+
+**Anything that can be tested without a phone or a validator, is.**
+
+That is not tidiness — it is the only reason most of this repo is verifiable at all. StrongBox needs a handset. LiteSVM needs a built program. So the arithmetic that would otherwise hide inside those is pulled into plain packages with plain tests:
+
+| Pulled out | Into | So that |
+|---|---|---|
+| Currency conversion, fee splits | `@nelo/pay` | Rounding direction is a test, not a hope |
+| Day boundaries, close-of-day totals | `@nelo/ledger` | A merchant's midnight is provable |
+| DER → raw r‖s, low-S normalisation | `@nelo/voucher` | The signature format is proven without a handset |
+| The floor-limit curve | `curve.rs` (no Anchor types) | Sublinearity is a unit test, not a validator run |
+| Double-entry posting rules | `@nelo/settle` | Balance and idempotency are provable off-device |
+
+The residue — account plumbing, native modules, RPC — is thin by design, because it is the part that cannot be checked here.
+
+## How a sale moves
+
+<Steps>
+  <Step title="Merchant enters an amount">
+    `apps/merchant` holds it in **minor units as a `bigint`**, so no float ever touches a price. `@nelo/pay` converts to token base units at the current rate.
+  </Step>
+  <Step title="A Solana Pay request is shown">
+    `encodeTransferRequest()` builds the URL; a random 32-byte **reference** goes in it as the marker the terminal will watch for.
+  </Step>
+  <Step title="The customer pays from any wallet">
+    Nothing Nelo-specific on their side.
+  </Step>
+  <Step title="The terminal validates">
+    `awaitPayment()` polls for a transaction naming the reference, then **validates it against what was asked** — right payee, right mint, enough money, no failure. Finding a transaction is not proof of payment: anyone can name your reference.
+  </Step>
+  <Step title="It lands in the day-book and the balance">
+    `@nelo/ledger` groups it by the merchant's local day. The balance row re-reads the chain.
+  </Step>
+  <Step title="Settlement posts to the ledger">
+    `services/settle` books the sale double-entry: custody up, merchant payable up, fee to revenue, reserve and rebate accrued — one transaction, because it is one event.
+  </Step>
+</Steps>
+
+## How an offline sale moves
+
+This is the path the product exists for.
+
+<Steps>
+  <Step title="The payer pre-loads a vault">
+    `deposit` locks USDC into a PDA on chain. This is the prepaid balance.
+  </Step>
+  <Step title="Both phones go offline">
+    The payer's device holds a P-256 key in **StrongBox**; the merchant's device holds cached enrolment and revocation lists.
+  </Step>
+  <Step title="The payer emits a voucher">
+    202 bytes, signed by the secure element over the first 105. Transported as a QR code — it fits version 10 at ECC level M with room to spare.
+  </Step>
+  <Step title="The merchant verifies, with no network">
+    Signature against the carried device key; key in the cached enrolment list; vault not revoked; amount within the floor limit; not expired; `remaining_after` consistent with the last balance seen.
+  </Step>
+  <Step title="Both reconnect, the voucher redeems">
+    `redeem_voucher` asserts the secp256r1 precompile verified *this* key over *these* bytes, consumes the sequence from a 128-slot replay window, and moves the collateral.
+  </Step>
+  <Step title="A replay is refused">
+    Same sequence twice → `SequenceAlreadyRedeemed`. Two different vouchers at one sequence → permissionless proof that **freezes the vault**.
+  </Step>
+</Steps>
+
+## What the merchant cannot check offline
+
+Stated plainly rather than implied away:
+
+**Can, with no network:** signature verifies; device key is enrolled; vault is not revoked; amount within the floor limit; not expired; `remaining_after` is consistent with the last vault balance seen.
+
+**Cannot, by definition:** whether that sequence was already spent at another stall thirty seconds ago. No offline system can — EMV included.
+
+So the exposure is priced rather than denied. Worst case per vault per offline session is roughly `floor_limit × merchants_reached − locked_balance`, every attempt is cryptographically attributable to a hardware-attested key, and the vault freezes permanently on the first conflict. The residual is [an ordinary insurance line](/economics/reserve-model).
+
+## Trust boundaries
+
+<CardGroup cols={2}>
+  <Card title="Never trusted" icon="ban">
+    Nelo's servers. There is no server in the value path — the chain verifies the secure element directly.
+  </Card>
+  <Card title="Trusted, and attested" icon="microchip">
+    The handset's StrongBox. Its attestation chain is verified at enrolment; a device without one degrades to online-only rather than falling back to software.
+  </Card>
+  <Card title="Trusted, and bounded" icon="scale-balanced">
+    The risk authority — it publishes prices and reputation. It is held separately from the program upgrade authority, and every input it publishes is range-checked on chain.
+  </Card>
+  <Card title="Trusted, and declared" icon="flag">
+    The payout partner. Currently a stub that labels itself as one at every call site, so nothing can mistake it for a live disbursement.
+  </Card>
+</CardGroup>

@@ -1,0 +1,105 @@
+---
+title: "Replay and double-spend"
+description: "A 128-slot sliding window, why a single counter is wrong, and what the conflict freeze does and does not catch."
+---
+
+## Use a window, not a counter
+
+The obvious design is `last_seq` with a `seq > last_seq` check. It is wrong, and it fails on the **common** case rather than an edge one.
+
+<Warning>
+Merchant A holds voucher 5. Merchant B holds voucher 6. B reconnects first.
+
+With a single counter, `last_seq` advances to 6 and **A's voucher dies through no fault of A's.** Out-of-order redemption is normal — merchants reconnect when they reconnect.
+</Warning>
+
+Nelo keeps a **128-slot sliding bitmap** instead — the same primitive IPsec uses for anti-replay. Sixteen bytes.
+
+```rust
+pub seq_base: u64,      // lowest sequence still tracked
+pub seq_bitmap: u128,   // one bit per sequence from seq_base
+```
+
+## The rules
+
+<Steps>
+  <Step title="Reject below the window">
+    `seq < seq_base` → `SequenceTooOld`. It has fallen out of the window and can no longer be redeemed.
+  </Step>
+  <Step title="Reject above the window">
+    `seq >= seq_base + 128` → `SequenceTooFarAhead`. The payer is too far ahead of what has settled.
+  </Step>
+  <Step title="Reject an already-set bit">
+    The sequence has been redeemed → `SequenceAlreadyRedeemed`. **This is where a double-spend dies.**
+  </Step>
+  <Step title="Otherwise set it, and advance">
+    Set the bit, then advance `seq_base` while the low bit is set — sliding the window forward over the contiguous settled prefix.
+  </Step>
+</Steps>
+
+The properties that matter, each a committed test:
+
+| Property | Test |
+|---|---|
+| Vouchers 5 and 6 both redeem, **in either order** | `replay_window_accepts_out_of_order` |
+| The base advances over a contiguous run | `window_base_advances_over_contiguous_slots` |
+| A sequence beyond the window is refused | `rejects_sequence_beyond_the_window` |
+| Replaying either one fails | `double_spend_is_refused` |
+
+## The conflict freeze
+
+A replay is one thing. **Payer fraud is another**, and it has a different signature: two *different* vouchers carrying the *same* sequence, both validly signed by the enrolled device.
+
+An honest secure element never produces that pair. So producing it is proof, and the proof is permissionless — anyone holding both vouchers can submit them:
+
+```rust
+pub fn report_conflict(
+    ctx: Context<ReportConflict>,
+    voucher_a: VoucherArgs,
+    voucher_b: VoucherArgs,
+) -> Result<()>
+```
+
+Instructions 0 and 1 of the transaction must be the secp256r1 precompile verifying each voucher. The program introspects both.
+
+### What it refuses to treat as a conflict
+
+<AccordionGroup>
+  <Accordion title="The same voucher submitted twice" icon="copy">
+    That is a **replay**, not payer fraud — and replaying a voucher you legitimately hold would otherwise be a denial-of-service against the payer. `NotAConflict`.
+  </Accordion>
+  <Accordion title="Two vouchers at different sequences" icon="arrow-right-arrow-left">
+    Ordinary trading. `NotSameSequence`.
+  </Accordion>
+  <Accordion title="A forged signature" icon="shield-xmark">
+    The precompile introspection catches it before the conflict logic runs.
+  </Accordion>
+</AccordionGroup>
+
+### What the freeze does
+
+| Blocked | Still allowed |
+|---|---|
+| `withdraw`, `deposit` | `redeem_voucher` |
+| `stake`, `request_unstake`, `unstake` | |
+
+Redemption stays open deliberately. The freeze blocks the payer's exit, not the payees — merchants holding good vouchers must still claim against locked collateral. Freezing them out would punish the victims.
+
+Staking is blocked in both directions: stake is **first-loss capital against exactly the event that froze the vault**, and capital that can leave after the loss is not collateral.
+
+## The gap this does not close
+
+<Warning>
+`report_conflict` requires **the same sequence**. A payer on a modified device signing *successive* sequences — each with a plausible `remaining_after`, together exceeding their collateral — does not produce a same-sequence pair, so the freeze never triggers.
+
+The replay window still caps each sequence at one settlement, and `amount <= vault.balance` stops redemption once collateral runs out. What happens is that the merchants **at the back of the queue** find nothing left to claim.
+</Warning>
+
+That shortfall is precisely what the platform guarantee covers, and what [the reserve model](/economics/reserve-model) prices:
+
+```
+worst case per vault per offline session
+  ≈ floor_limit × merchants_reached − locked_balance − staked_value
+```
+
+Whether `report_conflict` should also accept an inconsistent-`remaining_after` pair as proof is an **open design decision**. It would shorten the window in which a compromised device keeps trading. It is flagged rather than taken, because it changes the fraud model rather than fixing a bug.
