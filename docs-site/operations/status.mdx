@@ -22,9 +22,9 @@ Three states are kept apart, because conflating them is how a demo ends up claim
     Caveat: run with a *software* P-256 key, not StrongBox.
   </Card>
   <Card title="The ordinary sale" icon="receipt">
-    **Written.** Till, MWA wallet, Solana Pay, payment validation, day-book, balance, SPL collateral.
+    **Written.** Till, MWA wallet, Solana Pay, payment validation, day-book, balance, SPL collateral, onboarding.
 
-    Caveat: never bundled. See [Testing](/operations/testing).
+    Caveat: never bundled — and that gap has now cost [two import bugs](/operations/testing#what-that-gap-already-cost).
   </Card>
   <Card title="Trust Stake" icon="coins">
     **Curve proven off-chain** (17 tests). Staking, cooldown and risk config **written, never executed** — the ~19 on-chain tests have not run.
@@ -43,7 +43,7 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | `packages/voucher` | ✅ Proven, both sides, golden vectors |
 | `packages/pay` | ✅ Proven (54 tests) |
 | `packages/ledger` | ✅ Proven (13 tests) |
-| `packages/onboard` | ✅ Proven (31 tests) |
+| `packages/onboard` | ✅ Proven (60 tests) |
 | `packages/reserve` | ✅ Proven (16 tests) |
 | `services/settle` — ledger | ✅ Proven (39 tests) |
 | `services/settle` — partner | 🟡 Declared stub |
@@ -52,8 +52,8 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | `apps/payer` | ⚠️ Probe only — never bundled. Real payer UI is week 3 |
 | `services/relay` | ❌ Stub — one line |
 | Live price feed | ❌ Blocked on a product decision |
-| `packages/onboard` — phone + payout validation | ✅ Proven (31 tests) |
-| Onboarding (embedded wallet) | ❌ Privy wiring not started |
+| Onboarding — the flow's rules | ✅ Proven (29 of `@nelo/onboard`'s 60) |
+| Onboarding — the Privy calls | ⚠️ Written, never bundled; needs an app ID |
 | Gasless relayer | ❌ Not started |
 | Slashing | ❌ Not started |
 | CI | ❌ None |
@@ -62,7 +62,9 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 
 <Steps>
   <Step title="Get a build onto a handset">
-    Everything app-side is unverified until this happens, and `@nelo/attest`'s Kotlin has never been compiled at all. A first EAS build surfaces an entire class of bug in its first thirty seconds — one of which [has already been found by hand](/operations/testing#what-that-gap-already-cost).
+    Everything app-side is unverified until this happens, and `@nelo/attest`'s Kotlin has never been compiled at all. A first EAS build surfaces an entire class of bug in its first thirty seconds — [two of which have already been found by hand](/operations/testing#what-that-gap-already-cost).
+
+    Onboarding now needs it twice over: a Privy app ID and a development build, because the SDK's native extensions cannot load in Expo Go either.
   </Step>
   <Step title="Run `anchor test` somewhere with the toolchain">
     40 LiteSVM tests exist and have never executed. Until they do, the Trust Stake is written rather than proven.
@@ -107,4 +109,5 @@ Named rather than discovered, because a named stub reads as confidence and a dis
 - **Slashing.** The freeze blocks the exit, so stake cannot walk away from a loss it backs — but nothing yet *moves* it to a reserve, because there is no reserve account. That is the other half of "first-loss capital".
 - **The payout partner adapter.** The interface exists; the implementation waits on sandbox access.
 - **An HTTP surface on `settle`.** It is a library the relay and the app will call, not a server.
+- **Embedded-wallet recovery.** `needs-recovery` is detected and reported; `useRecoverEmbeddedWallet` is not wired, so the retry on that screen will not clear it. It arises when a wallet has to be reconstructed on a new device, which is exactly the case a merchant who changes phones hits — so it is a gap with a date on it, not a permanent omission.
 - **The offline transport.** QR and NFC, cached enrolment and revocation lists, the offline queue — all week-3 work.

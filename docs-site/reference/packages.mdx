@@ -146,6 +146,9 @@ validateBankAccount(market, inst, acct)   // shape blocks; check digit warns
 validateMobileMoney(market, phone)        // reuses phone normalisation
 toCanonical(destination)                  // → "bank:NG:058:0123456789"
 parseCanonical(string)                    // re-validates on the way back
+
+reduce(state, event, now)                 // → { state, effect? }
+explain(error)                            // → { audience, message }
 ```
 
 ### Not a libphonenumber reimplementation
@@ -173,11 +176,27 @@ momo:NG:+2348031234567
 
 Colon-delimited because no field can contain a colon, which makes the parse unambiguous rather than usually-right. Tested as a round trip, and `parseCanonical` **re-validates** rather than trusting the string — it may have come off a phone, out of a database, or from a partner callback, and a destination that is wrong is money going somewhere else.
 
+### The flow is a state machine, and that is why it is here
+
+The Privy wiring — SMS code, embedded wallet — needs an app ID, a development build and a handset. What it does *not* need is any of the deciding: which step the merchant is on, whether what they typed is acceptable, whether a tap is allowed yet, what a failure means. So `flow.ts` holds all of that as `reduce(state, event, now)` returning the next state and at most **one effect** for the caller to perform, and `apps/merchant/src/privy.ts` is left with: call the SDK, report back.
+
+<Note>
+**A result is only accepted while the effect that produces it is in flight, and only in the step that could have asked for it.** A late promise, a remount or a double tap then cannot advance the flow twice.
+
+`busy` alone is not sufficient, and the difference is not hypothetical: an effect that starts the next effect leaves `busy` set across the handover, so a duplicate `logged-in` sails through a `busy`-only guard and creates a **second wallet** — the one failure in this flow with no undo, because the merchant ends up holding an address the day-book has never seen. Two tests pin it shut.
+</Note>
+
+### Whose problem is it?
+
+`explain()` labels every failure `merchant` or `operator`, and the screen renders them differently.
+
+*"That code is not right"* is fixable by the person holding the phone. *"SMS login is not enabled for this Privy app"* is a dashboard setting — showing it as though they mistyped something has them retype a perfectly good number until they give up. The codes are Privy's own, read off `PrivyApiError.code` and `PrivyClientError.code`; anything unrecognised is **passed through rather than replaced**, because a reassuring "something went wrong" on a first development build is how a configuration problem stays invisible for an afternoon.
+
 <Warning>
 **The NUBAN check digit is advisory and must stay that way.** It is implemented because it catches transposed digits, and it is non-blocking because it has **not been validated against real account numbers**. Refusing a merchant's actual account on an unverified algorithm is a lost merchant; accepting a typo is a payout the partner bounces with a clear reason.
 </Warning>
 
-**31 tests.**
+**60 tests.**
 
 ---
 
