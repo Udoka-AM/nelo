@@ -8,10 +8,16 @@
  * `transact` opens an Android intent to the wallet app, so none of this can run
  * in Expo Go or on a simulator — it needs a development build on a real device
  * with a wallet installed.
+ *
+ * This is one of **two** ways a merchant gets an account; the other is a Privy
+ * embedded wallet, for merchants who have never held a key. Which one they used
+ * is recorded by `account.ts`, which owns the storage for both — this module
+ * keeps only the credential that is specific to MWA.
  */
 import { transact } from "@solana-mobile/mobile-wallet-adapter-protocol";
 import * as SecureStore from "expo-secure-store";
 import { base64AddressToBase58 } from "@nelo/pay";
+import { forget, remember, type MerchantAccount } from "./account";
 
 /** Shown in the wallet's authorisation sheet. */
 const APP_IDENTITY = {
@@ -23,22 +29,14 @@ const APP_IDENTITY = {
 /** Devnet until a payout partner and real money are in play. */
 const CHAIN = "solana:devnet" as const;
 
-const ADDRESS_KEY = "nelo.merchant.address";
-const LABEL_KEY = "nelo.merchant.label";
 /** A credential: it re-authorises without prompting, so it never touches plain storage. */
 const AUTH_TOKEN_KEY = "nelo.merchant.authToken";
-
-export interface MerchantWallet {
-  /** base58 — ready to drop into a Solana Pay request. */
-  address: string;
-  label?: string;
-}
 
 /**
  * Ask the wallet to authorise. Returns null if the merchant declines, which is
  * an ordinary outcome and not an error worth throwing over.
  */
-export async function connect(): Promise<MerchantWallet | null> {
+export async function connect(): Promise<MerchantAccount | null> {
   const authToken = await SecureStore.getItemAsync(AUTH_TOKEN_KEY);
 
   const result = await transact(async (wallet) => {
@@ -54,23 +52,15 @@ export async function connect(): Promise<MerchantWallet | null> {
   const account = result.accounts[0];
   if (!account) return null;
 
-  const merchant: MerchantWallet = {
+  const merchant: MerchantAccount = {
+    kind: "wallet",
     address: base64AddressToBase58(account.address),
-    label: account.label,
+    ...(account.label ? { label: account.label } : {}),
   };
 
   await SecureStore.setItemAsync(AUTH_TOKEN_KEY, result.auth_token);
-  await SecureStore.setItemAsync(ADDRESS_KEY, merchant.address);
-  if (merchant.label) await SecureStore.setItemAsync(LABEL_KEY, merchant.label);
+  await remember(merchant);
   return merchant;
-}
-
-/** The remembered wallet, so the terminal opens ready to trade. */
-export async function restore(): Promise<MerchantWallet | null> {
-  const address = await SecureStore.getItemAsync(ADDRESS_KEY);
-  if (!address) return null;
-  const label = await SecureStore.getItemAsync(LABEL_KEY);
-  return { address, label: label ?? undefined };
 }
 
 export async function disconnect(): Promise<void> {
@@ -84,9 +74,5 @@ export async function disconnect(): Promise<void> {
       // ignored deliberately
     }
   }
-  await Promise.all([
-    SecureStore.deleteItemAsync(AUTH_TOKEN_KEY),
-    SecureStore.deleteItemAsync(ADDRESS_KEY),
-    SecureStore.deleteItemAsync(LABEL_KEY),
-  ]);
+  await Promise.all([SecureStore.deleteItemAsync(AUTH_TOKEN_KEY), forget()]);
 }

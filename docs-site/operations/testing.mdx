@@ -9,6 +9,7 @@ This page is kept honest rather than flattering. The distinction between *a test
 
 | Suite | Tests | Needs |
 |---|---:|---|
+| `packages/onboard` | 60 | Node only |
 | `packages/pay` | 54 | Node only |
 | `services/settle` | 39 | Node only |
 | `packages/reserve` | 16 | Node only |
@@ -49,8 +50,19 @@ import { awaitPayment, type PaymentOutcome } from "@nelo/pay";
 
 No test caught it, and no test could have: the app has never been bundled, and there was no CI to bundle it. It was found by reading imports while adding an unrelated feature.
 
+Then it happened again. While wiring onboarding:
+
+```tsx
+// apps/merchant/App.tsx — the day-book screen
+<ScrollView contentContainerStyle={styles.bookBody}>
+```
+
+`ScrollView` was **never imported.** Tapping **Today** would have thrown. Found the same way — by eye, adding something else.
+
 <Note>
-This is the argument for the EAS build in one paragraph. A first bundle surfaces this entire class of bug in its first thirty seconds, and everything app-side is currently in the same position this was.
+This is the argument for the EAS build in one paragraph, now with two data points. A first bundle surfaces this entire class of bug in its first thirty seconds, and everything app-side is still in the position these two were.
+
+Both were import bugs in the same file, found by reading rather than running. That is not a method; it is what is left when there is nothing to run.
 </Note>
 
 ## How the tests are written
