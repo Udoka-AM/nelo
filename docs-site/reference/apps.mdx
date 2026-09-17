@@ -74,9 +74,15 @@ Seven Pyth feed ids are wired and each was verified against the Hermes API — o
 
 ---
 
-## `apps/payer` — the vault and the voucher emitter
+## `apps/payer` — the probe
 
-Hosts `@nelo/attest` and its probe screen, which does the full round trip: keygen in the secure element, sign the 105 bytes, verify with the merchant's own code.
+<Note>
+**This is not the product yet, and its own header says so.** It exists to answer the questions only a real handset can, and the real payer UI is week-3 work.
+
+There is no vault funding and no voucher emission to a merchant in it — it exercises the codec and the secure element as *checks*.
+</Note>
+
+Hosts `@nelo/attest`. The round trip it runs — keygen in the secure element, sign the 105 bytes, verify with the merchant's own code — is a check, not a payment flow.
 
 ### The probe
 
@@ -88,11 +94,15 @@ The screen that answers *"does this handset actually work?"* — and the one tha
 | `isStrongBoxAvailable()` | This handset has a secure element |
 | `generateAttestedKey()` | A key exists in hardware, with an attestation chain |
 | `sign()` → `verify()` | The signature round-trips in the form the chain accepts |
+| `@nelo/voucher` under Hermes | BigInt and DataView behave differently there than in Node |
+| `@noble/curves` under Hermes | The offline path cannot verify a voucher without it |
 
 <Warning>
 **Capability detection is not optional, and the fallback is not software.**
 
-Where StrongBox is absent, the payer falls back to **online-only** — it refuses to emit an offline voucher and says why. Silently falling back to a software key would keep the demo working while destroying the entire argument.
+Where StrongBox is absent the correct behaviour is **online-only**. Silently falling back to a software key would keep the demo working while destroying the entire argument, and `@nelo/attest` enforces that at the module level — it throws rather than retrying without the flag.
+
+The probe *detects and labels* this correctly. The enforcement point a merchant would actually hit — refusing to emit an offline voucher and saying why — **does not exist yet**, because nothing emits vouchers yet. That arrives with the payer UI in week 3.
 </Warning>
 
 Check a handset without building anything:
