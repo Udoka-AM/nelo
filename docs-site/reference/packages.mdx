@@ -1,6 +1,6 @@
 ---
 title: "Packages"
-description: "The five TypeScript packages — what each owns, and why it exists outside the app."
+description: "The six TypeScript packages — what each owns, and why it exists outside the app."
 ---
 
 Everything here is pure and testable off-device. That is the point: it is the arithmetic that would otherwise hide inside a phone or a validator, where nobody could check it.
@@ -132,6 +132,52 @@ The Kotlin side does one conversion it cannot delegate: `BigInteger.toByteArray(
 <Warning>
 **Never compiled.** Requires a JDK and Android SDK; it compiles for the first time during an EAS build. See [Testing](/operations/testing).
 </Warning>
+
+---
+
+## `@nelo/onboard`
+
+The checkable half of merchant onboarding: what a merchant types, and whether it can be paid.
+
+```ts
+normalisePhone(input, market)             // → E.164, or a reason
+formatPhone(e164)                         // → "+234 803 123 4567"
+validateBankAccount(market, inst, acct)   // shape blocks; check digit warns
+validateMobileMoney(market, phone)        // reuses phone normalisation
+toCanonical(destination)                  // → "bank:NG:058:0123456789"
+parseCanonical(string)                    // re-validates on the way back
+```
+
+### Not a libphonenumber reimplementation
+
+<Note>
+Global numbering is a large, frequently-changing dataset. A half-remembered subset of it would **reject real merchants while looking authoritative** — so the launch markets are explicit table rows, and anything outside them is refused rather than guessed.
+
+Adding a market is a row in `MARKETS` plus its tests. If the table ever becomes the problem, that is the point to take the dependency.
+</Note>
+
+### Two things that fell out of building it
+
+**The markets overlap.** `0917…` is a real Nigerian prefix *and* a real Philippine one. The same typed string is a different person depending on market, and no digit inspection can tell you which — which is why `market` is a required parameter rather than something inferred.
+
+**SMS is the whole login mechanism**, so a non-mobile line cannot complete onboarding. The refusal says exactly that, and deliberately does **not** say "landline": a 10-digit number on a non-mobile prefix is not a landline either, since real landlines in both markets are shorter and fail on length. Claiming more would be a guess dressed as a diagnosis.
+
+### The canonical form
+
+`DisburseRequest.destination` in `@nelo/settle` is a single `string`, but a bank payout needs **two** facts — institution and account. So the string carries both and parses back:
+
+```
+bank:NG:058:0123456789
+momo:NG:+2348031234567
+```
+
+Colon-delimited because no field can contain a colon, which makes the parse unambiguous rather than usually-right. Tested as a round trip, and `parseCanonical` **re-validates** rather than trusting the string — it may have come off a phone, out of a database, or from a partner callback, and a destination that is wrong is money going somewhere else.
+
+<Warning>
+**The NUBAN check digit is advisory and must stay that way.** It is implemented because it catches transposed digits, and it is non-blocking because it has **not been validated against real account numbers**. Refusing a merchant's actual account on an unverified algorithm is a lost merchant; accepting a typo is a payout the partner bounces with a clear reason.
+</Warning>
+
+**31 tests.**
 
 ---
 

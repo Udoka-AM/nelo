@@ -143,6 +143,7 @@ apps/merchant/           Expo — the terminal (amount entry, Solana Pay)
 apps/payer/              Expo — vault + offline voucher emitter
 packages/ledger/         The day-book: sale records, day boundaries, totals
 packages/pay/            Solana Pay requests + local-currency arithmetic
+packages/onboard/        Phone normalisation + payout-destination validation
 packages/reserve/        The insurance line: exposure, reserve, premium ceiling
 packages/voucher/        202-byte wire format: encode, decode, verify
 packages/attest/         Expo native module — StrongBox P-256 + attestation
