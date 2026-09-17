@@ -143,6 +143,18 @@ Order matters here; each step feeds the next.
    Hermes; the native link is only proven by a build. *(Android)*
 2. **Onboarding: phone number + payout account.** Privy embedded wallet behind the secure
    element. *(Android)*
+   **The checkable half is done** — [`packages/onboard`](../packages/onboard), 31 tests.
+   Phone normalisation to E.164 for the launch markets, and payout-destination validation
+   with a canonical round-trip form that feeds `DisburseRequest.destination`.
+   Deliberately **not** a libphonenumber reimplementation: the launch markets are explicit
+   table rows and anything else is refused rather than guessed. Two findings fell out —
+   the markets **overlap** (`0917…` is a real prefix in both NG and PH, so the market must
+   be supplied and cannot be inferred), and the NUBAN check digit is **advisory, never
+   blocking**, because refusing a merchant's real account on an algorithm nobody has
+   validated against live data is worse than a payout the partner bounces with a reason.
+   **Not started:** the Privy wiring itself — `@privy-io/expo`, `useLoginWithSMS`,
+   `useEmbeddedSolanaWallet`. It needs a Privy app ID and a dev build, and MWA **stays**:
+   it is required by the hackathon rules, so Privy is additive rather than a replacement.
    **Done when:** a merchant completes setup without ever seeing a key.
 3. **Enter an amount in local currency, take a payment.** Solana Pay transaction request via
    `@solana/pay`. Pyth or Switchboard for the rate. *(Android)*

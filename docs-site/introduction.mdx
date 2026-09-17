@@ -1,0 +1,70 @@
+---
+title: "Introduction"
+description: "A payment terminal with no terminal — built for merchants who lose sales when the network goes down."
+---
+
+Nelo lets a shopkeeper take a card-free payment on the Android phone they already own. The money settles in USDC on Solana, the merchant sees the amount in their own currency, and a licensed partner pays it into their own bank account.
+
+The part that matters is what happens when the network drops.
+
+<Note>
+**Offline mode is a prepaid balance, not a promise to pay.** Before going offline, the payer locks funds into an on-chain vault. You cannot spend offline what you have not already locked — which disposes of both *"what if they have no money"* and *"what if they don't have enough"* at once.
+</Note>
+
+## The two facts this is built on
+
+Neither is new. Nobody had put them together.
+
+<CardGroup cols={2}>
+  <Card title="Solana verifies P-256" icon="link">
+    The **secp256r1 precompile** activated on mainnet in June 2025, so a program can verify a NIST P-256 signature on chain.
+  </Card>
+  <Card title="Android signs P-256" icon="mobile">
+    P-256 is the one curve uniformly supported by **Android StrongBox**, the phone's secure element.
+  </Card>
+</CardGroup>
+
+The secure element signs. The chain verifies. **There is no trusted server anywhere in the value path** — not Nelo's, not anyone's.
+
+## What a sale looks like
+
+<Steps>
+  <Step title="The merchant types an amount">
+    In their own currency, the way they always would. Nothing on screen says the word *crypto*.
+  </Step>
+  <Step title="The customer pays">
+    A Solana Pay code, scannable by any wallet they already have. No Nelo app on the customer side.
+  </Step>
+  <Step title="The terminal confirms">
+    It watches the chain and validates what actually arrived — right payee, right mint, enough money, transaction did not fail.
+  </Step>
+  <Step title="The takings land in the day-book">
+    Grouped by the merchant's own calendar day, not UTC's.
+  </Step>
+  <Step title="Payout runs on a schedule">
+    A licensed partner converts and disburses to their bank or mobile money. **The merchant never off-ramps anything.**
+  </Step>
+</Steps>
+
+That last step is the decision that separates a POS from a crypto POS. Off-ramping is brutal if the merchant has to do it and invisible if the platform does it on a schedule. A merchant who must visit an exchange to get paid will not use this twice.
+
+## Where to go next
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="play" href="/quickstart">
+    Clone it, install it, run the test suite.
+  </Card>
+  <Card title="Architecture" icon="diagram-project" href="/architecture">
+    Every moving part and how they fit.
+  </Card>
+  <Card title="The trust model" icon="shield-check" href="/concepts/trust-model">
+    Why offline double-spend is closed, and what it costs.
+  </Card>
+  <Card title="Project status" icon="list-check" href="/operations/status">
+    What is built, what is proven, and what is neither.
+  </Card>
+</CardGroup>
+
+<Warning>
+**This is a hackathon project in active development.** Some of it is proven by tests that have actually run; some of it is written and unexecuted; some is a declared stub. [Project status](/operations/status) and [Testing](/operations/testing) say exactly which is which, and those pages are kept honest rather than flattering. Do not put this near real money yet.
+</Warning>

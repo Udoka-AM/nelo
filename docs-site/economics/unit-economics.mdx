@@ -1,0 +1,93 @@
+---
+title: "Unit economics"
+description: "Four revenue lines, a thin take rate, and the one number the reserve model contradicts."
+---
+
+<Warning>
+**Model, not forecast.** Every input here is an assumption, and the reserve model finds that one of the outputs does not hold. Replace each figure with a real number before quoting any of it.
+</Warning>
+
+## How it makes money
+
+Four lines, in order of how soon they arrive:
+
+<Steps>
+  <Step title="Platform fee on settled volume">
+    Charged to the merchant. Deliberately below typical card acceptance cost — that is the entire commercial argument.
+  </Step>
+  <Step title="Spread on the payout conversion">
+    The gap between the rate the partner gives and the rate the merchant is quoted. Shared with the disbursement partner.
+  </Step>
+  <Step title="Instant settlement">
+    A fee for instant rather than nightly payout.
+  </Step>
+  <Step title="Lending against observed cashflow">
+    Later. This is where acquiring businesses actually make money, and it is unlocked by **owning the cashflow record**, not by charging more.
+  </Step>
+</Steps>
+
+The same sequence Square walked.
+
+## The table
+
+| Assumption | Value | Basis |
+|---|---:|---|
+| Merchant daily turnover | $95 | Small stall; varies enormously by segment |
+| Share captured on Nelo | 40% | Cash keeps the rest early on |
+| Platform fee | 0.50% | Below typical card acceptance cost |
+| Payout spread | 0.50% | Shared with the disbursement partner |
+| Less: insurance reserve | 0.20% | Funds the offline guarantee |
+| Less: Trust Stake rebate | 0.10% | 20% of the platform fee, bought on market |
+| **Net take rate** | **0.70%** | |
+| **Net revenue per merchant / month** | **≈ $8** | |
+| **At 1,000 merchants** | **≈ $8k / mo** | |
+| **At 25,000 merchants** | **≈ $200k / mo** | |
+
+Thin per merchant and entirely normal for acquiring. The business is **volume and retention**, and the retention argument is specific: a merchant who has been paid on an afternoon the bank terminal was down does not go back.
+
+## The line the model contradicts
+
+<Warning>
+**The 0.20% insurance reserve line does not cover expected loss.**
+
+[The reserve model](/economics/reserve-model) puts the implied line at **28.1 bps**, not 20. At these assumptions the net take rate is overstated by roughly 8 bps — **0.62%, not 0.70%**.
+
+This is the number to fix before the deck goes out. It is a rate change in `services/settle/src/money.ts` and a row in this table.
+</Warning>
+
+And the second, on the SKR premium:
+
+<Warning>
+**Reserve relief funds a premium of about 1.001×, not the illustrative 1.5×.**
+
+The premium may still be worth paying — out of the rebate budget as acquisition cost, or justified by Guardian yield accruing to the merchant. But it **cannot be described as priced off capital relief**, which is how the deck currently frames it.
+</Warning>
+
+## How the ledger books it
+
+`@nelo/settle` accrues all four deductions on every settled sale, in **one transaction**, because it is one economic event — the money arrived, the fee was earned, the reserve was funded and the rebate accrued at the same instant. Splitting it would let three of the four land and the fourth fail.
+
+On a $100 sale at the rates above:
+
+| Leg | Amount |
+|---|---:|
+| `assets:custody` | +$100.00 |
+| `liabilities:payable:<merchant>` | −$99.50 |
+| `revenue:platform_fee` | −$0.50 |
+| `expense:reserve_funding` / `liabilities:insurance_reserve` | +/−$0.20 |
+| `expense:rebate` / `liabilities:rebate_payable:<merchant>` | +/−$0.10 |
+
+<Note>
+The reserve and rebate are funded **out of the platform's own take**, not charged on top of the merchant's fee. After a full payout, what stays in custody is exactly the platform fee — and that fee has to cover the reserve and rebate promised out of it. At 50 bps fee against 20 + 10 bps promised, 20 bps is genuinely free. That relationship is a committed test.
+</Note>
+
+## What the rates are, in code
+
+```ts
+// services/settle/src/money.ts — a model, not a forecast
+export const PLATFORM_FEE_BPS      = 50n;   // 0.50%
+export const INSURANCE_RESERVE_BPS = 20n;   // 0.20%  ← the model says 28.1
+export const REBATE_BPS            = 10n;   // 0.10%
+```
+
+They live as named constants in one place so replacing one with a real number is a change somebody can find.

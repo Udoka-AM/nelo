@@ -1,0 +1,190 @@
+---
+title: "Vault program"
+description: "Accounts, instructions and errors for nelo_vault."
+---
+
+**Program ID:** `29QdPRQC8C5v6C8gMcBqtw9T4RxYyZ1wqThkEj3XJeQx`
+**Framework:** Anchor 1.2.0 · **Client:** `@anchor-lang/core` (not `@coral-xyz/anchor`)
+
+## Accounts
+
+### `Vault`
+
+PDA, seeds `[b"vault", owner]`. One per payer.
+
+| Field | Type | Notes |
+|---|---|---|
+| `owner` | `Pubkey` | The payer who funded it |
+| `mint` | `Pubkey` | Settlement mint — USDC in production |
+| `device_pubkey` | `[u8; 33]` | P-256, SEC1 compressed, set at enrolment |
+| `attestation_id` | `[u8; 32]` | Hash of the verified StrongBox attestation chain |
+| `balance` | `u64` | Locked collateral, settlement-mint base units |
+| `seq_base` | `u64` | Lowest sequence still tracked |
+| `seq_bitmap` | `u128` | 128-slot replay window, one bit per sequence |
+| `floor_limit` | `u64` | **Base** offline limit, before the curve |
+| `unlock_at` | `i64` | Withdrawal timelock. `0` = no request open |
+| `stake` | `u64` | SKR staked, first-loss capital |
+| `reputation_bps` | `u16` | Published by the risk authority. `10_000` neutral |
+| `pending_unstake` | `u64` | Requested but uncollected — already out of the curve |
+| `unstake_unlock_at` | `i64` | Unstake cooldown. `0` = no request open |
+| `status` | `u8` | `0` active, `1` frozen |
+| `bump` | `u8` | |
+
+<Note>
+`floor_limit` is the floor, **not the ceiling**. The effective limit is the curve applied to it. With no stake and neutral reputation the two are the same number, which is what made the curve safe to add to an already-deployed program.
+</Note>
+
+### `RiskConfig`
+
+PDA, seeds `[b"risk"]`. Singleton, one per deployment.
+
+| Field | Type | Notes |
+|---|---|---|
+| `authority` | `Pubkey` | Risk authority — separate from the upgrade authority |
+| `stake_mint` | `Pubkey` | SKR. Set once at init |
+| `k_bps` | `u32` | Uplift at one reference unit of stake |
+| `stake_reference` | `u64` | Where `k_bps` applies in full |
+| `hard_cap` | `u64` | Ceiling on any vault's offline limit |
+| `stake_price` | `u64` | Per `VALUATION_UNIT` of stake, pre-haircut |
+| `haircut_bps` | `u16` | Conservative discount, held visibly |
+| `unstake_cooldown` | `i64` | ≥ `MIN_UNSTAKE_COOLDOWN_SECONDS` |
+| `bump` | `u8` | |
+
+<Warning>
+`redeem_voucher` requires this account. It must be initialised **once per deployment** before any voucher can redeem.
+</Warning>
+
+## Instructions
+
+### Vault lifecycle
+
+<AccordionGroup>
+  <Accordion title="initialize_vault(device_pubkey, attestation_id, floor_limit)" icon="plus">
+    Enrol a device key and open a vault. Creates the vault PDA and its collateral token account, so deposit and redemption never have to reason about a missing account.
+
+    Opens at stake `0`, reputation `10_000`, status active.
+  </Accordion>
+
+  <Accordion title="deposit(amount)" icon="arrow-down">
+    Lock collateral. Offline mode is a prepaid balance, not a promise to pay — you cannot spend offline what you have not already locked here.
+
+    Refused on a frozen vault.
+  </Accordion>
+
+  <Accordion title="request_withdraw()" icon="clock">
+    Open the 24-hour timelock. Vouchers still redeem normally during the delay — the timelock blocks the exit, not the payees.
+
+    Refused on a frozen vault.
+  </Accordion>
+
+  <Accordion title="withdraw(amount)" icon="arrow-up">
+    Withdraw once the timelock has elapsed. Consumes the request (`unlock_at → 0`), so each withdrawal needs its own timelock.
+
+    Errors: `WithdrawNotRequested`, `WithdrawTimelockActive`, `VaultFrozen`.
+  </Accordion>
+</AccordionGroup>
+
+### Redemption
+
+<Accordion title="redeem_voucher(voucher)" icon="receipt">
+**Instruction 0 of the transaction must be the secp256r1 precompile** verifying this voucher's 105 signed bytes.
+
+Checks, in order:
+
+1. `version == 1`, else `BadVoucherVersion`
+2. `voucher.vault` matches this vault
+3. Not expired
+4. `amount <= computed_limit` — the curve, not the static field — else `AboveFloorLimit`
+5. `amount <= vault.balance`, else `InsufficientCollateral`
+6. The precompile verified **this device key** over **these bytes**
+7. The replay window accepts the sequence
+8. Collateral moves via `transfer_checked`
+
+Deliberately **no `is_active` check**: a freeze blocks the payer's exit, not the payees.
+
+The merchant's token account is created on demand — a merchant taking their first Nelo payment has never held USDC, and that must not be the thing that fails a sale.
+</Accordion>
+
+<Accordion title="report_conflict(voucher_a, voucher_b)" icon="triangle-exclamation">
+Permissionless. **Instructions 0 and 1** must be the precompile verifying each voucher.
+
+Freezes the vault on proof of a double-spend: two *different* vouchers at the *same* sequence, both validly signed by the enrolled device. An honest secure element never produces that pair.
+
+Refuses: identical vouchers (`NotAConflict` — that is a replay, and freezing on it would be a DoS against the payer), different sequences (`NotSameSequence`), forged signatures.
+</Accordion>
+
+### Trust Stake
+
+<AccordionGroup>
+  <Accordion title="initialize_risk_config(params) / update_risk_config(params)" icon="sliders">
+    Open and revise the platform risk parameters. `update_risk_config` is where the reserve model lands — as configuration, not a redeploy.
+
+    Validated: `authority != default`, `stake_reference != 0` (it divides), `hard_cap != 0` (a zero cap refuses every voucher on the platform), `haircut_bps <= 10_000`, `unstake_cooldown >= MIN_UNSTAKE_COOLDOWN_SECONDS`.
+
+    `params.authority` doubles as the rotation path.
+  </Accordion>
+
+  <Accordion title="publish_stake_price(stake_price, haircut_bps)" icon="chart-line">
+    The frequent operation, kept separate from the structural parameters so a routine price update cannot accidentally rewrite the hard cap.
+  </Accordion>
+
+  <Accordion title="set_reputation(reputation_bps)" icon="star">
+    Risk authority only — **not even the vault's own owner**. Reputation you can set yourself is not reputation.
+
+    Bounded at `REPUTATION_MAX_BPS` (20_000), else `ReputationOutOfRange`.
+  </Accordion>
+
+  <Accordion title="stake(amount)" icon="lock">
+    Post first-loss capital and buy a higher offline ceiling. Tokens sit under the vault PDA, not the owner's wallet; the account is created on demand.
+
+    Refused on a frozen vault and on `amount == 0`.
+  </Accordion>
+
+  <Accordion title="request_unstake(amount) / unstake()" icon="unlock">
+    `request_unstake` opens the cooldown and the amount **stops backing the limit immediately**. `unstake` collects once elapsed, and consumes the request.
+
+    Both refused on a frozen vault — stake is first-loss capital against exactly the event that froze it.
+
+    Errors: `InsufficientStake`, `UnstakeNotRequested`, `UnstakeCooldownActive`.
+  </Accordion>
+</AccordionGroup>
+
+## Constants
+
+| Constant | Value | Why |
+|---|---|---|
+| `VOUCHER_VERSION` | `1` | Anything else rejected outright |
+| `SIGNED_LEN` | `105` | Bytes the secure element signs |
+| `REPLAY_WINDOW` | `128` | Matches `seq_bitmap` width |
+| `WITHDRAW_TIMELOCK_SECONDS` | `86_400` | Must exceed the realistic offline window |
+| `MIN_UNSTAKE_COOLDOWN_SECONDS` | `= WITHDRAW_TIMELOCK_SECONDS` | Pinned to the same horizon, deliberately |
+| `BPS` | `10_000` | Fixed-point scale for the curve |
+| `VALUATION_UNIT` | `1_000_000_000` | Stake price quoted per this many base units |
+| `REPUTATION_NEUTRAL_BPS` | `10_000` | A vault opens here |
+| `REPUTATION_MAX_BPS` | `20_000` | Bounds the risk authority's input |
+
+## Errors
+
+| Code | Meaning |
+|---|---|
+| `BadVoucherVersion` | Version is not supported |
+| `VaultMismatch` / `MerchantMismatch` | Voucher is not bound to this vault / names a different payee |
+| `VoucherExpired` | Past `expires_at` |
+| `AboveFloorLimit` | Amount exceeds the **computed** limit |
+| `InsufficientCollateral` | Not enough locked |
+| `VaultFrozen` | A conflict was proven |
+| `MintMismatch` | Not the mint this vault was enrolled for |
+| `SequenceTooOld` / `SequenceTooFarAhead` | Outside the replay window |
+| `SequenceAlreadyRedeemed` | **Double-spend refused** |
+| `MissingPrecompileInstruction` | Instruction 0 is not the precompile |
+| `MalformedPrecompileInstruction` | Precompile data is malformed |
+| `ExpectedSingleSignature` | Precompile must verify exactly one |
+| `PrecompileDataNotSelfContained` | Precompile referenced data outside its own instruction |
+| `DeviceKeyMismatch` / `SignedMessageMismatch` | Verified the wrong key / wrong bytes |
+| `WithdrawNotRequested` / `WithdrawTimelockActive` | Timelock |
+| `NotSameSequence` / `NotAConflict` | Not a valid conflict proof |
+| `BadRiskParams` / `NotRiskAuthority` | Risk config |
+| `ReputationOutOfRange` / `CooldownTooShort` | Risk config bounds |
+| `StakeMintMismatch` / `InsufficientStake` | Staking |
+| `UnstakeNotRequested` / `UnstakeCooldownActive` | Unstake cooldown |
+| `ZeroAmount` / `Overflow` | |
