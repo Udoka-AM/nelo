@@ -1,0 +1,11 @@
+{
+  "name": "@nelo/onboard",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "description": "The checkable half of merchant onboarding: phone normalisation and payout-destination validation.",
+  "scripts": {
+    "test": "node --test \"test/*.test.ts\""
+  },
+  "files": ["src"]
+}
