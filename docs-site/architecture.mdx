@@ -3,7 +3,7 @@ title: "Architecture"
 description: "Every moving part, what it is responsible for, and where the boundaries are."
 ---
 
-Nelo is a pnpm + Cargo monorepo. One Anchor program, two Expo apps, five TypeScript packages, two services.
+Nelo is a pnpm + Cargo monorepo. One Anchor program, two Expo apps, six TypeScript packages, two services.
 
 ## The shape of it
 
@@ -12,7 +12,7 @@ programs/nelo_vault/     Anchor program — vault, replay window, Trust Stake
   src/curve.rs             The floor-limit curve: sublinear, capped, integer-only
 
 apps/merchant/           Expo — the till (amount entry, Solana Pay, day-book, balance)
-apps/payer/              Expo — vault + offline voucher emitter, StrongBox probe
+apps/payer/              Expo — the handset probe (codec, curves, StrongBox)
 
 packages/voucher/        202-byte wire format: encode, decode, verify
 packages/pay/            Solana Pay requests + local-currency arithmetic
