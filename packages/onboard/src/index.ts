@@ -8,6 +8,12 @@
  *
  * Same reasoning as `@nelo/ledger` and `@nelo/reserve`: pull the part that can
  * be checked out of the part that cannot.
+ *
+ * `flow.ts` extends that to the Privy wiring itself. The SDK calls need a
+ * handset; deciding which step the merchant is on, what is accepted, and who a
+ * failure is addressed to does not — so that is here, and the hook in the app
+ * is a thin shell over it.
  */
 export * from "./phone.ts";
 export * from "./payout.ts";
+export * from "./flow.ts";

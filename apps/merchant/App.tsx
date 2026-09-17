@@ -7,12 +7,26 @@
  * anything.
  *
  * Week 2 scope: amount entry, conversion, the Solana Pay code, the day-book,
- * and the balance — held in dollars, shown in the merchant's own currency.
- * Onboarding behind an embedded wallet and the payout leg come next; see
+ * the balance — held in dollars, shown in the merchant's own currency — and
+ * onboarding behind an embedded wallet. The payout leg comes next; see
  * docs/DELIVERABLES.md.
+ *
+ * There are two ways in, and the till does not care which was used: Mobile
+ * Wallet Adapter for a merchant who already has a wallet, and a Privy embedded
+ * wallet for one who does not. MWA is required by the hackathon rules, so the
+ * embedded route is **additive** — and it is the route that makes step 2's
+ * done-when true: setup completed without ever seeing a key.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { StatusBar } from "expo-status-bar";
 import QRCode from "react-native-qrcode-svg";
 import * as Crypto from "expo-crypto";
@@ -27,7 +41,11 @@ import {
 import { currentBalance, type Balance } from "./src/balance";
 import { record, recent } from "./src/daybook";
 import { currentRate, type Quoted } from "./src/rate";
-import { connect, restore, type MerchantWallet } from "./src/wallet";
+import { connect } from "./src/wallet";
+import { remember, restore, type MerchantAccount } from "./src/account";
+import { PrivyProvider } from "@privy-io/expo";
+import { canOnboardWithPhone, privy } from "./src/config";
+import Onboarding from "./src/Onboarding";
 import {
   awaitPayment,
   encodeTransferRequest,
@@ -47,11 +65,11 @@ const RPC_URL = "https://api.devnet.solana.com";
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "·", "0", "⌫"];
 
-export default function App() {
+function Till() {
   // Held as minor units so no float ever touches a price.
   const [minor, setMinor] = useState(0n);
   const [charging, setCharging] = useState(false);
-  const [merchant, setMerchant] = useState<MerchantWallet | null>(null);
+  const [merchant, setMerchant] = useState<MerchantAccount | null>(null);
   const [reference, setReference] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<PaymentOutcome | null>(null);
   const [sales, setSales] = useState<Sale[]>([]);
@@ -67,6 +85,7 @@ export default function App() {
   );
   const [restoring, setRestoring] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [signingUp, setSigningUp] = useState(false);
 
   useEffect(() => {
     restore()
@@ -80,8 +99,8 @@ export default function App() {
   async function onConnect() {
     setConnecting(true);
     try {
-      const wallet = await connect();
-      if (wallet) setMerchant(wallet);
+      const account = await connect();
+      if (account) setMerchant(account);
     } catch (e) {
       // A declined authorisation lands here too; say what happened rather than
       // failing silently, because the merchant is standing at a counter.
@@ -208,6 +227,25 @@ export default function App() {
     );
   }
 
+  if (!merchant && signingUp) {
+    return (
+      <View style={styles.screen}>
+        <StatusBar style="light" />
+        <Onboarding
+          onComplete={(account) => {
+            // Written here rather than inside onboarding, which knows nothing
+            // about storage. The MWA path writes its own record instead,
+            // because it has an auth token to store at the same moment.
+            void remember(account);
+            setMerchant(account);
+            setSigningUp(false);
+          }}
+          onUseWallet={() => setSigningUp(false)}
+        />
+      </View>
+    );
+  }
+
   if (!merchant) {
     return (
       <View style={styles.screen}>
@@ -228,6 +266,21 @@ export default function App() {
               {connecting ? "Waiting for your wallet…" : "Connect wallet"}
             </Text>
           </Pressable>
+          {/* Offered only when this build has a Privy app ID. Without one the
+              button could only ever fail, and the failure would land on the
+              merchant as though they had mistyped something. */}
+          {canOnboardWithPhone ? (
+            <Pressable
+              style={styles.secondary}
+              disabled={connecting}
+              onPress={() => setSigningUp(true)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.secondaryCentred}>
+                I don't have a wallet — set one up with my phone number
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
       </View>
     );
@@ -426,6 +479,28 @@ export default function App() {
   );
 }
 
+/**
+ * The provider, and the reason it is conditional.
+ *
+ * Privy's hooks throw without a provider above them, so the till is wrapped
+ * when this build has an app ID and rendered bare when it does not. The bare
+ * case is not a degraded mode to apologise for: Mobile Wallet Adapter is what
+ * the rules require, and it is complete on its own. What is missing without an
+ * app ID is only the route in for a merchant who has no wallet yet.
+ *
+ * Wrapping unconditionally with a placeholder ID would be worse — the hooks
+ * would initialise, the SDK would reject the ID, and the failure would surface
+ * at the least helpful moment: mid-onboarding, in front of a customer.
+ */
+export default function App() {
+  if (!privy) return <Till />;
+  return (
+    <PrivyProvider appId={privy.appId} clientId={privy.clientId}>
+      <Till />
+    </PrivyProvider>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#101113", paddingTop: 64, paddingHorizontal: 20 },
   centre: { alignItems: "center", justifyContent: "center" },
@@ -466,6 +541,7 @@ const styles = StyleSheet.create({
   chargeSub: { color: "#8d9299", fontSize: 14 },
   secondary: { marginTop: 12, paddingVertical: 14, paddingHorizontal: 40 },
   secondaryText: { color: "#8d9299", fontSize: 16 },
+  secondaryCentred: { color: "#8d9299", fontSize: 15.5, textAlign: "center", lineHeight: 22 },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 24 },
   statusWaiting: { color: "#8d9299", fontSize: 14.5 },
   statusBad: { color: "#d4855e", fontSize: 14.5, textAlign: "center" },

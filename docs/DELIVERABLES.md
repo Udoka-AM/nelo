@@ -152,9 +152,33 @@ Order matters here; each step feeds the next.
    be supplied and cannot be inferred), and the NUBAN check digit is **advisory, never
    blocking**, because refusing a merchant's real account on an algorithm nobody has
    validated against live data is worse than a payout the partner bounces with a reason.
-   **Not started:** the Privy wiring itself — `@privy-io/expo`, `useLoginWithSMS`,
-   `useEmbeddedSolanaWallet`. It needs a Privy app ID and a dev build, and MWA **stays**:
-   it is required by the hackathon rules, so Privy is additive rather than a replacement.
+   **The Privy wiring is written** — `@privy-io/expo` `useLoginWithSMS` +
+   `useEmbeddedSolanaWallet`, a conditional `PrivyProvider`, the five onboarding screens,
+   and one stored account record for both routes in. MWA **stays**: it is required by the
+   hackathon rules, so Privy is additive rather than a replacement, and it remains the
+   first thing offered.
+
+   The part that could be checked, was. `flow.ts` in `@nelo/onboard` holds the step order,
+   the input rules, the resend cooldown and the failure mapping as
+   `reduce(state, event, now)`, under **29 tests**; `apps/merchant/src/privy.ts` is left
+   calling the SDK and reporting back. Every Privy call site was typechecked against the
+   published `0.74.1` declarations rather than written from memory.
+
+   Two bugs the machine now makes unreachable, both found while building it:
+   - **A duplicate `logged-in` creating a second wallet.** An effect that starts the next
+     effect leaves `busy` set across the handover, so a `busy`-only guard lets the
+     duplicate through. There is no undo — the merchant ends up holding an address the
+     day-book has never seen.
+   - **Privy's `user` going non-null a beat after a successful login**, which fires the
+     "you already have a session" path straight into the same second create.
+
+   Failures are labelled **merchant** or **operator**. "That code is not right" is fixable
+   at the counter; "SMS login is not enabled for this Privy app" is a dashboard setting,
+   and showing it as a typo has the merchant retype a good number until they give up.
+
+   **Still not proven:** none of it has been bundled. It needs a Privy app ID and a
+   development build — the SDK's native extensions cannot load in Expo Go. A build with no
+   app ID runs fine and simply does not offer the phone route.
    **Done when:** a merchant completes setup without ever seeing a key.
 3. **Enter an amount in local currency, take a payment.** Solana Pay transaction request via
    `@solana/pay`. Pyth or Switchboard for the rate. *(Android)*

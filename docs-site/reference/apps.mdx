@@ -28,17 +28,57 @@ The screen a shopkeeper actually lives in. Nothing on it says the word *crypto*.
   </Card>
 </CardGroup>
 
-### The wallet
-
-Connected through **Mobile Wallet Adapter**, so Nelo never holds a key — it learns only an address to pay. The grant is remembered in SecureStore, so the terminal opens ready to trade.
+### Two ways in, and the till does not care which
 
 ```ts
-// apps/merchant/src/wallet.ts
-connect()    // → MerchantWallet, via MWA
-restore()    // → the remembered grant, or null
+// apps/merchant/src/account.ts — one record, either way
+{ kind: "wallet" | "embedded", address, label?, payout? }
 ```
 
-A declined authorisation is surfaced, not swallowed — the merchant is standing at a counter and needs to be told what happened.
+**Mobile Wallet Adapter** is the first thing offered, and is required by the hackathon rules. Nelo never holds a key; it learns only an address to pay. The grant is remembered in SecureStore, so the terminal opens ready to trade, and a declined authorisation is surfaced rather than swallowed — the merchant is standing at a counter.
+
+**A Privy embedded wallet** is the other way, for a merchant who has never held a key. A phone number, an SMS code, and a wallet appears behind it. This is what makes step 2's done-when true — *setup completed without ever seeing a key* — and it is **additive**: it does not replace MWA.
+
+```ts
+// apps/merchant/src/privy.ts — deliberately thin
+useOnboarding()   // → { state, ready, dispatch }
+```
+
+The rules live in [`@nelo/onboard`'s flow machine](/reference/packages#the-flow-is-a-state-machine-and-that-is-why-it-is-here), under test. This file calls the SDK and reports back, and that split is the only reason any of onboarding is verifiable here at all.
+
+<Note>
+**`create()` is not idempotent**, so a wallet is never treated as created because a promise resolved. `wallet-ready` is raised by *observing* the SDK's own state, an existing wallet short-circuits the call, and the flow machine refuses a second create. A duplicate leaves the merchant holding an address the day-book has never seen, and there is no undo.
+</Note>
+
+<Warning>
+**A build with no Privy app ID still runs.** The phone-number route is simply not offered and MWA carries the app alone.
+
+`EXPO_PUBLIC_PRIVY_APP_ID` is a **public** identifier — it ships in the APK and every request already carries it. A Privy *app secret* is a different thing and belongs nowhere near this bundle.
+
+Wrapping the till in a provider with a placeholder ID would be worse than not wrapping it: the SDK would initialise, reject the ID, and fail mid-onboarding in front of a customer.
+</Warning>
+
+### What onboarding asks for, in order
+
+<Steps>
+  <Step title="Market">
+    Nigeria or the Philippines, and it is **asked rather than inferred**: `0917…` is a real prefix in both, so the same digits are a different person depending on the answer. Switching market discards the number already typed.
+  </Step>
+  <Step title="Phone number">
+    Normalised to E.164 before anything is sent, so the code goes to the number Privy will actually recognise rather than to what was typed.
+  </Step>
+  <Step title="The code">
+    Six digits. Checked for shape locally first — a four-digit entry never reaches the API — and a resend inside 30 seconds is refused here rather than spent against Privy's rate limit.
+  </Step>
+  <Step title="The wallet">
+    No question asked. That question is the thing this step exists to remove.
+  </Step>
+  <Step title="Payout account">
+    Bank or mobile money, validated by `@nelo/onboard` and stored in the canonical form `@nelo/settle` takes. The NUBAN check digit warns and never blocks.
+  </Step>
+</Steps>
+
+The bank list is hard-coded and **labelled as provisional**: a handful of institution codes, not the published register. A bank code baked into an APK cannot be corrected without a release, so it belongs in a file fetched at runtime — which needs a payout partner to fetch it from.
 
 ### The balance row
 
