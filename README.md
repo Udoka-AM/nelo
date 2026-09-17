@@ -139,11 +139,11 @@ judged done.
 ```
 programs/nelo_vault/     Anchor program — vault, replay window, Trust Stake
   src/curve.rs           The floor-limit curve: sublinear, capped, integer-only
-apps/merchant/           Expo — the terminal (amount entry, Solana Pay)
-apps/payer/              Expo — vault + offline voucher emitter
+apps/merchant/           Expo — the terminal (amount entry, Solana Pay, onboarding)
+apps/payer/              Expo — the handset probe (codec, curves, StrongBox)
 packages/ledger/         The day-book: sale records, day boundaries, totals
 packages/pay/            Solana Pay requests + local-currency arithmetic
-packages/onboard/        Phone normalisation + payout-destination validation
+packages/onboard/        Phone + payout validation, and the onboarding flow machine
 packages/reserve/        The insurance line: exposure, reserve, premium ceiling
 packages/voucher/        202-byte wire format: encode, decode, verify
 packages/attest/         Expo native module — StrongBox P-256 + attestation
@@ -178,6 +178,11 @@ avm install 1.2.0 && avm use 1.2.0
 pnpm install
 cp .env.example .env      # fill in HELIUS_API_KEY
 ```
+
+The merchant app's onboarding needs a Privy app ID in `EXPO_PUBLIC_PRIVY_APP_ID`. It is a
+public identifier, not a secret — a Privy **app secret** belongs on a server and must never
+reach this bundle. Leave it empty and the app still runs: onboarding by phone number is
+simply not offered, and Mobile Wallet Adapter carries it on its own.
 
 Then:
 

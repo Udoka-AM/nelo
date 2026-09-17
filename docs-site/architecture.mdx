@@ -11,14 +11,14 @@ Nelo is a pnpm + Cargo monorepo. One Anchor program, two Expo apps, six TypeScri
 programs/nelo_vault/     Anchor program — vault, replay window, Trust Stake
   src/curve.rs             The floor-limit curve: sublinear, capped, integer-only
 
-apps/merchant/           Expo — the till (amount entry, Solana Pay, day-book, balance)
+apps/merchant/           Expo — the till (amount entry, Solana Pay, day-book, balance, onboarding)
 apps/payer/              Expo — the handset probe (codec, curves, StrongBox)
 
 packages/voucher/        202-byte wire format: encode, decode, verify
 packages/pay/            Solana Pay requests + local-currency arithmetic
 packages/ledger/         The day-book: sale records, day boundaries, totals
 packages/attest/         Expo native module — StrongBox P-256 + attestation
-packages/onboard/        Phone normalisation + payout-destination validation
+packages/onboard/        Phone + payout validation, and the onboarding flow machine
 packages/reserve/        The insurance line: exposure, reserve, premium ceiling
 
 services/settle/         Double-entry ledger, payout lifecycle, partner interface
@@ -39,6 +39,7 @@ That is not tidiness — it is the only reason most of this repo is verifiable a
 | The floor-limit curve | `curve.rs` (no Anchor types) | Sublinearity is a unit test, not a validator run |
 | Double-entry posting rules | `@nelo/settle` | Balance and idempotency are provable off-device |
 | Phone and payout-account validation | `@nelo/onboard` | The form's rules are tested without a handset |
+| Onboarding's step order and guards | `@nelo/onboard` (`flow.ts`) | The flow is tested without Privy, an app ID or a phone |
 
 The residue — account plumbing, native modules, RPC — is thin by design, because it is the part that cannot be checked here.
 
