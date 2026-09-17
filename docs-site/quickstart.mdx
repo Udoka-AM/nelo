@@ -1,0 +1,109 @@
+---
+title: "Quickstart"
+description: "Clone the repo, install the toolchain, and get the test suites green."
+---
+
+## The toolchain is pinned
+
+These are the versions the repo is built and tested against. `Anchor.toml` pins the first two, `rust-toolchain.toml` the third.
+
+| Tool | Version | Pinned in |
+|---|---|---|
+| Anchor | `1.2.0` | `Anchor.toml` |
+| Solana / Agave | `4.2.2` | `Anchor.toml` |
+| Rust (host) | `1.98.1` | `rust-toolchain.toml` |
+| Node | `22+` | — |
+| pnpm | `9.15.0` | `package.json` |
+
+<Warning>
+**Anchor's TypeScript client is `@anchor-lang/core` (1.x).** The pre-1.0 `@coral-xyz/anchor` package is abandoned at 0.32.1 — do not import it.
+</Warning>
+
+## Install
+
+<Steps>
+  <Step title="Solana toolchain">
+    ```bash
+    agave-install init 4.2.2
+    ```
+  </Step>
+  <Step title="Anchor toolchain">
+    ```bash
+    avm install 1.2.0 && avm use 1.2.0
+    ```
+  </Step>
+  <Step title="JavaScript workspace">
+    ```bash
+    pnpm install
+    cp .env.example .env      # fill in HELIUS_API_KEY
+    ```
+  </Step>
+</Steps>
+
+## Run the tests
+
+```bash
+anchor test
+```
+
+That builds the program and runs the Rust suite. It should pass from a clean clone.
+
+The TypeScript packages each carry their own suite and run under Node's built-in test runner — no vitest, no jest:
+
+```bash
+pnpm -r test
+```
+
+<Tip>
+Every package except `@nelo/voucher` runs with **zero dependencies installed** — they use `node --test` against plain TypeScript, which Node 22 strips natively. `@nelo/voucher` needs `@noble/curves`, so it is the one suite that requires `pnpm install` first.
+</Tip>
+
+## What you get
+
+| Suite | Tests | Needs |
+|---|---:|---|
+| `programs/nelo_vault` (LiteSVM) | 40 | Solana toolchain |
+| `programs/nelo_vault` (golden vectors) | 2 | Solana toolchain |
+| `programs/nelo_vault` (curve unit) | 17 | Rust only |
+| `packages/pay` | 54 | Node only |
+| `services/settle` | 39 | Node only |
+| `packages/reserve` | 16 | Node only |
+| `packages/ledger` | 13 | Node only |
+| `packages/voucher` | 9 | `pnpm install` |
+
+<Note>
+Program tests are **Rust + LiteSVM**, in `programs/nelo_vault/tests/`. There is no mocha/TypeScript test path — `Anchor.toml` sets `[scripts] test = "cargo test"`, and no local validator is needed.
+</Note>
+
+## Run the reserve model
+
+The economics model prints a full report, and prints its own unsourced assumptions before any result:
+
+```bash
+pnpm --filter @nelo/reserve report
+```
+
+See [The reserve model](/economics/reserve-model) for what it concludes.
+
+## Devnet
+
+The program is deployed to devnet at `29QdPRQC8C5v6C8gMcBqtw9T4RxYyZ1wqThkEj3XJeQx`.
+
+There is an end-to-end devnet gate — vault funded, voucher redeemed with the device signature verified by the secp256r1 precompile on a real validator, double-spend refused, signature-over-other-bytes refused:
+
+```bash
+cargo test -p nelo_vault --test devnet -- --ignored --nocapture
+```
+
+It is `#[ignore]` so it never runs in the default suite, and it creates its own 6-decimal mint, so a run is self-contained. It costs devnet SOL.
+
+<Warning>
+The deployed build **predates the Trust Stake**. `Vault` gained four fields and `redeem_voucher` gained an account, so devnet needs redeploying and `RiskConfig` initialising once before that gate runs again. See [Deployment](/operations/deployment).
+</Warning>
+
+## Hard rules for this repo
+
+- **`anchor test` stays green.** It is a graded deliverable, not a nicety.
+- **Negative tests before positive ones**, everywhere in the vault. A test that passes because nothing was checked is worse than no test.
+- **Never commit a keypair, a mnemonic, or a real API key.** `.env` is gitignored; keep it that way.
+- **Everything a judge needs is in the repo.** No links only the team can open.

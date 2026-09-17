@@ -1,0 +1,122 @@
+---
+title: "Apps"
+description: "The merchant till and the payer app — both Expo, both Android."
+---
+
+Both apps are Expo with a development build. **Expo Go cannot load them** — `@nelo/attest` is a native module, and Expo Go has no way to bundle one.
+
+---
+
+## `apps/merchant` — the till
+
+The screen a shopkeeper actually lives in. Nothing on it says the word *crypto*.
+
+### What it does
+
+<CardGroup cols={2}>
+  <Card title="Amount entry" icon="calculator">
+    A keypad, in the merchant's own currency. Held as **minor units in a `bigint`**, so no float ever touches a price.
+  </Card>
+  <Card title="Solana Pay" icon="qrcode">
+    A QR any wallet can pay. No Nelo app on the customer side.
+  </Card>
+  <Card title="Day-book" icon="book">
+    Grouped by the merchant's own calendar day, with close-of-day totals.
+  </Card>
+  <Card title="Balance" icon="wallet">
+    Held in dollars, shown in local currency — **both numbers on screen**.
+  </Card>
+</CardGroup>
+
+### The wallet
+
+Connected through **Mobile Wallet Adapter**, so Nelo never holds a key — it learns only an address to pay. The grant is remembered in SecureStore, so the terminal opens ready to trade.
+
+```ts
+// apps/merchant/src/wallet.ts
+connect()    // → MerchantWallet, via MWA
+restore()    // → the remembered grant, or null
+```
+
+A declined authorisation is surfaced, not swallowed — the merchant is standing at a counter and needs to be told what happened.
+
+### The balance row
+
+<Note>
+**Held in dollars, shown in naira, and the till says both.**
+
+That is the product decision, not a formatting one: a trader in a devaluing currency who holds overnight is better off in a dollar asset converted at payout, and they should be able to *see* that is what is happening. Showing only the local figure would be the same trick as showing a made-up exchange rate.
+</Note>
+
+Rules it follows:
+
+- Conversion rounds **down** — the figure on screen is never larger than what is held
+- A merchant who has never been paid has no token account at all, and that reads as **zero, not an error**
+- A malformed RPC entry is skipped rather than fatal
+- An RPC failure leaves the **last known figure** up: a confident zero is worse than a stale number
+- Refreshed on connect and after each settled sale, **never on a timer** — background polling spends a prepaid data bundle on a figure nobody is reading
+- Reads *"at a fixed rate"* instead of *"held in dollars"* while the oracle is not live
+
+### The rate
+
+<Warning>
+**The rate is currently a configured constant, and the till says so on screen.**
+
+Two things block a live feed, and both are product decisions rather than code:
+
+1. **Pyth publishes no NGN feed.** 39 FX pairs, and the naira is not among them. Of the markets the plan names, Manila (PHP) is covered; Lagos is not.
+2. **Hermes requires a key.** `hermes.pyth.network` serves feed metadata publicly but returns 401 for prices.
+
+Until one is settled the till runs a configured rate **and labels it**. A POS that shows a made-up number as though it were live is worse than one that admits it.
+</Warning>
+
+Seven Pyth feed ids are wired and each was verified against the Hermes API — one of them was wrong on first pass, reconstructed from a truncated listing, which is why they are checked rather than transcribed.
+
+---
+
+## `apps/payer` — the probe
+
+<Note>
+**This is not the product yet, and its own header says so.** It exists to answer the questions only a real handset can, and the real payer UI is week-3 work.
+
+There is no vault funding and no voucher emission to a merchant in it — it exercises the codec and the secure element as *checks*.
+</Note>
+
+Hosts `@nelo/attest`. The round trip it runs — keygen in the secure element, sign the 105 bytes, verify with the merchant's own code — is a check, not a payment flow.
+
+### The probe
+
+The screen that answers *"does this handset actually work?"* — and the one that has to run before anything offline can be trusted:
+
+| Check | What it proves |
+|---|---|
+| `isAvailable()` | This is a dev build on Android, not Expo Go |
+| `isStrongBoxAvailable()` | This handset has a secure element |
+| `generateAttestedKey()` | A key exists in hardware, with an attestation chain |
+| `sign()` → `verify()` | The signature round-trips in the form the chain accepts |
+| `@nelo/voucher` under Hermes | BigInt and DataView behave differently there than in Node |
+| `@noble/curves` under Hermes | The offline path cannot verify a voucher without it |
+
+<Warning>
+**Capability detection is not optional, and the fallback is not software.**
+
+Where StrongBox is absent the correct behaviour is **online-only**. Silently falling back to a software key would keep the demo working while destroying the entire argument, and `@nelo/attest` enforces that at the module level — it throws rather than retrying without the flag.
+
+The probe *detects and labels* this correctly. The enforcement point a merchant would actually hit — refusing to emit an offline voucher and saying why — **does not exist yet**, because nothing emits vouchers yet. That arrives with the payer UI in week 3.
+</Warning>
+
+Check a handset without building anything:
+
+```bash
+adb shell pm list features | grep -i strongbox
+```
+
+### Building it
+
+```bash
+cd apps/payer && npx eas build -p android --profile development
+```
+
+<Warning>
+**The Kotlin has never been compiled.** There is no JDK or Android SDK on the development machine, so it compiles for the first time during the EAS build — and neither app has ever been bundled. See [Testing](/operations/testing) for what that costs.
+</Warning>

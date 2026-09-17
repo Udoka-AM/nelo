@@ -1,0 +1,98 @@
+---
+title: "The trust model"
+description: "Why there is no trusted server in the value path, and what the secure element actually proves."
+---
+
+## The reframe
+
+Most offline payment designs start from *"how do we let someone spend money we can't verify they have?"* and end up either trusting a server or accepting credit risk.
+
+Nelo does neither, because it changes the question:
+
+<Note>
+**Offline mode is a prepaid balance, not a promise to pay.**
+
+Before going offline the payer locks funds into an on-chain vault. There is no offline transaction without collateral that provably exists first.
+</Note>
+
+That single decision removes two whole problem classes — *"what if they have no money"* and *"what if they don't have enough"* — and leaves exactly one: whether the same collateral gets spent twice. That one is [closed by the replay window](/concepts/replay-and-double-spend).
+
+## The chain of custody
+
+```
+StrongBox (hardware)  ──signs──▶  105 bytes  ──verified by──▶  secp256r1 precompile
+                                                                       │
+                                                            introspected by
+                                                                       ▼
+                                                            nelo_vault program
+```
+
+Every link is checkable by someone who does not trust Nelo:
+
+<AccordionGroup>
+  <Accordion title="The key was generated in hardware" icon="microchip">
+    `generateAttestedKey()` creates a P-256 key inside StrongBox with an attestation challenge. The resulting certificate chain is verified at enrolment, and its hash is stored on the vault as `attestation_id`.
+
+    The module **never falls back to a software key.** `setIsStrongBoxBacked(true)` throws on a handset with no secure element, and that exception is deliberately not retried without the flag. A silent fallback would keep the demo working while destroying the entire argument.
+  </Accordion>
+
+  <Accordion title="The signature covers exactly the right bytes" icon="file-signature">
+    The vault does not verify the signature itself — the precompile does, and the program **introspects** that the precompile instruction verified *this* public key over *these* bytes.
+
+    ```rust
+    assert_precompile_verified(
+        &ctx.accounts.instructions.to_account_info(),
+        PRECOMPILE_IX_INDEX,        // must be instruction 0
+        &device_pubkey,             // the key enrolled on this vault
+        &voucher.signed_message(),  // the 105 bytes this voucher claims
+    )?;
+    ```
+
+    Get the offsets wrong and it appears to work while verifying nothing — which is the worst failure mode available here. So the **first test written was the one that must fail**: a valid signature over *different* bytes has to be rejected.
+  </Accordion>
+
+  <Accordion title="The signature is in the form the chain accepts" icon="arrows-left-right">
+    Two conversions sit between the phone and the chain, and both are in TypeScript in `@nelo/voucher` so they are covered by tests that run without a handset:
+
+    - **DER → raw r‖s, low-S.** Android returns DER with an S that may be in the upper half of the curve order. That signature verifies on the phone and is **rejected on chain**.
+    - **Uncompressed → compressed key.** Android returns `0x04 ‖ X ‖ Y` (65 bytes); the vault stores 33.
+
+    Two facts pinned by tests because they cost time if you meet them late: `@noble/curves` does **not** default to low-S on P-256, and a high-S signature does **not** settle on chain.
+  </Accordion>
+
+  <Accordion title="The voucher is bound to one payer and one payee" icon="link">
+    The voucher carries `vault` (which payer) and `merchant` (which payee). **A voucher is not bearer** — presenting someone else's does nothing. The program checks both.
+  </Accordion>
+</AccordionGroup>
+
+## The withdrawal timelock
+
+Without it the attack is trivial: go offline, sign vouchers at every stall on the street, get home, withdraw the collateral before any merchant reconnects.
+
+`request_withdraw` opens a delay longer than the realistic offline window — **24 hours** to start — during which vouchers still redeem normally. The timelock blocks the payer's exit, not the payees.
+
+<Tip>
+Each withdrawal needs its own timelock: `withdraw` consumes the request by setting `unlock_at` back to `0`.
+</Tip>
+
+## The freeze, and who it protects
+
+A proven double-spend freezes the vault permanently via `report_conflict` — permissionless, on two conflicting signed vouchers at the same sequence.
+
+The freeze is deliberately asymmetric:
+
+| Blocked by a freeze | Still allowed |
+|---|---|
+| `withdraw` — the payer's exit | `redeem_voucher` — honest merchants still get paid |
+| `deposit` | |
+| `stake` / `request_unstake` / `unstake` | |
+
+Redemption stays open on purpose. Merchants holding good vouchers must still be able to claim against locked collateral — freezing them out would punish the victims of the fraud rather than its author. The replay window already caps the damage, since only one voucher per sequence can ever settle.
+
+## What is deliberately not claimed
+
+<Warning>
+**A merchant offline cannot know whether a sequence was spent elsewhere thirty seconds ago.** No offline system can. EMV has the same hole and prices it the same way.
+
+Nelo's answer is not to deny this but to bound it: worst case per vault per session is `floor_limit × merchants_reached − locked_balance`, capped further by the hard cap on the limit, attributable to a hardware key, and terminated by the freeze on first conflict. What is left is [an insurance line with a model behind it](/economics/reserve-model).
+</Warning>
