@@ -143,7 +143,10 @@ mod tests {
         for n in 0u128..1000 {
             let root = isqrt(n);
             assert!(root * root <= n, "isqrt({n}) = {root} is too large");
-            assert!((root + 1) * (root + 1) > n, "isqrt({n}) = {root} is too small");
+            assert!(
+                (root + 1) * (root + 1) > n,
+                "isqrt({n}) = {root} is too small"
+            );
         }
     }
 
@@ -232,18 +235,27 @@ mod tests {
     const TIGHT_CAP: u64 = 150_000_000;
 
     fn capped() -> CurveParams {
-        CurveParams { hard_cap: TIGHT_CAP, ..params() }
+        CurveParams {
+            hard_cap: TIGHT_CAP,
+            ..params()
+        }
     }
 
     #[test]
     fn the_hard_cap_holds_against_an_absurd_reputation() {
-        let p = CurveParams { reputation_bps: u16::MAX, ..capped() };
+        let p = CurveParams {
+            reputation_bps: u16::MAX,
+            ..capped()
+        };
         assert_eq!(offline_limit(p, REFERENCE as u128), TIGHT_CAP);
     }
 
     #[test]
     fn the_hard_cap_holds_against_an_absurd_coefficient() {
-        let p = CurveParams { k_bps: u32::MAX, ..params() };
+        let p = CurveParams {
+            k_bps: u32::MAX,
+            ..params()
+        };
         assert_eq!(offline_limit(p, REFERENCE as u128), HARD_CAP);
     }
 
@@ -259,7 +271,11 @@ mod tests {
         assert!(under < TIGHT_CAP, "the cap must not be a constant return");
 
         // ...it reaches the ceiling exactly where the arithmetic says it does...
-        assert_eq!(offline_limit(p, 4 * REFERENCE as u128), TIGHT_CAP, "1 + √4 = 3");
+        assert_eq!(
+            offline_limit(p, 4 * REFERENCE as u128),
+            TIGHT_CAP,
+            "1 + √4 = 3"
+        );
 
         // ...and past it, more collateral is dead capital. That is the designed
         // behaviour, and the reason earning has to be a separate mechanism.
@@ -272,24 +288,42 @@ mod tests {
         let p = params();
         let neutral = offline_limit(p, REFERENCE as u128);
 
-        let halved = offline_limit(CurveParams { reputation_bps: 5_000, ..p }, REFERENCE as u128);
+        let halved = offline_limit(
+            CurveParams {
+                reputation_bps: 5_000,
+                ..p
+            },
+            REFERENCE as u128,
+        );
         assert_eq!(halved, neutral / 2, "a disputed merchant is trusted less");
 
         // Reputation decays to nothing with inactivity; the floor is zero, and
         // a zero-reputation merchant simply cannot emit an offline voucher.
-        let dormant = offline_limit(CurveParams { reputation_bps: 0, ..p }, REFERENCE as u128);
+        let dormant = offline_limit(
+            CurveParams {
+                reputation_bps: 0,
+                ..p
+            },
+            REFERENCE as u128,
+        );
         assert_eq!(dormant, 0);
     }
 
     #[test]
     fn a_zero_reference_falls_back_to_the_base_rather_than_dividing_by_zero() {
-        let p = CurveParams { stake_reference: 0, ..params() };
+        let p = CurveParams {
+            stake_reference: 0,
+            ..params()
+        };
         assert_eq!(offline_limit(p, REFERENCE as u128), BASE);
     }
 
     #[test]
     fn k_of_zero_disables_the_curve_entirely() {
-        let p = CurveParams { k_bps: 0, ..params() };
+        let p = CurveParams {
+            k_bps: 0,
+            ..params()
+        };
         assert_eq!(offline_limit(p, 1_000 * REFERENCE as u128), BASE);
     }
 

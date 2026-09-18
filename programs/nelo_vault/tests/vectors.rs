@@ -167,6 +167,10 @@ fn golden_vectors_match() {
             "signed message drifted for vector '{name}' — the phone and the chain \
              no longer agree on the wire format"
         );
-        assert_eq!(v.signed_message().len(), 105, "vector '{name}' wrong length");
+        assert_eq!(
+            v.signed_message().len(),
+            105,
+            "vector '{name}' wrong length"
+        );
     }
 }

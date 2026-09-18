@@ -31,7 +31,10 @@ pub struct RiskParams {
 
 impl RiskParams {
     fn validate(&self) -> Result<()> {
-        require!(self.authority != Pubkey::default(), NeloError::BadRiskParams);
+        require!(
+            self.authority != Pubkey::default(),
+            NeloError::BadRiskParams
+        );
         // Divides the stake value; zero would be a division by zero inside a
         // redemption, which is the worst possible place to discover it.
         require!(self.stake_reference != 0, NeloError::BadRiskParams);
