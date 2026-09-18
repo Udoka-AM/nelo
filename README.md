@@ -144,7 +144,6 @@ still a stub.
 > so `@nelo/attest`'s Kotlin is no longer unproven at the compiler — but a development
 > client does not embed the JS bundle, so nothing in either app has rendered. Both
 > typecheck clean, which is not the same thing.
-> [`docs/HANDSET.md`](docs/HANDSET.md) is the runbook for closing that gap, in order.
 
 See [the build sequence](docs/DELIVERABLES.md) for what is next and how each step is
 judged done.

@@ -353,12 +353,6 @@ that is not negotiable — half the marks.
 
 ---
 
-## What only a person can do
-
-[`HANDSET.md`](HANDSET.md) is the ordered runbook for the parts no machine in this repo can
-reach: the two apps on a physical Android phone, the Privy app ID, and the decisions and
-partner conversations that several steps above are waiting on.
-
 ## Standing rules
 
 - **`anchor test` stays green.** It is a graded deliverable, not a nicety.
