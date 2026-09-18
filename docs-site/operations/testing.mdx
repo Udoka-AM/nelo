@@ -15,7 +15,7 @@ This page is kept honest rather than flattering. The distinction between *a test
 | `packages/reserve` | 16 | Node only |
 | `packages/ledger` | 13 | Node only |
 | `programs/nelo_vault` — curve unit tests | 17 | Rust only |
-| `packages/voucher` | 9 | `pnpm install` |
+| `packages/voucher` | 29 | `pnpm install` |
 
 All green. These run with no phone, no validator and (except `@nelo/voucher`) no dependencies at all — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
 
@@ -33,9 +33,11 @@ Roughly 19 of those are the Trust Stake tests added most recently. **`anchor tes
 **Neither app has ever been bundled**, and `@nelo/attest`'s Kotlin has never been compiled — there is no JDK or Android SDK on the development machine. It compiles for the first time during an EAS build.
 </Warning>
 
-<Warning>
-**There is no CI.** No `.github/workflows`, so nothing runs `anchor test` on a push either. `pnpm test` chains `pnpm -r test && anchor test`, so a workflow would mostly be a toolchain install — worth adding before submission, since "clones and runs" is a graded deliverable.
-</Warning>
+<Note>
+**CI now runs all of this.** `.github/workflows/ci.yml` has three jobs: TypeScript (tests + four typechecks), Rust host (clippy + the curve's 17), and Anchor (the 40 LiteSVM tests, with the toolchain installed from Anchor.toml's own pins).
+
+The typecheck job exists because of a pattern, not a principle — [see below](#what-that-gap-already-cost). Every defect that has reached `main` so far was a TypeScript error found by a person reading code.
+</Note>
 
 ## What that gap already cost
 
