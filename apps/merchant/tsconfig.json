@@ -1,6 +1,16 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true
+    "strict": true,
+    // The workspace packages import with explicit `.ts` specifiers, because
+    // that is what Node's native type stripping requires — it does no
+    // extension resolution, and `node --test "test/*.test.ts"` is the whole
+    // test strategy. The app consumes those packages from source, so it has to
+    // accept the same style. Expo's base config does not enable it.
+    //
+    // `noEmit` is a precondition of the flag, and correct regardless: tsc is
+    // only ever a typechecker here. Metro and Babel do the building.
+    "allowImportingTsExtensions": true,
+    "noEmit": true
   }
 }

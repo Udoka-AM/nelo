@@ -1,0 +1,118 @@
+# What a clean clone has to survive.
+#
+# Week 4's graded deliverable is "clone → pnpm install → anchor test green on a
+# machine that has the toolchain". This runs that, on every push, on a machine
+# that has nothing else.
+#
+# The typecheck job exists because of a pattern rather than a principle. Three
+# defects have reached main so far — `awaitPayment` imported but never
+# exported, `ScrollView` used but never imported, and the apps being unable to
+# typecheck the packages at all. Every one was a TypeScript error. Every one
+# was found by a person reading code. None of them needed an emulator, a
+# handset or an Android toolchain to catch.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push makes the first run's answer worthless, and a stale green is
+# worse than no answer.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  js:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Reads `packageManager` from package.json, so the pin is the repo's.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # 211 across six packages, on Node's own test runner. There is no vitest
+      # or jest anywhere in this repo, and no build step before the tests.
+      - name: Tests
+        run: pnpm -r test
+
+      # Split by config rather than run as one, because the app configs and the
+      # package config genuinely differ: the apps extend Expo's base and carry
+      # react-native's types, the packages do not.
+      - name: Typecheck — packages and services
+        run: pnpm exec tsc -p tsconfig.check.json
+      - name: Typecheck — StrongBox native module
+        run: pnpm exec tsc -p packages/attest/tsconfig.json --noEmit
+      - name: Typecheck — merchant app
+        run: pnpm --filter @nelo/merchant exec tsc --noEmit
+      - name: Typecheck — payer app
+        run: pnpm --filter @nelo/payer exec tsc --noEmit
+
+  rust:
+    name: Rust (host)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # rustup reads rust-toolchain.toml, so the channel is the repo's pin.
+      - uses: Swatinem/rust-cache@v2
+
+      # First, because it is the fastest thing that can be wrong and needs no
+      # compilation at all.
+      - name: Formatting
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy -p nelo_vault --lib -- -D warnings
+
+      # The floor-limit curve is written with no Anchor types precisely so it
+      # can be checked without a validator. 17 tests, seconds, no Solana
+      # toolchain — which is why this job is separate from the one below and
+      # gives an answer long before it does.
+      - name: Curve unit tests
+        run: cargo test -p nelo_vault --lib
+
+  anchor:
+    name: Anchor (40 LiteSVM tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+
+      # Pinned to Anchor.toml's `solana_version`.
+      - name: Install Agave
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/v4.2.2/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      # Straight from crates.io at Anchor.toml's `anchor_version`, rather than
+      # through avm: one fewer moving part, and the version is pinned either
+      # way. Cached on the version alone, because that is the only thing that
+      # changes what gets built.
+      - name: Cache the Anchor CLI
+        id: anchor-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/anchor
+          key: anchor-cli-1.2.0-${{ runner.os }}
+      - name: Install the Anchor CLI
+        if: steps.anchor-cache.outputs.cache-hit != 'true'
+        run: cargo install anchor-cli --version 1.2.0 --locked
+
+      # Anchor.toml names a provider wallet. Nothing here deploys, but the CLI
+      # expects the file to exist.
+      - name: A throwaway provider wallet
+        run: |
+          mkdir -p ~/.config/solana
+          solana-keygen new --no-bip39-passphrase --force -s -o ~/.config/solana/id.json
+
+      # `skip_local_validator = true` and `[scripts] test = "cargo test"`, so
+      # this is: build the .so, then run the LiteSVM suite against it. No
+      # validator is started.
+      - name: anchor test
+        run: anchor test
