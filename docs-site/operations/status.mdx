@@ -22,12 +22,12 @@ Three states are kept apart, because conflating them is how a demo ends up claim
     Caveat: run with a *software* P-256 key, not StrongBox.
   </Card>
   <Card title="The ordinary sale" icon="receipt">
-    **Written.** Till, MWA wallet, Solana Pay, payment validation, day-book, balance, SPL collateral, onboarding.
+    **Written, and typechecked.** Till, MWA wallet, Solana Pay, payment validation, day-book, balance, SPL collateral, onboarding.
 
-    Caveat: never bundled — and that gap has now cost [two import bugs](/operations/testing#what-that-gap-already-cost).
+    Caveat: **never rendered.** A dev-client build compiles the native side but does not embed the JS.
   </Card>
   <Card title="Trust Stake" icon="coins">
-    **Curve proven off-chain** (17 tests). Staking, cooldown and risk config **written, never executed** — the ~19 on-chain tests have not run.
+    **Proven, on devnet.** 17 curve tests off chain, ~19 on chain in LiteSVM, and `RiskConfig` now live on a real validator with `redeem_voucher` exercised against its new account struct.
   </Card>
   <Card title="Settlement" icon="book">
     **Ledger proven** (39 tests) — double-entry, idempotent, reversible, reconcilable. Partner is a **declared stub**.
@@ -39,7 +39,7 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | Component | State |
 |---|---|
 | `programs/nelo_vault` — trust model | ✅ Proven on devnet |
-| `programs/nelo_vault` — Trust Stake | ⚠️ Written, on-chain tests never run |
+| `programs/nelo_vault` — Trust Stake | ✅ Proven — LiteSVM, then devnet |
 | `packages/voucher` | ✅ Proven, both sides, golden vectors |
 | `packages/pay` | ✅ Proven (54 tests) |
 | `packages/ledger` | ✅ Proven (13 tests) |
@@ -47,13 +47,13 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | `packages/reserve` | ✅ Proven (16 tests) |
 | `services/settle` — ledger | ✅ Proven (39 tests) |
 | `services/settle` — partner | 🟡 Declared stub |
-| `packages/attest` | ⚠️ Written, never compiled |
-| `apps/merchant` | ⚠️ Written, never bundled |
-| `apps/payer` | ⚠️ Probe only — never bundled. Real payer UI is week 3 |
+| `packages/attest` | ⚠️ Compiles (EAS build); never run on hardware |
+| `apps/merchant` | ⚠️ Typechecks; native side builds; never rendered |
+| `apps/payer` | ⚠️ Probe only — typechecks, never rendered. Real payer UI is week 3 |
 | `services/relay` | ❌ Stub — one line |
 | Live price feed | ❌ Blocked on a product decision |
 | Onboarding — the flow's rules | ✅ Proven (29 of `@nelo/onboard`'s 60) |
-| Onboarding — the Privy calls | ⚠️ Written, never bundled; needs an app ID |
+| Onboarding — the Privy calls | ⚠️ Typechecked against the SDK; needs an app ID and a device |
 | Gasless relayer | ❌ Not started |
 | Slashing | ❌ Not started |
 | CI | ✅ Three jobs — tests, typecheck, `anchor test` |
@@ -61,13 +61,13 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 ## The three things that block the most
 
 <Steps>
-  <Step title="Get a build onto a handset">
-    Everything app-side is unverified until this happens, and `@nelo/attest`'s Kotlin has never been compiled at all. A first EAS build surfaces an entire class of bug in its first thirty seconds — [two of which have already been found by hand](/operations/testing#what-that-gap-already-cost).
+  <Step title="Run the app on a handset">
+    The one that blocks the most, now that the chain side is settled. The native build compiles, but a development client loads its JS from Metro — so **nothing in either app has rendered**. Every screen, every state transition and every native call is unverified at runtime.
 
-    Onboarding now needs it twice over: a Privy app ID and a development build, because the SDK's native extensions cannot load in Expo Go either.
+    It answers three questions at once: does the JS bundle, does StrongBox behave on real hardware, and does MWA find a wallet. `docs/HANDSET.md` in the repository is the ordered runbook — payer probe first, because it is self-driving and tests the deepest assumptions.
   </Step>
-  <Step title="Run `anchor test` somewhere with the toolchain">
-    40 LiteSVM tests exist and have never executed. Until they do, the Trust Stake is written rather than proven.
+  <Step title="Get a Privy app ID">
+    Onboarding's done-when is *setup completed without ever seeing a key*, and it cannot be demonstrated without one. The flow's rules are tested; the SDK calls are typechecked and unexecuted. A build with no app ID runs and simply does not offer the phone route.
   </Step>
   <Step title="Settle the payout partner">
     No licensed partner has been signed. The ledger is real and the stub is honest, so the fork is cheap — but the real leg cannot be built against an API nobody has access to.

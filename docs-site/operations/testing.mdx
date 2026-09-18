@@ -3,7 +3,7 @@ title: "Testing"
 description: "What is proven, what is written but unexecuted, and what the gap has already cost."
 ---
 
-This page is kept honest rather than flattering. The distinction between *a test exists* and *a test has run* matters more here than usual, because a large part of this repo has never been executed.
+This page is kept honest rather than flattering. The distinction between *a test exists* and *a test has run* is the one that matters, and for most of this project's life it cut the wrong way. It no longer does — but the parts that are still only written say so.
 
 ## What has actually run
 
@@ -11,33 +11,50 @@ This page is kept honest rather than flattering. The distinction between *a test
 |---|---:|---|
 | `packages/onboard` | 60 | Node only |
 | `packages/pay` | 54 | Node only |
+| `programs/nelo_vault` — LiteSVM | 40 | Solana toolchain |
 | `services/settle` | 39 | Node only |
+| `packages/voucher` | 29 | `pnpm install` |
+| `programs/nelo_vault` — curve unit tests | 17 | Rust only |
 | `packages/reserve` | 16 | Node only |
 | `packages/ledger` | 13 | Node only |
-| `programs/nelo_vault` — curve unit tests | 17 | Rust only |
-| `packages/voucher` | 29 | `pnpm install` |
 
-All green. These run with no phone, no validator and (except `@nelo/voucher`) no dependencies at all — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
+**268, all green, all on every push.** Everything but the LiteSVM suite runs with no phone and no validator — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
 
-## What has never run
+The 40 LiteSVM tests were the long-standing gap. They went unexecuted for weeks because no machine that had the repo had the Solana toolchain — `release.anza.xyz` is unreachable from the development environment. The first run scored **39 of 40**, and [the one failure was worth more than the 39 passes](#things-that-went-wrong-and-were-caught).
 
-<Warning>
-**The 40 LiteSVM integration tests in `programs/nelo_vault/tests/vault.rs`.**
+## What CI runs
 
-They need a built `.so`, which needs the Solana toolchain, which is not installable on the current development machine — `release.anza.xyz` is unreachable from it. They compile against a stub binary, so account-struct drift is caught. Their runtime behaviour is not.
+`.github/workflows/ci.yml`, on every push and every pull request:
 
-Roughly 19 of those are the Trust Stake tests added most recently. **`anchor test` has to run somewhere with the toolchain before any of them are worth anything.**
-</Warning>
+| Job | What | Cold | Warm |
+|---|---|---|---|
+| **TypeScript** | 211 tests, then four typechecks | ~21s | ~21s |
+| **Rust (host)** | `cargo fmt`, clippy, the curve's 17 | ~27s | ~27s |
+| **Anchor** | the 40 LiteSVM tests | ~14m | ~9m |
 
-<Warning>
-**Neither app has ever been bundled**, and `@nelo/attest`'s Kotlin has never been compiled — there is no JDK or Android SDK on the development machine. It compiles for the first time during an EAS build.
-</Warning>
+The Rust job is deliberately separate from the Anchor one: the curve carries no Anchor types precisely so it can be checked without a validator, and it answers in seconds instead of waiting on a toolchain install. The Anchor job pins from `Anchor.toml`'s own `solana_version` and `anchor_version`, and is week 4's graded deliverable — *clone → install → `anchor test` green* — run on a machine that starts with nothing.
 
 <Note>
-**CI now runs all of this.** `.github/workflows/ci.yml` has three jobs: TypeScript (tests + four typechecks), Rust host (clippy + the curve's 17), and Anchor (the 40 LiteSVM tests, with the toolchain installed from Anchor.toml's own pins).
+**The typecheck job exists because of a pattern, not a principle.** Every defect that has reached `main` was a TypeScript error found by a person reading code. [See below](#what-that-gap-already-cost).
 
-The typecheck job exists because of a pattern, not a principle — [see below](#what-that-gap-already-cost). Every defect that has reached `main` so far was a TypeScript error found by a person reading code.
+Each check is negative-tested rather than trusted: removing the `ScrollView` import gives `TS2304`, renaming an export in `@nelo/pay` gives `TS2724`, and a malformed function makes `cargo fmt --check` exit 1. A job that cannot fail is not worth adding.
 </Note>
+
+## What still has never run
+
+<Warning>
+**Neither app has rendered.** An EAS development build compiles the entire native side, so `@nelo/attest`'s Kotlin is no longer unproven at the compiler — but a development client **does not embed the JS bundle**; it loads it from Metro at runtime. So no screen in either app has been drawn, no component has mounted, and the JS has never been bundled at all.
+
+Both apps typecheck clean under `strict`. That is a real result and it is not the same result.
+</Warning>
+
+<Warning>
+**StrongBox has never run on hardware.** `@nelo/attest` compiles; whether a real secure element produces the attestation chain and the low-S signature the chain expects is untested. The devnet gate deliberately uses a software P-256 key, which isolates *"does the chain do what we think"* from *"does the handset do what we think"*. Only the first is answered.
+</Warning>
+
+<Warning>
+**The Privy calls have never executed.** The flow machine around them has 29 tests, but `useLoginWithSMS` and `useEmbeddedSolanaWallet` need an app ID and a device. The call sites were typechecked against the published `@privy-io/expo` declarations, which catches shape errors and nothing about behaviour.
+</Warning>
 
 ## What that gap already cost
 
@@ -50,7 +67,7 @@ import { awaitPayment, type PaymentOutcome } from "@nelo/pay";
 
 `packages/pay/src/index.ts` **never re-exported either of them.** `awaitPayment` would have been `undefined` at runtime — the till would have crashed the moment a merchant pressed **Charge**.
 
-No test caught it, and no test could have: the app has never been bundled, and there was no CI to bundle it. It was found by reading imports while adding an unrelated feature.
+No test caught it, and at the time none could have: the app had never been bundled and there was no CI. It was found by reading imports while adding an unrelated feature.
 
 Then it happened again. While wiring onboarding:
 
@@ -61,11 +78,15 @@ Then it happened again. While wiring onboarding:
 
 `ScrollView` was **never imported.** Tapping **Today** would have thrown. Found the same way — by eye, adding something else.
 
-<Note>
-This is the argument for the EAS build in one paragraph, now with two data points. A first bundle surfaces this entire class of bug in its first thirty seconds, and everything app-side is still in the position these two were.
+Then a third, when `tsc` was pointed at the apps for the first time: they could not typecheck the packages **at all**. The config error stopped the check before it reached a line of app code.
 
-Both were import bugs in the same file, found by reading rather than running. That is not a method; it is what is left when there is nothing to run.
+<Note>
+All three are TypeScript errors. All three were found by a person reading code. None needed an emulator, a handset or an Android toolchain to catch.
+
+That is why the typecheck job exists, and why it is four separate invocations rather than a hopeful one. Reading is not a method; it is what is left when there is nothing to run — and now there is.
 </Note>
+
+The gap that remains is narrower but real: a typecheck proves the types, not the render. Nothing in either app has drawn a screen.
 
 ## How the tests are written
 
@@ -101,12 +122,29 @@ Kept because they are more informative than the passes:
 | A test asserting custody empties after a full payout, when the platform fee stays behind | The test failing |
 | Two test objects built by spreading a class instance — the methods live on the prototype, so they never implemented the interface | `tsc --strict` |
 | A misread Poisson table asserting a quantile of 3 where `P(X≤2)` already cleared the confidence | The test failing |
+| A test that refused the right thing for the wrong reason, proving nothing | `anchor test`, the first time it ran |
 
-Five of the six were caught by a tool or a test rather than by reading. The one that was not — the FX legs — was a design error, and the ledger's own balance rule would have rejected it at runtime anyway.
+Most were caught by a tool or a test rather than by reading. The one that was not — the FX legs — was a design error, and the ledger's own balance rule would have rejected it at runtime anyway.
+
+### The one worth reading twice
+
+The first-ever `anchor test` run scored 39 of 40. The failure was `only_the_risk_authority_can_publish_reputation`, and it was not the program.
+
+The test helper passed the same keypair twice — once as fee payer, once as the instruction's signer. A message dedupes its account keys, so it required **one** signature while the transaction builder was handed **two**, and failed with `NotEnoughSigners` *before the program was entered*.
+
+So the test got an error, `is_err()` was satisfied, and the property it names — *reputation you can set yourself is not reputation* — had **never been checked**. The authority constraint was there and correct, but correct-by-inspection is not proven.
+
+<Note>
+**Failing was the good outcome.** Had the assertion been on `is_err()` alone, it would be green today and still empty. Its sibling test passes only because an impostor keypair happens to differ from the payer, so it never hit the trap at all.
+
+That is the argument for asserting on the *reason* rather than the fact of a refusal, and it is why every check added to CI was negative-tested before being trusted.
+</Note>
 
 ## The devnet gate
 
-The week-1 trust model has been run end to end on devnet: vault funded, voucher redeemed with the device signature verified by the secp256r1 precompile **on a real validator**, double-spend refused, signature-over-other-bytes refused.
+The week-1 trust model has been run end to end on devnet **against the Trust Stake build**: vault funded, `RiskConfig` initialised, voucher redeemed with the device signature verified by the secp256r1 precompile **on a real validator**, double-spend refused, signature-over-other-bytes refused.
+
+That distinction matters. The gate had passed before, but against a build that predated the Trust Stake. This run is the first time `RiskConfig` has existed on a real validator and the first time `redeem_voucher` has been exercised on chain with its new account struct — exactly the kind of change LiteSVM can accept and a validator reject.
 
 ```bash
 cargo test -p nelo_vault --test devnet -- --ignored --nocapture
