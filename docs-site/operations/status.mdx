@@ -64,7 +64,7 @@ Three states are kept apart, because conflating them is how a demo ends up claim
   <Step title="Run the app on a handset">
     The one that blocks the most, now that the chain side is settled. The native build compiles, but a development client loads its JS from Metro — so **nothing in either app has rendered**. Every screen, every state transition and every native call is unverified at runtime.
 
-    It answers three questions at once: does the JS bundle, does StrongBox behave on real hardware, and does MWA find a wallet. `docs/HANDSET.md` in the repository is the ordered runbook — payer probe first, because it is self-driving and tests the deepest assumptions.
+    It answers three questions at once: does the JS bundle, does StrongBox behave on real hardware, and does MWA find a wallet.
   </Step>
   <Step title="Get a Privy app ID">
     Onboarding's done-when is *setup completed without ever seeing a key*, and it cannot be demonstrated without one. The flow's rules are tested; the SDK calls are typechecked and unexecuted. A build with no app ID runs and simply does not offer the phone route.
