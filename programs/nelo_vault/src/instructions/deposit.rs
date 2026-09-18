@@ -60,6 +60,9 @@ pub fn handle_deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
     )?;
 
     let vault = &mut ctx.accounts.vault;
-    vault.balance = vault.balance.checked_add(amount).ok_or(NeloError::Overflow)?;
+    vault.balance = vault
+        .balance
+        .checked_add(amount)
+        .ok_or(NeloError::Overflow)?;
     Ok(())
 }
