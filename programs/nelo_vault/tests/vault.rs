@@ -205,7 +205,25 @@ fn send(ctx: &mut Ctx, ixs: &[Instruction], signers: &[&Keypair]) -> Result<(), 
     ctx.svm.expire_blockhash();
     let blockhash = ctx.svm.latest_blockhash();
     let msg = Message::new_with_blockhash(ixs, Some(&signers[0].pubkey()), &blockhash);
-    let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), signers)
+
+    // A message dedupes its account keys, so a keypair passed twice — the fee
+    // payer also appearing as the instruction's signer — leaves `try_new` with
+    // more keypairs than the message requires signatures for, and it fails
+    // with `NotEnoughSigners` *before the program is entered*.
+    //
+    // That matters because it is silent: a test asking "can the vault's own
+    // owner set its own reputation?" still sees an error and still passes
+    // `is_err()`, while proving nothing whatsoever about the program. Dedupe
+    // here so signing as an account the payer already covers is an ordinary
+    // case rather than a trap.
+    let mut unique: Vec<&Keypair> = Vec::with_capacity(signers.len());
+    for signer in signers {
+        if !unique.iter().any(|kept| kept.pubkey() == signer.pubkey()) {
+            unique.push(signer);
+        }
+    }
+
+    let tx = VersionedTransaction::try_new(VersionedMessage::Legacy(msg), unique.as_slice())
         .map_err(|e| e.to_string())?;
     ctx.svm
         .send_transaction(tx)
@@ -1128,7 +1146,12 @@ fn only_the_risk_authority_can_publish_reputation() {
     // reputation.
     let res = set_reputation(&mut ctx, &owner, 20_000);
     assert!(res.is_err());
-    assert!(res.unwrap_err().contains("NotRiskAuthority"));
+    // Carries the error, because the owner signing here is also the fee payer:
+    // if that ever fails to reach the program the refusal comes from signing
+    // rather than from the authority check, and a bare assertion cannot tell
+    // the two apart. It could not, once.
+    let err = res.unwrap_err();
+    assert!(err.contains("NotRiskAuthority"), "refused for the wrong reason: {err}");
 }
 
 #[test]
