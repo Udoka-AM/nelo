@@ -27,8 +27,7 @@ use {
 // SPL programs and their wire formats are built by hand here. The helper crates
 // pull in their own incompatible `Pubkey`, and these three instructions are
 // stable, small, and clearer than a dependency-alignment exercise.
-const SPL_TOKEN_ID: Pubkey =
-    solana_pubkey::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+const SPL_TOKEN_ID: Pubkey = solana_pubkey::pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 const ATA_PROGRAM_ID: Pubkey =
     solana_pubkey::pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 const MINT_LEN: usize = 82;
@@ -86,8 +85,7 @@ fn create_ata_ix(funder: &Pubkey, wallet: &Pubkey, mint: &Pubkey) -> Instruction
     }
 }
 
-const SECP256R1_ID: Pubkey =
-    solana_pubkey::pubkey!("Secp256r1SigVerify1111111111111111111111111");
+const SECP256R1_ID: Pubkey = solana_pubkey::pubkey!("Secp256r1SigVerify1111111111111111111111111");
 const INSTRUCTIONS_SYSVAR: Pubkey =
     solana_pubkey::pubkey!("Sysvar1nstructions1111111111111111111111111");
 
@@ -195,7 +193,11 @@ fn secp256r1_ix(message: &[u8], signature: &[u8; 64], pubkey: &[u8; 33]) -> Inst
     data.extend_from_slice(signature);
     data.extend_from_slice(message);
 
-    Instruction { program_id: SECP256R1_ID, accounts: vec![], data }
+    Instruction {
+        program_id: SECP256R1_ID,
+        accounts: vec![],
+        data,
+    }
 }
 
 fn send(ctx: &mut Ctx, ixs: &[Instruction], signers: &[&Keypair]) -> Result<(), String> {
@@ -330,7 +332,12 @@ fn setup() -> Ctx {
         &mut ctx,
         &[
             create_ata_ix(&owner.pubkey(), &owner.pubkey(), &stake_mint),
-            mint_to_ix(&stake_mint, &owner_stake_token, &owner.pubkey(), STAKE_MINTED),
+            mint_to_ix(
+                &stake_mint,
+                &owner_stake_token,
+                &owner.pubkey(),
+                STAKE_MINTED,
+            ),
         ],
         &[&owner],
     )
@@ -340,7 +347,10 @@ fn setup() -> Ctx {
     // compile-time constant — see RiskConfig.
     let init_risk = Instruction::new_with_bytes(
         nelo_vault::id(),
-        &nelo_vault::instruction::InitializeRiskConfig { params: risk_params(&ctx) }.data(),
+        &nelo_vault::instruction::InitializeRiskConfig {
+            params: risk_params(&ctx),
+        }
+        .data(),
         nelo_vault::accounts::InitializeRiskConfig {
             payer: owner.pubkey(),
             config: ctx.risk_config,
@@ -429,7 +439,10 @@ fn redeem_ix(ctx: &Ctx, v: &VoucherArgs) -> Instruction {
 fn redeem(ctx: &mut Ctx, v: &VoucherArgs, sk: &SigningKey) -> Result<(), String> {
     let msg = v.signed_message();
     let sig = sign(sk, &msg);
-    let ixs = [secp256r1_ix(&msg, &sig, &device_pubkey(sk)), redeem_ix(ctx, v)];
+    let ixs = [
+        secp256r1_ix(&msg, &sig, &device_pubkey(sk)),
+        redeem_ix(ctx, v),
+    ];
     let owner = ctx.owner.insecure_clone();
     send(ctx, &ixs, &[&owner])
 }
@@ -462,7 +475,10 @@ fn rejects_signature_over_other_bytes() {
 
     // Precompile verifies the decoy happily; the program must still refuse,
     // because those are not the bytes of the voucher in instruction 1.
-    let ixs = [secp256r1_ix(&signed_bytes, &sig, &pk), redeem_ix(&ctx, &real)];
+    let ixs = [
+        secp256r1_ix(&signed_bytes, &sig, &pk),
+        redeem_ix(&ctx, &real),
+    ];
     let owner = ctx.owner.insecure_clone();
     let res = send(&mut ctx, &ixs, &[&owner]);
 
@@ -625,7 +641,11 @@ fn double_spend_is_refused() {
 
     assert!(res.is_err(), "the second spend at seq 3 must be refused");
     assert!(res.unwrap_err().contains("SequenceAlreadyRedeemed"));
-    assert_eq!(vault_state(&ctx).balance, balance_after_first, "no double debit");
+    assert_eq!(
+        vault_state(&ctx).balance,
+        balance_after_first,
+        "no double debit"
+    );
     assert_eq!(
         token_balance(&ctx, &ctx.merchant_token),
         merchant_after_first,
@@ -667,8 +687,11 @@ fn withdraw_blocked_until_timelock_elapses() {
     let request = Instruction::new_with_bytes(
         nelo_vault::id(),
         &nelo_vault::instruction::RequestWithdraw {}.data(),
-        nelo_vault::accounts::RequestWithdraw { owner: owner.pubkey(), vault: ctx.vault }
-            .to_account_metas(None),
+        nelo_vault::accounts::RequestWithdraw {
+            owner: owner.pubkey(),
+            vault: ctx.vault,
+        }
+        .to_account_metas(None),
     );
     send(&mut ctx, &[request], &[&owner]).expect("request_withdraw");
 
@@ -677,7 +700,10 @@ fn withdraw_blocked_until_timelock_elapses() {
     let withdraw = move || {
         Instruction::new_with_bytes(
             nelo_vault::id(),
-            &nelo_vault::instruction::Withdraw { amount: 100_000_000 }.data(),
+            &nelo_vault::instruction::Withdraw {
+                amount: 100_000_000,
+            }
+            .data(),
             nelo_vault::accounts::Withdraw {
                 owner: owner_pk,
                 vault: vault_pk,
@@ -709,16 +735,18 @@ fn vouchers_still_redeem_during_the_timelock() {
     let request = Instruction::new_with_bytes(
         nelo_vault::id(),
         &nelo_vault::instruction::RequestWithdraw {}.data(),
-        nelo_vault::accounts::RequestWithdraw { owner: owner.pubkey(), vault: ctx.vault }
-            .to_account_metas(None),
+        nelo_vault::accounts::RequestWithdraw {
+            owner: owner.pubkey(),
+            vault: ctx.vault,
+        }
+        .to_account_metas(None),
     );
     send(&mut ctx, &[request], &[&owner]).expect("request_withdraw");
 
     warp(&mut ctx, 60 * 60);
     let v = voucher(&ctx, 0, 5_000_000);
     let device = ctx.device.clone();
-    redeem(&mut ctx, &v, &device)
-        .expect("a merchant reconnecting mid-timelock must still be paid");
+    redeem(&mut ctx, &v, &device).expect("a merchant reconnecting mid-timelock must still be paid");
 }
 
 // ------------------------------------------------------- the conflict freeze ---
@@ -733,8 +761,11 @@ fn report_conflict(
     let (msg_a, msg_b) = (a.signed_message(), b.signed_message());
     let ix = Instruction::new_with_bytes(
         nelo_vault::id(),
-        &nelo_vault::instruction::ReportConflict { voucher_a: a.clone(), voucher_b: b.clone() }
-            .data(),
+        &nelo_vault::instruction::ReportConflict {
+            voucher_a: a.clone(),
+            voucher_b: b.clone(),
+        }
+        .data(),
         nelo_vault::accounts::ReportConflict {
             reporter: ctx.owner.pubkey(),
             vault: ctx.vault,
@@ -808,7 +839,10 @@ fn conflict_proof_rejects_forged_signatures() {
     b.salt = [2u8; 8];
 
     let res = report_conflict(&mut ctx, &a, &b, &device, &attacker);
-    assert!(res.is_err(), "a voucher the device never signed proves nothing");
+    assert!(
+        res.is_err(),
+        "a voucher the device never signed proves nothing"
+    );
     assert!(res.unwrap_err().contains("DeviceKeyMismatch"));
     assert_eq!(vault_state(&ctx).status, 0, "no freeze on a forged proof");
 }
@@ -823,8 +857,11 @@ fn frozen_vault_blocks_withdraw() {
     let request = Instruction::new_with_bytes(
         nelo_vault::id(),
         &nelo_vault::instruction::RequestWithdraw {}.data(),
-        nelo_vault::accounts::RequestWithdraw { owner: owner.pubkey(), vault: ctx.vault }
-            .to_account_metas(None),
+        nelo_vault::accounts::RequestWithdraw {
+            owner: owner.pubkey(),
+            vault: ctx.vault,
+        }
+        .to_account_metas(None),
     );
     send(&mut ctx, &[request], &[&owner]).expect("request_withdraw");
 
@@ -833,7 +870,11 @@ fn frozen_vault_blocks_withdraw() {
     b.salt = [2u8; 8];
     report_conflict(&mut ctx, &a, &b, &device, &device).expect("freeze");
 
-    assert_eq!(vault_state(&ctx).unlock_at, 0, "pending withdrawal was cancelled");
+    assert_eq!(
+        vault_state(&ctx).unlock_at,
+        0,
+        "pending withdrawal was cancelled"
+    );
 
     warp(&mut ctx, 48 * 60 * 60);
     let withdraw = Instruction::new_with_bytes(
@@ -850,7 +891,10 @@ fn frozen_vault_blocks_withdraw() {
         .to_account_metas(None),
     );
     let res = send(&mut ctx, &[withdraw], &[&owner]);
-    assert!(res.is_err(), "a frozen vault must not release collateral to its owner");
+    assert!(
+        res.is_err(),
+        "a frozen vault must not release collateral to its owner"
+    );
     assert!(res.unwrap_err().contains("VaultFrozen"));
 }
 
@@ -889,7 +933,10 @@ fn only_one_side_of_a_conflict_can_settle() {
     redeem(&mut ctx, &a, &device).expect("first side settles");
     report_conflict(&mut ctx, &a, &b, &device, &device).expect("freeze");
     let res = redeem(&mut ctx, &b, &device);
-    assert!(res.is_err(), "the other side of the conflict must never settle");
+    assert!(
+        res.is_err(),
+        "the other side of the conflict must never settle"
+    );
     assert!(res.unwrap_err().contains("SequenceAlreadyRedeemed"));
 }
 
@@ -916,7 +963,7 @@ fn secp256r1_precompile_is_registered() {
 /// same message; the question is whether the chain accepts both.
 fn sign_high_s(sk: &SigningKey, message: &[u8]) -> [u8; 64] {
     let low = sign(sk, message); // already normalised low
-    // n - s, big-endian, on the low 32 bytes.
+                                 // n - s, big-endian, on the low 32 bytes.
     const N: [u8; 32] = [
         0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
         0xff, 0xbc, 0xe6, 0xfa, 0xad, 0xa7, 0x17, 0x9e, 0x84, 0xf3, 0xb9, 0xca, 0xc2, 0xfc, 0x63,
@@ -1045,11 +1092,7 @@ fn set_reputation(ctx: &mut Ctx, signer: &Keypair, reputation_bps: u16) -> Resul
     send(ctx, &[ix], &[&owner, signer])
 }
 
-fn update_risk_config(
-    ctx: &mut Ctx,
-    signer: &Keypair,
-    params: RiskParams,
-) -> Result<(), String> {
+fn update_risk_config(ctx: &mut Ctx, signer: &Keypair, params: RiskParams) -> Result<(), String> {
     let ix = Instruction::new_with_bytes(
         nelo_vault::id(),
         &nelo_vault::instruction::UpdateRiskConfig { params }.data(),
@@ -1071,7 +1114,11 @@ fn publish_stake_price(
 ) -> Result<(), String> {
     let ix = Instruction::new_with_bytes(
         nelo_vault::id(),
-        &nelo_vault::instruction::PublishStakePrice { stake_price, haircut_bps }.data(),
+        &nelo_vault::instruction::PublishStakePrice {
+            stake_price,
+            haircut_bps,
+        }
+        .data(),
         nelo_vault::accounts::UpdateRiskConfig {
             authority: signer.pubkey(),
             config: ctx.risk_config,
@@ -1091,7 +1138,11 @@ fn assert_limit(ctx: &mut Ctx, seq: u64, limit: u64) {
 
     let over = voucher(ctx, seq, limit + 1);
     let res = redeem(ctx, &over, &device);
-    assert!(res.is_err(), "{} is above the limit {limit} and must be refused", limit + 1);
+    assert!(
+        res.is_err(),
+        "{} is above the limit {limit} and must be refused",
+        limit + 1
+    );
     assert!(res.unwrap_err().contains("AboveFloorLimit"));
 
     let at = voucher(ctx, seq, limit);
@@ -1107,7 +1158,10 @@ fn rejects_a_cooldown_shorter_than_the_settlement_horizon() {
     let authority = ctx.risk_authority.insecure_clone();
     // One hour. Vouchers signed before the request have not been presented
     // yet, so this would let a payer unstake out from under a loss in flight.
-    let params = RiskParams { unstake_cooldown: 3_600, ..risk_params(&ctx) };
+    let params = RiskParams {
+        unstake_cooldown: 3_600,
+        ..risk_params(&ctx)
+    };
 
     let res = update_risk_config(&mut ctx, &authority, params);
     assert!(res.is_err());
@@ -1119,7 +1173,10 @@ fn rejects_a_zero_stake_reference() {
     let mut ctx = setup();
     let authority = ctx.risk_authority.insecure_clone();
     // Would be a division by zero inside a redemption.
-    let params = RiskParams { stake_reference: 0, ..risk_params(&ctx) };
+    let params = RiskParams {
+        stake_reference: 0,
+        ..risk_params(&ctx)
+    };
 
     let res = update_risk_config(&mut ctx, &authority, params);
     assert!(res.is_err());
@@ -1131,7 +1188,10 @@ fn only_the_risk_authority_can_move_the_parameters() {
     let mut ctx = setup();
     let impostor = Keypair::new();
     ctx.svm.airdrop(&impostor.pubkey(), LAMPORTS).unwrap();
-    let params = RiskParams { hard_cap: u64::MAX, ..risk_params(&ctx) };
+    let params = RiskParams {
+        hard_cap: u64::MAX,
+        ..risk_params(&ctx)
+    };
 
     let res = update_risk_config(&mut ctx, &impostor, params);
     assert!(res.is_err());
@@ -1151,7 +1211,10 @@ fn only_the_risk_authority_can_publish_reputation() {
     // rather than from the authority check, and a bare assertion cannot tell
     // the two apart. It could not, once.
     let err = res.unwrap_err();
-    assert!(err.contains("NotRiskAuthority"), "refused for the wrong reason: {err}");
+    assert!(
+        err.contains("NotRiskAuthority"),
+        "refused for the wrong reason: {err}"
+    );
 }
 
 #[test]
@@ -1182,7 +1245,10 @@ fn staking_raises_the_offline_limit() {
     // Before staking, the enrolled base is the whole story.
     let device = ctx.device.clone();
     let over = voucher(&ctx, 0, FLOOR_LIMIT + 1);
-    assert!(redeem(&mut ctx, &over, &device).is_err(), "base limit holds");
+    assert!(
+        redeem(&mut ctx, &over, &device).is_err(),
+        "base limit holds"
+    );
 
     // $100 of stake value — one reference unit — so 1 + √1 = 2.
     stake(&mut ctx, 100 * ONE_SKR).expect("stake");
@@ -1245,7 +1311,10 @@ fn a_falling_price_shrinks_the_limit_at_redemption() {
     publish_stake_price(&mut ctx, &authority, STAKE_PRICE / 2, HAIRCUT_BPS).expect("publish");
 
     let res = redeem(&mut ctx, &at_old_price, &device);
-    assert!(res.is_err(), "a stake worth half as much must not hold the same limit");
+    assert!(
+        res.is_err(),
+        "a stake worth half as much must not hold the same limit"
+    );
     assert!(res.unwrap_err().contains("AboveFloorLimit"));
 }
 
@@ -1263,11 +1332,18 @@ fn requesting_an_unstake_drops_the_limit_immediately() {
     stake(&mut ctx, 100 * ONE_SKR).expect("stake");
     request_unstake(&mut ctx, 100 * ONE_SKR).expect("request");
 
-    assert_eq!(vault_state(&ctx).effective_stake(), 0, "stake left the curve at once");
+    assert_eq!(
+        vault_state(&ctx).effective_stake(),
+        0,
+        "stake left the curve at once"
+    );
 
     let v = voucher(&ctx, 0, 2 * FLOOR_LIMIT);
     let res = redeem(&mut ctx, &v, &device);
-    assert!(res.is_err(), "the uplift must be gone the moment it is requested");
+    assert!(
+        res.is_err(),
+        "the uplift must be gone the moment it is requested"
+    );
     assert!(res.unwrap_err().contains("AboveFloorLimit"));
 }
 
@@ -1304,13 +1380,20 @@ fn unstake_returns_the_tokens_after_the_cooldown() {
     let before = token_balance(&ctx, &ctx.owner_stake_token);
 
     stake(&mut ctx, 100 * ONE_SKR).expect("stake");
-    assert_eq!(token_balance(&ctx, &ctx.owner_stake_token), before - 100 * ONE_SKR);
+    assert_eq!(
+        token_balance(&ctx, &ctx.owner_stake_token),
+        before - 100 * ONE_SKR
+    );
 
     request_unstake(&mut ctx, 100 * ONE_SKR).expect("request");
     warp(&mut ctx, UNSTAKE_COOLDOWN);
     unstake(&mut ctx).expect("unstake after the cooldown");
 
-    assert_eq!(token_balance(&ctx, &ctx.owner_stake_token), before, "tokens came back");
+    assert_eq!(
+        token_balance(&ctx, &ctx.owner_stake_token),
+        before,
+        "tokens came back"
+    );
     assert_eq!(vault_state(&ctx).stake, 0);
     assert_eq!(vault_state(&ctx).pending_unstake, 0, "request consumed");
 }

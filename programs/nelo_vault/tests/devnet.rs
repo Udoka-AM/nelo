@@ -55,7 +55,11 @@ fn initialize_mint_ix(mint: &Pubkey, authority: &Pubkey) -> Instruction {
     let mut data = vec![20u8, DECIMALS];
     data.extend_from_slice(authority.as_ref());
     data.push(0);
-    Instruction { program_id: SPL_TOKEN_ID, accounts: vec![AccountMeta::new(*mint, false)], data }
+    Instruction {
+        program_id: SPL_TOKEN_ID,
+        accounts: vec![AccountMeta::new(*mint, false)],
+        data,
+    }
 }
 
 fn mint_to_ix(mint: &Pubkey, to: &Pubkey, authority: &Pubkey, amount: u64) -> Instruction {
@@ -89,9 +93,7 @@ fn create_ata_ix(funder: &Pubkey, wallet: &Pubkey, mint: &Pubkey) -> Instruction
 
 fn token_balance(rpc: &RpcClient, account: &Pubkey) -> u64 {
     match rpc.get_account(account) {
-        Ok(a) if a.data.len() >= 72 => {
-            u64::from_le_bytes(a.data[64..72].try_into().unwrap())
-        }
+        Ok(a) if a.data.len() >= 72 => u64::from_le_bytes(a.data[64..72].try_into().unwrap()),
         _ => 0,
     }
 }
@@ -131,21 +133,17 @@ fn secp256r1_ix(message: &[u8], signature: &[u8; 64], pubkey: &[u8; 33]) -> Inst
     data.extend_from_slice(pubkey);
     data.extend_from_slice(signature);
     data.extend_from_slice(message);
-    Instruction { program_id: SECP256R1_ID, accounts: vec![], data }
+    Instruction {
+        program_id: SECP256R1_ID,
+        accounts: vec![],
+        data,
+    }
 }
 
-fn send(
-    rpc: &RpcClient,
-    ixs: &[Instruction],
-    signers: &[&Keypair],
-) -> Result<String, String> {
+fn send(rpc: &RpcClient, ixs: &[Instruction], signers: &[&Keypair]) -> Result<String, String> {
     let blockhash = rpc.get_latest_blockhash().map_err(|e| e.to_string())?;
-    let tx = Transaction::new_signed_with_payer(
-        ixs,
-        Some(&signers[0].pubkey()),
-        signers,
-        blockhash,
-    );
+    let tx =
+        Transaction::new_signed_with_payer(ixs, Some(&signers[0].pubkey()), signers, blockhash);
     rpc.send_and_confirm_transaction(&tx)
         .map(|s| s.to_string())
         .map_err(|e| e.to_string())
@@ -172,7 +170,10 @@ fn week_one_gate_on_devnet() {
     let (vault, _) =
         Pubkey::find_program_address(&[b"vault", owner.pubkey().as_ref()], &program_id);
     let (risk_config, _) = Pubkey::find_program_address(&[b"risk"], &program_id);
-    println!("owner:  {}\nvault:  {vault}\nrisk:   {risk_config}", owner.pubkey());
+    println!(
+        "owner:  {}\nvault:  {vault}\nrisk:   {risk_config}",
+        owner.pubkey()
+    );
 
     let mint_kp = Keypair::new();
     let mint = mint_kp.pubkey();
@@ -319,7 +320,11 @@ fn week_one_gate_on_devnet() {
     println!("✓ collateral locked");
 
     // 3. Redeem an offline voucher — the precompile path, on a real validator.
-    let expires_at = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64 + 3600;
+    let expires_at = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64
+        + 3600;
     let voucher = nelo_vault::voucher::VoucherArgs {
         version: 1,
         vault,
@@ -363,7 +368,11 @@ fn week_one_gate_on_devnet() {
     )
     .expect("redeem_voucher on devnet");
     let after = token_balance(&rpc, &merchant_token);
-    assert_eq!(after - before, PAYMENT, "merchant was paid in tokens on devnet");
+    assert_eq!(
+        after - before,
+        PAYMENT,
+        "merchant was paid in tokens on devnet"
+    );
     println!("✓ voucher redeemed on devnet — precompile verified a StrongBox-shaped\n  P-256 signature on a real validator\n  tx: {sig}");
 
     // 4. The deliberate double-spend. Same sequence, freshly signed.
@@ -387,18 +396,32 @@ fn week_one_gate_on_devnet() {
     println!("✓ double-spend at seq 0 refused on devnet");
 
     // 5. A signature over other bytes must not settle.
-    let decoy = nelo_vault::voucher::VoucherArgs { seq: 1, amount: 1, ..voucher.clone() };
+    let decoy = nelo_vault::voucher::VoucherArgs {
+        seq: 1,
+        amount: 1,
+        ..voucher.clone()
+    };
     let decoy_msg = decoy.signed_message();
-    let real = nelo_vault::voucher::VoucherArgs { seq: 1, ..voucher.clone() };
+    let real = nelo_vault::voucher::VoucherArgs {
+        seq: 1,
+        ..voucher.clone()
+    };
     let res = send(
         &rpc,
         &[
-            secp256r1_ix(&decoy_msg, &sign(&device, &decoy_msg), &device_pubkey(&device)),
+            secp256r1_ix(
+                &decoy_msg,
+                &sign(&device, &decoy_msg),
+                &device_pubkey(&device),
+            ),
             redeem(&real),
         ],
         &[&owner],
     );
-    assert!(res.is_err(), "a signature over other bytes settled on devnet");
+    assert!(
+        res.is_err(),
+        "a signature over other bytes settled on devnet"
+    );
     println!("✓ signature over different bytes refused on devnet");
 
     println!("\nWEEK-1 GATE PASSED ON DEVNET");
