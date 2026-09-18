@@ -11,12 +11,14 @@ description: "Devnet, the program keypair, and what has to happen before the nex
 | Upgrade authority | `BX8kSVjmx9Eihd173hdrRW1Ap61AmixQzqjtc3o5DQfu` |
 | Cluster | devnet |
 
+<Note>
+**The deployment carries the Trust Stake build.** The upgrade extended the program data account from 244,088 to 329,664 bytes, and `RiskConfig` is initialised at `9JEJkGp3evd8wFAztEyjPLgTaRucThLyDJ5nkwdJg9ry`. The devnet gate passes against it.
+</Note>
+
 <Warning>
-**The deployed build predates the Trust Stake.**
+**A vault opened by an older build cannot be deserialised by this one.**
 
-`Vault` gained four fields (`stake`, `reputation_bps`, `pending_unstake`, `unstake_unlock_at`) and `redeem_voucher` gained the `RiskConfig` account. Vaults opened by the old build **cannot be deserialised** by the new one.
-
-On devnet, redeploy and open fresh vaults.
+`Vault` gained four fields — `stake`, `reputation_bps`, `pending_unstake`, `unstake_unlock_at` — and `redeem_voucher` gained the `RiskConfig` account. On devnet, open fresh vaults.
 </Warning>
 
 ## Redeploy checklist

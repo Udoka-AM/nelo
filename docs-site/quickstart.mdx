@@ -95,11 +95,11 @@ There is an end-to-end devnet gate — vault funded, voucher redeemed with the d
 cargo test -p nelo_vault --test devnet -- --ignored --nocapture
 ```
 
-It is `#[ignore]` so it never runs in the default suite, and it creates its own 6-decimal mint, so a run is self-contained. It costs devnet SOL.
+It is `#[ignore]` so it never runs in the default suite, and it creates its own 6-decimal mint, so a run is self-contained. It costs devnet SOL. It initialises `RiskConfig` itself, tolerating one that already exists.
 
-<Warning>
-The deployed build **predates the Trust Stake**. `Vault` gained four fields and `redeem_voucher` gained an account, so devnet needs redeploying and `RiskConfig` initialising once before that gate runs again. See [Deployment](/operations/deployment).
-</Warning>
+<Note>
+It passes against the **Trust Stake build** now deployed to devnet — the first run in which `RiskConfig` existed on a real validator. See [Deployment](/operations/deployment).
+</Note>
 
 ## Hard rules for this repo
 

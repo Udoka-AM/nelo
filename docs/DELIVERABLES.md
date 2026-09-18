@@ -260,12 +260,16 @@ Order matters here; each step feeds the next.
    **Verified off chain: 17 tests** — sublinearity at every doubling, the cap holding
    against an absurd stake, reputation and coefficient, saturation past the cap, the
    haircut, and `isqrt` brute-forced against its floor property.
-   **The on-chain tests are written but have not been run.** There is no Solana
-   toolchain on the dev machine — `release.anza.xyz` is unreachable from it — so no
-   `.so` can be built and LiteSVM cannot load the program. They compile (`cargo check
-   --tests` is clean against a stub binary); they have never executed.
-   **Done when:** `anchor test` is green on a machine with the toolchain. Until then
-   treat the ~19 on-chain assertions as unproven.
+   **Verified on chain: `anchor test` is green**, 40 of 40, including the ~19 staking
+   assertions. The first run scored 39 — the failure was a test helper passing the same
+   keypair twice, so the transaction died in signing and the authority property it names
+   had never actually been checked. Failing was the good outcome; an `is_err()`-only
+   assertion would still be green and still empty.
+   **Verified on devnet:** the program has been upgraded in place and `RiskConfig` is
+   live at `9JEJkGp3evd8wFAztEyjPLgTaRucThLyDJ5nkwdJg9ry`. The week-1 gate passes against
+   this build, which is the first time `redeem_voucher` has been exercised on a real
+   validator with its new account struct.
+   **Done when:** met. `anchor test` now runs in CI on every push.
    **Still open:** slashing. The freeze blocks the exit, so stake cannot walk away from
    a loss it backs — but nothing yet *moves* it to a reserve, because there is no
    reserve account. That is the other half of "first-loss capital".
@@ -348,6 +352,12 @@ that is not negotiable — half the marks.
    about an upload limit at 11:40.
 
 ---
+
+## What only a person can do
+
+[`HANDSET.md`](HANDSET.md) is the ordered runbook for the parts no machine in this repo can
+reach: the two apps on a physical Android phone, the Privy app ID, and the decisions and
+partner conversations that several steps above are waiting on.
 
 ## Standing rules
 
