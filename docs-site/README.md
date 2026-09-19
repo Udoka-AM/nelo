@@ -22,16 +22,13 @@ cd docs-site && mint dev        # http://localhost:3000
 
 ## Deploy
 
-This site is **not yet connected to a Mintlify deployment.** The Mintlify account
-reachable from this repo has three deployments (`agent-circle`, `retinaos`,
-`arc-doc`) and none of them is Nelo.
+The site is deployed at the Mintlify **`nelo`** deployment, with `docs-site/` as
+the content directory.
 
-1. Create a deployment at [dashboard.mintlify.com](https://dashboard.mintlify.com),
-   pointing it at this repo with `docs-site/` as the content directory.
-2. Custom domain → set it there. A CNAME at the registrar for `udokaam.dev` has to
-   point at Mintlify's target; the dashboard shows the exact value. Custom domains
-   are a paid-plan feature.
-3. Push to the default branch; Mintlify rebuilds.
+- Push to the default branch and Mintlify rebuilds.
+- Custom domain → set it in the dashboard. A CNAME at the registrar for
+  `udokaam.dev` has to point at Mintlify's target; the dashboard shows the exact
+  value. Custom domains are a paid-plan feature.
 
 ## The rule for these pages
 

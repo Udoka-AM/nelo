@@ -65,11 +65,12 @@ Every package except `@nelo/voucher` runs with **zero dependencies installed** â
 | `programs/nelo_vault` (LiteSVM) | 40 | Solana toolchain |
 | `programs/nelo_vault` (golden vectors) | 2 | Solana toolchain |
 | `programs/nelo_vault` (curve unit) | 17 | Rust only |
+| `packages/onboard` | 60 | Node only |
 | `packages/pay` | 54 | Node only |
 | `services/settle` | 39 | Node only |
 | `packages/reserve` | 16 | Node only |
 | `packages/ledger` | 13 | Node only |
-| `packages/voucher` | 9 | `pnpm install` |
+| `packages/voucher` | 29 | `pnpm install` |
 
 <Note>
 Program tests are **Rust + LiteSVM**, in `programs/nelo_vault/tests/`. There is no mocha/TypeScript test path â€” `Anchor.toml` sets `[scripts] test = "cargo test"`, and no local validator is needed.
