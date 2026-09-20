@@ -37,7 +37,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
-      # 212 across six packages, on Node's own test runner. There is no vitest
+      # 237 across seven packages, on Node's own test runner. There is no vitest
       # or jest anywhere in this repo, and no build step before the tests.
       - name: Tests
         run: pnpm -r test

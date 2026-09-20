@@ -196,6 +196,26 @@ Order matters here; each step feeds the next.
    **Done when:** a customer pays with **an unmodified third-party wallet** and the merchant
    sees the local-currency amount confirm. No Nelo app on the customer side.
 4. **Kora relayer, so nobody needs SOL.** *(Anchor)*
+   **The sponsorship policy is done** — [`services/relay`](../services/relay), 25 tests.
+   What may be sponsored, what it costs, and the Kora JSON-RPC client that pays it.
+   **Scope, stated rather than implied:** this is not what makes an *ordinary* sale
+   gasless. Online, the customer's wallet pays the fee and creates the merchant's token
+   account, so a merchant with zero SOL completes a sale today with no relayer at all.
+   The relayer is for the **offline** redemption — a merchant reconnecting with signed
+   vouchers and no SOL. `redeem_voucher` is built for it: its only signer is an
+   unconstrained `payer`, and it is the only instruction in the program that is, because
+   every other one needs the vault owner or the risk authority.
+   **The finding that shaped it:** the exposure is rent, not fees. `merchant_token` is
+   `init_if_needed, payer = payer`, so the sponsor funds a 2,039,280-lamport token
+   account for a merchant who has never been paid — four hundred times a signature. And
+   Kora's own `max_allowed_lamports` cannot see it: that is enforced against outflow
+   parsed from the transaction's *own* instruction list, and this account is created by a
+   CPI inside the program. So there are two gates — `kora.toml` for what the node will
+   sign, `policy.ts` for what Nelo will ask for — and funding a new account is off by
+   default.
+   **Not built:** the transaction builder. It needs the Anchor client and the precompile
+   at instruction 0, and cannot be proven without a validator. Week 3, with the offline
+   queue that will feed it.
    **Done when:** a merchant with a zero SOL balance completes a sale.
 5. **Balance in local currency, held in dollars.** *(Android + Design)*
    **Done.** The till reads the merchant's USDC balance and shows it in their own
