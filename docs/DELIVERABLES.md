@@ -143,7 +143,8 @@ Order matters here; each step feeds the next.
    Hermes; the native link is only proven by a build. *(Android)*
 2. **Onboarding: phone number + payout account.** Privy embedded wallet behind the secure
    element. *(Android)*
-   **The checkable half is done** — [`packages/onboard`](../packages/onboard), 31 tests.
+   **The checkable half is done** — [`packages/onboard`](../packages/onboard), 60 tests:
+   14 for phone normalisation, 17 for payout destinations, 29 for the flow below.
    Phone normalisation to E.164 for the launch markets, and payout-destination validation
    with a canonical round-trip form that feeds `DisburseRequest.destination`.
    Deliberately **not** a libphonenumber reimplementation: the launch markets are explicit
