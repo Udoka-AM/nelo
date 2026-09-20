@@ -281,9 +281,10 @@ Order matters here; each step feeds the next.
 > about.
 >
 > **The model exists** — [`packages/reserve`](../packages/reserve), written up in
-> [`docs/RESERVE.md`](RESERVE.md), 16 tests. Four findings, all of which change something:
-> the 0.20% reserve line does not cover expected loss (28.1 bps implied, so the 0.70% net take
-> rate is overstated by ~8 bps); the Trust Stake curve **raises** required reserve below $250
+> [`docs/RESERVE.md`](RESERVE.md), 17 tests. Four findings, all of which change something:
+> the 0.20% reserve line did not cover expected loss (28.07 bps implied) — **now fixed**, the
+> line charged is 29 bps and the net take rate 0.61%; the Trust Stake curve **raises** required
+> reserve below $250
 > of staked value, which constrains `k`; the hard cap needs $81,000 of stake to bind, so it
 > binds nothing; and reserve relief funds a premium of about **1.001×, not 1.5×** — the deck
 > must stop describing it as priced off capital relief.

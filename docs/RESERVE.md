@@ -10,7 +10,7 @@ and every conclusion below is a passing test.
 
 ```bash
 pnpm --filter @nelo/reserve report    # print it
-pnpm --filter @nelo/reserve test      # 16 tests
+pnpm --filter @nelo/reserve test      # 17 tests
 ```
 
 ---
@@ -55,23 +55,30 @@ locked, 10 bps attempt rate, 99.5% coverage:
 
 ## Four findings
 
-### 1 · The 0.20% line does not cover the losses it exists to cover
+### 1 · The 0.20% line did not cover the losses it exists to cover — **fixed**
 
-`BUILD.md` §7 carries an insurance reserve line of 0.20% of volume. At these assumptions:
+`BUILD.md` §7 carried an insurance reserve line of 0.20% of volume. At these assumptions:
 
 | | |
 |---|---:|
-| 0.20% line raises per month | $2,280 |
+| 0.20% line raised per month | $2,280 |
 | Expected loss per month | $3,200 |
 | **Shortfall** | **$920/month** |
-| Line implied by expected loss | **28.1 bps** |
+| Line implied by expected loss | **28.07 bps** |
 | Line in the plan | 20.0 bps |
 
-The unit economics table's **net take rate of 0.70% is overstated by roughly 8 bps** if these
-inputs are anywhere near right — it would be about 0.62%.
+**Acted on.** The line charged is now **29 bps**, carried by `INSURANCE_RESERVE_BPS` in
+`services/settle/src/money.ts` and by `reserveLineBps` here. It raises $3,306 a month against
+$3,200 of expected loss, a $106 surplus, and the stock funds in 2.4 months rather than 3.5.
+
+The rate rounds **up** from 28.07 rather than to nearest: at 28 bps the line raises $3,192 and
+still would not cover, so rounding to nearest would have preserved the exact shortfall this
+finding exists to name. A reserve that over-collects a little is the survivable error.
+
+The cost is 9 bps off the take rate — the unit economics table now reads **0.61%, not 0.70%**.
 
 Separately, and not the same question: the reserve is a *stock*, the line is a *flow*. Even
-at the correct rate, it takes **3.5 months** of the line to accumulate the $8,000. Until then
+at the corrected rate, it takes **2.4 months** of the line to accumulate the $8,000. Until then
 the exposure sits on the balance sheet. A reserve that is correctly sized in steady state
 still needs funding on day one.
 
