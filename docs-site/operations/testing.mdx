@@ -14,11 +14,12 @@ This page is kept honest rather than flattering. The distinction between *a test
 | `programs/nelo_vault` — LiteSVM | 40 | Solana toolchain |
 | `services/settle` | 39 | Node only |
 | `packages/voucher` | 29 | `pnpm install` |
+| `services/relay` | 25 | Node only |
 | `programs/nelo_vault` — curve unit tests | 17 | Rust only |
 | `packages/reserve` | 17 | Node only |
 | `packages/ledger` | 13 | Node only |
 
-**269, all green, all on every push.** Everything but the LiteSVM suite runs with no phone and no validator — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
+**294, all green, all on every push.** Everything but the LiteSVM suite runs with no phone and no validator — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
 
 The 40 LiteSVM tests were the long-standing gap. They went unexecuted for weeks because no machine that had the repo had the Solana toolchain — `release.anza.xyz` is unreachable from the development environment. The first run scored **39 of 40**, and [the one failure was worth more than the 39 passes](#things-that-went-wrong-and-were-caught).
 

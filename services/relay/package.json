@@ -2,6 +2,17 @@
   "name": "@nelo/relay",
   "version": "0.1.0",
   "type": "module",
-  "scripts": { "dev": "node --watch src/index.ts" },
-  "dependencies": { "fastify": "^5.0.0" }
+  "scripts": {
+    "dev": "node --watch src/index.ts",
+    "test": "node --test \"test/*.test.ts\""
+  },
+  "dependencies": {
+    "@nelo/voucher": "workspace:*",
+    "fastify": "^5.0.0"
+  },
+  "main": "./src/index.ts",
+  "description": "Fee sponsorship for offline redemptions: what the relayer will pay for, and the Kora client that pays it.",
+  "files": [
+    "src"
+  ]
 }

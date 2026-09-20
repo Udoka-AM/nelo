@@ -153,6 +153,9 @@ importers:
 
   services/relay:
     dependencies:
+      '@nelo/voucher':
+        specifier: workspace:*
+        version: link:../../packages/voucher
       fastify:
         specifier: ^5.0.0
         version: 5.12.3

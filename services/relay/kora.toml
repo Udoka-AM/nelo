@@ -1,0 +1,87 @@
+# This is the node's own policy. It is the second of two gates: `src/policy.ts`
+# decides what Nelo will *ask* for, and this decides what the node will *sign*
+# even if asked. Neither is sufficient alone.
+#
+# Read against kora-lib 2.2.0-beta.8. `Config` is `deny_unknown_fields`, so a
+# misspelled key is a startup error rather than a silently ignored line —
+# which is the right behaviour and worth knowing before you debug one.
+
+[validation]
+
+# Double duty, and the reason this is not simply "the fee":
+#   - `validate_lamport_fee` refuses when the network fee exceeds it
+#   - `calculate_total_outflow` refuses when the fee payer's explicit lamport
+#     outflow exceeds it
+#
+# A redemption should have *no* explicit outflow at all: the transaction is the
+# secp256r1 precompile plus one call to the vault program, and neither moves
+# lamports out of the fee payer with a System instruction. So this is set to a
+# generous ceiling for the fee and a hard stop for anything else.
+max_allowed_lamports = 100_000
+
+# A redemption carries exactly one signature — the relayer's. `redeem_voucher`
+# declares a single `Signer`, and the device's P-256 signature travels in the
+# precompile's instruction data, not in the transaction's signature array.
+max_signatures = 1
+
+# Everything a redemption touches, and nothing else.
+#   - the vault program itself
+#   - the secp256r1 precompile, which must be instruction 0
+#   - SPL Token and the Associated Token Account program, for the transfer and
+#     for the merchant's account when it has to be created
+#   - System, which the ATA program calls to create it
+allowed_programs = [
+  "29QdPRQC8C5v6C8gMcBqtw9T4RxYyZ1wqThkEj3XJeQx",
+  "Secp256r1SigVerify1111111111111111111111111",
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+  "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+  "11111111111111111111111111111111",
+]
+
+# The allowlist above says what *may* appear. This says what **must**: a
+# transaction that does not call the vault program is refused outright, so the
+# relayer cannot be turned into a general-purpose fee payer for anything that
+# happens to use SPL Token.
+require_one_of_programs = ["29QdPRQC8C5v6C8gMcBqtw9T4RxYyZ1wqThkEj3XJeQx"]
+
+# Devnet USDC. The vault checks the mint it was enrolled for, so this is belt
+# and braces — but a relayer sponsoring redemptions in a token nobody chose is
+# sponsoring someone else's product.
+allowed_tokens = ["4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"]
+
+# Nelo sponsors outright; it does not take payment in SPL for the fee. Empty is
+# the statement that there is no paid path, not an omission.
+allowed_spl_paid_tokens = []
+
+disallowed_accounts = []
+
+# What none of the above catches
+# ------------------------------
+# `calculate_fee_payer_outflow` sums the fee payer's outflow from the
+# *transaction's own* instruction list — SystemTransfer, SystemCreateAccount,
+# SystemWithdrawNonceAccount. The merchant's token account is created by a CPI
+# from inside `redeem_voucher`, so it is not in that list and does not count
+# towards `max_allowed_lamports`.
+#
+# The rent is real either way: 2,039,280 lamports, four hundred times a
+# signature. So the single most expensive thing this relayer can be asked to do
+# is the one thing the node's own limits are blind to, and bounding it is
+# `src/policy.ts`'s job. That is why there are two gates and not one.
+#
+# (The Jito bundle path measures outflow by simulation and would see it. The
+# plain signAndSendTransaction path does not.)
+
+# Only consulted when charging for fees in tokens, which this node does not do.
+price_source = "Mock"
+
+# The fee payer must never be the source of a transfer or the authority for an
+# assignment. All of these default to false; `system.allow_transfer` is written
+# out because it is the one that would matter if it were ever flipped.
+[validation.fee_payer_policy.system]
+allow_transfer = false
+
+[kora]
+# Per-client, at the node. The per-vault and per-window limits that actually
+# bound Nelo's exposure live in `src/policy.ts`, because they need to know what
+# a voucher is.
+rate_limit = 20

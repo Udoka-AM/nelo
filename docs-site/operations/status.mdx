@@ -50,11 +50,11 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | `packages/attest` | ⚠️ Compiles (EAS build); never run on hardware |
 | `apps/merchant` | ⚠️ Typechecks; native side builds; never rendered |
 | `apps/payer` | ⚠️ Probe only — typechecks, never rendered. Real payer UI is week 3 |
-| `services/relay` | ❌ Stub — one line |
+| `services/relay` | 🟡 Policy + Kora client proven (25 tests); builder is week 3 |
 | Live price feed | ❌ Blocked on a product decision |
 | Onboarding — the flow's rules | ✅ Proven (29 of `@nelo/onboard`'s 60) |
 | Onboarding — the Privy calls | ⚠️ Typechecked against the SDK; needs an app ID and a device |
-| Gasless relayer | ❌ Not started |
+| Gasless relayer | 🟡 Sponsorship policy done; needs a Kora node and the builder |
 | Slashing | ❌ Not started |
 | CI | ✅ Three jobs — tests, typecheck, `anchor test` |
 
