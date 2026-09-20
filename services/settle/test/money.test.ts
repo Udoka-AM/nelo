@@ -49,7 +49,7 @@ test("a sale splits at the rates in the plan", () => {
   const split = splitSale(100n * DOLLAR);
   assert.equal(split.platformFee, 500_000n, "0.50%");
   assert.equal(split.net, 99_500_000n);
-  assert.equal(split.reserve, 200_000n, "0.20%");
+  assert.equal(split.reserve, 290_000n, "0.29%");
   assert.equal(split.rebate, 100_000n, "0.10%");
 });
 

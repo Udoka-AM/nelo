@@ -112,10 +112,11 @@ Swapping in a licensed partner is a constructor change.
 
 The reserve requirement is **modelled** — [`packages/reserve`](packages/reserve), written up
 in [`docs/RESERVE.md`](docs/RESERVE.md). It turns the plan's own exposure formula into a number
-and checks the two things the plan asserts; both come back short. The 0.20% insurance line does
-not cover expected loss at these inputs, and reserve relief funds an SKR premium of about
-1.001× rather than the illustrative 1.5×. It also finds the Trust Stake curve *raises* required
-reserve below $250 of staked value, which is what should set `k`.
+and checks the two things the plan asserts; both came back short. The 0.20% insurance line did
+not cover expected loss at these inputs — the line charged is now **29 bps**, which takes the
+net take rate to 0.61% — and reserve relief funds an SKR premium of about 1.001× rather than
+the illustrative 1.5×, which is still to be reflected in the deck. It also finds the Trust
+Stake curve *raises* required reserve below $250 of staked value, which is what should set `k`.
 
 Eleven of its inputs are guesses, and it says which before it says anything else. It states what
 would have to be true, not what is.
@@ -129,7 +130,7 @@ need a handset. Failures are labelled for the merchant or for whoever configured
 because *"that code is not right"* and *"SMS login is not enabled for this Privy app"* are
 not the same problem and only one of them is fixable at a counter.
 
-**268 tests pass**: 211 in TypeScript across six packages, 40 LiteSVM integration tests
+**269 tests pass**: 212 in TypeScript across six packages, 40 LiteSVM integration tests
 against the built program, and 17 for the curve. All of them, plus four typechecks, `cargo
 fmt`, and clippy, run in CI on every push — see `.github/workflows/ci.yml`. The Anchor job
 is week 4's graded deliverable, *clone → install → `anchor test` green*, executed on a

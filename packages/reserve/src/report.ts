@@ -64,18 +64,21 @@ export function report(): string {
 
   const vol = volumes(v);
   const verdict = reserveLineVerdict(v);
-  line("IS THE PLAN'S 0.20% LINE ENOUGH?");
+  const lineLabel = `${(v.reserveLineBps / 100).toFixed(2)}%`;
+  line(`IS THE ${lineLabel} RESERVE LINE ENOUGH?`);
   line("-".repeat(62));
   line(`  Monthly volume                   ${usd(vol.totalPerMonth)}`);
   line(`  Of which offline                 ${usd(vol.offlinePerMonth)}`);
-  line(`  0.20% line raises / month        ${usd(verdict.fundingPerMonth)}`);
+  line(`  ${lineLabel} line raises / month        ${usd(verdict.fundingPerMonth)}`);
   line(`  Expected loss / month            ${usd(req.expectedLossPerMonth)}`);
   line(`  Covers expected loss?            ${verdict.coversExpectedLoss ? "yes" : "NO"}`);
-  if (!verdict.coversExpectedLoss) {
+  if (verdict.coversExpectedLoss) {
+    line(`  Surplus / month                  ${usd(-verdict.shortfallPerMonth)}`);
+  } else {
     line(`  Shortfall / month                ${usd(verdict.shortfallPerMonth)}`);
   }
   line(`  Line implied by expected loss    ${verdict.impliedReserveLineBps.toFixed(1)} bps`);
-  line(`  Line in the plan                 ${v.reserveLineBps.toFixed(1)} bps`);
+  line(`  Line charged                     ${v.reserveLineBps.toFixed(1)} bps`);
   line(`  Months to fund the stock         ${verdict.monthsToFund.toFixed(1)}`);
   line(`  Reserve / monthly offline vol    ${pct(verdict.shareOfOfflineVolume)}`);
   line();

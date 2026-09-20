@@ -1,10 +1,12 @@
 ---
 title: "Unit economics"
-description: "Four revenue lines, a thin take rate, and the one number the reserve model contradicts."
+description: "Four revenue lines, a thin take rate, and the reserve line the model reset."
 ---
 
 <Warning>
-**Model, not forecast.** Every input here is an assumption, and the reserve model finds that one of the outputs does not hold. Replace each figure with a real number before quoting any of it.
+**Model, not forecast.** Every input here is an assumption. Replace each figure with a real number before quoting any of it.
+
+One of them is no longer a guess: the insurance reserve line is now set by [the reserve model](/economics/reserve-model) rather than picked, which moved it from 0.20% to 0.29% and the net take rate from 0.70% to 0.61%.
 </Warning>
 
 ## How it makes money
@@ -36,26 +38,38 @@ The same sequence Square walked.
 | Share captured on Nelo | 40% | Cash keeps the rest early on |
 | Platform fee | 0.50% | Below typical card acceptance cost |
 | Payout spread | 0.50% | Shared with the disbursement partner |
-| Less: insurance reserve | 0.20% | Funds the offline guarantee |
+| Less: insurance reserve | 0.29% | Derived, not picked — see below |
 | Less: Trust Stake rebate | 0.10% | 20% of the platform fee, bought on market |
-| **Net take rate** | **0.70%** | |
-| **Net revenue per merchant / month** | **≈ $8** | |
-| **At 1,000 merchants** | **≈ $8k / mo** | |
-| **At 25,000 merchants** | **≈ $200k / mo** | |
+| **Net take rate** | **0.61%** | |
+| **Net revenue per merchant / month** | **≈ $7** | |
+| **At 1,000 merchants** | **≈ $7k / mo** | |
+| **At 25,000 merchants** | **≈ $174k / mo** | |
 
 Thin per merchant and entirely normal for acquiring. The business is **volume and retention**, and the retention argument is specific: a merchant who has been paid on an afternoon the bank terminal was down does not go back.
 
-## The line the model contradicts
+## The line the model set
 
-<Warning>
-**The 0.20% insurance reserve line does not cover expected loss.**
+The reserve line is the one figure here that is no longer a judgement call.
 
-[The reserve model](/economics/reserve-model) puts the implied line at **28.1 bps**, not 20. At these assumptions the net take rate is overstated by roughly 8 bps — **0.62%, not 0.70%**.
+[The reserve model](/economics/reserve-model) puts the line that expected loss actually implies at **28.07 bps**, against the 20 the plan assumed. The rate charged rounds **up** to the next whole basis point:
 
-This is the number to fix before the deck goes out. It is a rate change in `services/settle/src/money.ts` and a row in this table.
-</Warning>
+| | |
+|---|---:|
+| Implied by expected loss | 28.07 bps |
+| **Charged** | **29 bps** |
+| Raises per month | $3,306 |
+| Expected loss per month | $3,200 |
+| **Surplus** | **$106 / month** |
 
-And the second, on the SKR premium:
+<Note>
+**Why up rather than to nearest.** At 28 bps the line raises $3,192 against $3,200 of expected loss — it still does not cover, so rounding to nearest would have preserved the exact shortfall the model was built to find. A reserve that over-collects slightly is the survivable error.
+
+It is also why the constant is a whole number. `INSURANCE_RESERVE_BPS` is a `bigint` against `BPS = 10_000n`, so 28.07 has no representation at this scale, and 0.01 bp of precision on a figure resting on eleven unmeasured inputs would be false anyway.
+</Note>
+
+The cost of the correction is 9 bps off the take rate — **0.61%, not 0.70%** — and the stock now funds in **2.4 months** rather than 3.5.
+
+Still outstanding, on the SKR premium:
 
 <Warning>
 **Reserve relief funds a premium of about 1.001×, not the illustrative 1.5×.**
@@ -74,11 +88,11 @@ On a $100 sale at the rates above:
 | `assets:custody` | +$100.00 |
 | `liabilities:payable:<merchant>` | −$99.50 |
 | `revenue:platform_fee` | −$0.50 |
-| `expense:reserve_funding` / `liabilities:insurance_reserve` | +/−$0.20 |
+| `expense:reserve_funding` / `liabilities:insurance_reserve` | +/−$0.29 |
 | `expense:rebate` / `liabilities:rebate_payable:<merchant>` | +/−$0.10 |
 
 <Note>
-The reserve and rebate are funded **out of the platform's own take**, not charged on top of the merchant's fee. After a full payout, what stays in custody is exactly the platform fee — and that fee has to cover the reserve and rebate promised out of it. At 50 bps fee against 20 + 10 bps promised, 20 bps is genuinely free. That relationship is a committed test.
+The reserve and rebate are funded **out of the platform's own take**, not charged on top of the merchant's fee. After a full payout, what stays in custody is exactly the platform fee — and that fee has to cover the reserve and rebate promised out of it. At 50 bps fee against 29 + 10 bps promised, 11 bps is genuinely free — down from 20 before the reserve line was corrected. That relationship is a committed test.
 </Note>
 
 ## What the rates are, in code
@@ -86,8 +100,8 @@ The reserve and rebate are funded **out of the platform's own take**, not charge
 ```ts
 // services/settle/src/money.ts — a model, not a forecast
 export const PLATFORM_FEE_BPS      = 50n;   // 0.50%
-export const INSURANCE_RESERVE_BPS = 20n;   // 0.20%  ← the model says 28.1
+export const INSURANCE_RESERVE_BPS = 29n;   // 0.29%  ← set by @nelo/reserve
 export const REBATE_BPS            = 10n;   // 0.10%
 ```
 
-They live as named constants in one place so replacing one with a real number is a change somebody can find.
+They live as named constants in one place so replacing one with a real number is a change somebody can find. The reserve line is the first that has actually been replaced.

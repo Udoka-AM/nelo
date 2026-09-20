@@ -20,8 +20,21 @@ export const BPS = 10_000n;
  */
 export const PLATFORM_FEE_BPS = 50n;
 
-/** Funds the offline guarantee. Comes out of the platform's own take. */
-export const INSURANCE_RESERVE_BPS = 20n;
+/**
+ * Funds the offline guarantee. Comes out of the platform's own take.
+ *
+ * Set from `@nelo/reserve`, not from the plan. The model puts the line that
+ * expected loss actually implies at **28.07 bps**; this rounds **up** to the
+ * next whole basis point rather than down, because a reserve that collects a
+ * little too much is the survivable error and one that collects too little is
+ * not. At 28 bps the line still fails to cover — $3,192 a month against $3,200
+ * of expected loss — so rounding to nearest would leave the shortfall the
+ * model was built to find.
+ *
+ * The plan's original 0.20% is the number this replaces. See
+ * `docs-site/economics/reserve-model.mdx`, finding 1.
+ */
+export const INSURANCE_RESERVE_BPS = 29n;
 
 /**
  * Trust Stake rebate — 20% of the platform fee, bought on the open market.

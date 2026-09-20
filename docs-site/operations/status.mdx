@@ -44,7 +44,7 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | `packages/pay` | ✅ Proven (54 tests) |
 | `packages/ledger` | ✅ Proven (13 tests) |
 | `packages/onboard` | ✅ Proven (60 tests) |
-| `packages/reserve` | ✅ Proven (16 tests) |
+| `packages/reserve` | ✅ Proven (17 tests) |
 | `services/settle` — ledger | ✅ Proven (39 tests) |
 | `services/settle` — partner | 🟡 Declared stub |
 | `packages/attest` | ⚠️ Compiles (EAS build); never run on hardware |
@@ -84,9 +84,9 @@ Three states are kept apart, because conflating them is how a demo ends up claim
   </Accordion>
 
   <Accordion title="The reserve line, and the premium claim" icon="calculator">
-    [The reserve model](/economics/reserve-model) finds the 0.20% insurance line does not cover expected loss — 28.1 bps implied — and that reserve relief funds a premium of ~1.001×, not the illustrative 1.5×.
+    **The reserve line is settled.** [The reserve model](/economics/reserve-model) found the 0.20% line did not cover expected loss — 28.07 bps implied — and the rate charged is now 29 bps, which takes the net take rate to 0.61%.
 
-    Both are changes to documents and one constant, not to the architecture. Both should be settled before the deck goes out.
+    **The premium claim is not.** Reserve relief funds a premium of ~1.001×, not the illustrative 1.5×. That is a change to how the deck describes it, not to the architecture, and it should be settled before submission.
   </Accordion>
 
   <Accordion title="k and the hard cap, together" icon="sliders">

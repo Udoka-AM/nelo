@@ -62,7 +62,7 @@ test("a settled sale credits the merchant, takes the fee, funds the reserve", ()
   assert.equal(ledger.normalBalance(CUSTODY, USDC), 100n * DOLLAR, "we hold it all");
   assert.equal(merchantBalance(ledger, M, USDC), 99_500_000n, "less the 0.50% fee");
   assert.equal(ledger.normalBalance(PLATFORM_FEE_REVENUE, USDC), 500_000n);
-  assert.equal(ledger.normalBalance(INSURANCE_RESERVE, USDC), 200_000n);
+  assert.equal(ledger.normalBalance(INSURANCE_RESERVE, USDC), 290_000n);
   assert.equal(ledger.normalBalance(`${REBATE_PAYABLE}:${M}`, USDC), 100_000n);
   assertBookBalances(ledger);
 });
