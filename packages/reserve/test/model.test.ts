@@ -130,16 +130,47 @@ test("a smaller k moves the crossover within reach", () => {
 // --------------------------------------------- the plan's reserve line ---
 
 /**
- * The headline. At the default assumptions the 0.20% line in docs/BUILD.md §7
- * does not fund the expected loss it exists to fund.
+ * The headline finding, kept as a regression guard.
+ *
+ * The plan's 0.20% line did not fund the expected loss it existed to fund.
+ * That is why the rate is no longer 20, and this pins the reason so nobody
+ * reverts it back to a round number that looks tidier.
  */
-test("the plan's 0.20% reserve line does not cover expected loss at these inputs", () => {
-  const verdict = reserveLineVerdict(v);
+test("the plan's original 0.20% line did not cover expected loss", () => {
+  const planned = values({ ...DEFAULTS, reserveLineBps: { ...DEFAULTS.reserveLineBps, value: 20 } });
+  const verdict = reserveLineVerdict(planned);
   assert.equal(verdict.coversExpectedLoss, false);
-  assert.ok(verdict.shortfallPerMonth > 0);
+  assert.ok(verdict.shortfallPerMonth > 0, "the 20 bps line ran a monthly shortfall");
   assert.ok(
-    verdict.impliedReserveLineBps > v.reserveLineBps,
-    `implied ${verdict.impliedReserveLineBps} vs planned ${v.reserveLineBps}`,
+    verdict.impliedReserveLineBps > 20,
+    `implied ${verdict.impliedReserveLineBps} vs the planned 20`,
+  );
+});
+
+/**
+ * And the line actually charged does cover it. 28.07 bps is what expected loss
+ * implies; the rate rounds up to 29 because a reserve that collects a little
+ * too much is the survivable error. Rounding to nearest would land on 28 and
+ * still leave a shortfall — which is the trap this asserts shut.
+ */
+test("the reserve line now charged does cover expected loss", () => {
+  const verdict = reserveLineVerdict(v);
+  assert.equal(v.reserveLineBps, 29, "the charged line");
+  assert.equal(verdict.coversExpectedLoss, true);
+  assert.ok(
+    verdict.shortfallPerMonth <= 0,
+    `expected a surplus, got a shortfall of ${verdict.shortfallPerMonth}`,
+  );
+  assert.ok(
+    verdict.impliedReserveLineBps <= v.reserveLineBps,
+    `implied ${verdict.impliedReserveLineBps} vs charged ${v.reserveLineBps}`,
+  );
+  // Rounding down to the nearest whole bp would not have been enough.
+  const rounded = values({ ...DEFAULTS, reserveLineBps: { ...DEFAULTS.reserveLineBps, value: 28 } });
+  assert.equal(
+    reserveLineVerdict(rounded).coversExpectedLoss,
+    false,
+    "28 bps still under-covers — this is why the rate rounds up",
   );
 });
 

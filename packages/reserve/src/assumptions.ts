@@ -187,10 +187,14 @@ export const DEFAULTS: Assumptions = {
       "much of real volume runs through it.",
   ),
   reserveLineBps: input(
-    20,
-    "Insurance reserve line in the plan's unit economics",
-    "plan",
-    "docs/BUILD.md §7 — 0.20%. This model exists to check whether it is enough.",
+    29,
+    "Insurance reserve line charged on settled volume",
+    "derived",
+    "Set by this model, not by the plan. Expected loss implies 28.07 bps; the " +
+      "rate rounds up to the next whole basis point because a reserve that " +
+      "over-collects is the survivable error. The plan's original 0.20% is what " +
+      "this replaced — see the reserve-line tests, which still pin that it did " +
+      "not cover. Mirrored by INSURANCE_RESERVE_BPS in services/settle/src/money.ts.",
   ),
   rebateLineBps: input(
     10,
