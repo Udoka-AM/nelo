@@ -9,7 +9,7 @@
  *   > floor-limit risk for fifty years.
  *
  * This turns that sentence into a number, and then asks the two questions the
- * plan leaves open: is the 0.20% reserve line in §7 enough, and what can the
+ * plan leaves open: is the reserve line enough — §7's original 0.20% was not — and what can the
  * platform actually afford to pay for staked SKR?
  *
  * The answer to the second one is smaller than the deck's illustrative figure.
@@ -165,7 +165,7 @@ export function volumes(v: Values): Volumes {
 export interface ReserveLineVerdict {
   reserveRequired: number;
   fundingPerMonth: number;
-  /** Months of the 0.20% line to accumulate the required stock. */
+  /** Months of the charged line to accumulate the required stock. */
   monthsToFund: number;
   /** Does the line at least cover the expected loss as it accrues? */
   coversExpectedLoss: boolean;
@@ -184,7 +184,7 @@ export interface ReserveLineVerdict {
 }
 
 /**
- * Is the plan's 0.20% insurance line enough?
+ * Is the insurance line charged enough? The plan's original 0.20% was not.
  *
  * Two different questions, kept apart because conflating them is how a reserve
  * gets under-funded: the line is a *flow* and the requirement is a *stock*. A

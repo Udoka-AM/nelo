@@ -7,7 +7,7 @@ The offline guarantee has a price. This is the model that works out what it is �
 
 ```bash
 pnpm --filter @nelo/reserve report
-pnpm --filter @nelo/reserve test     # 16 tests
+pnpm --filter @nelo/reserve test     # 17 tests
 ```
 
 ## Read this first
@@ -40,21 +40,27 @@ At the default assumptions — 1,000 vaults, $50 base limit, 20 merchants reacha
 
 ## Four findings
 
-### 1 · The 0.20% line does not cover the losses it exists to cover
+### 1 · The 0.20% line did not cover the losses it exists to cover — **fixed**
 
 | | |
 |---|---:|
-| 0.20% line raises per month | $2,280 |
+| 0.20% line raised per month | $2,280 |
 | Expected loss per month | $3,200 |
 | **Shortfall** | **$920/month** |
-| Line implied by expected loss | **28.1 bps** |
+| Line implied by expected loss | **28.07 bps** |
 | Line in the plan | 20.0 bps |
 
-<Warning>
-If these inputs are anywhere near right, the plan's **net take rate of 0.70% is overstated by roughly 8 bps** — it would be about 0.62%.
-</Warning>
+<Check>
+**Acted on.** The line charged is now **29 bps**, set from this model rather than from the plan. It raises $3,306 a month against $3,200 of expected loss — a $106 surplus — and the stock funds in **2.4 months** rather than 3.5.
 
-Separately, and not the same question: the reserve is a *stock*, the line is a *flow*. Even at the correct rate it takes **3.5 months** of the line to accumulate the $8,000. A reserve correctly sized in steady state still needs funding on day one.
+`INSURANCE_RESERVE_BPS` in `services/settle/src/money.ts` and `reserveLineBps` here both carry it, and the tests pin both that the old 20 did not cover and that the new 29 does.
+</Check>
+
+The rate rounds **up** from 28.07 rather than to nearest. At 28 bps the line raises $3,192 against $3,200 — it still would not cover, so rounding to nearest would have preserved the exact shortfall this finding exists to name. A reserve that over-collects a little is the survivable error.
+
+The cost is 9 bps off the take rate: **0.61%, not 0.70%**. See [unit economics](/economics/unit-economics).
+
+Separately, and not the same question: the reserve is a *stock*, the line is a *flow*. A reserve correctly sized in steady state still needs funding on day one — 2.4 months of the corrected line to accumulate the $8,000.
 
 ### 2 · The Trust Stake curve makes things worse before better
 
@@ -138,5 +144,5 @@ That is the residual the insurance line exists for. Whether `report_conflict` sh
 ## Where the numbers go
 
 - `base`, `k` and `hard_cap` → the `RiskConfig` account, set by instruction. Findings 2 and 3 are config changes.
-- The reserve and rebate lines → `INSURANCE_RESERVE` and `REBATE_PAYABLE` in `@nelo/settle`, which already accrues both per sale. Finding 1 is a rate change in `money.ts`.
-- The pitch deck's unit economics and premium slides → where findings 1 and 4 have to be reflected before submission.
+- The reserve and rebate lines → `INSURANCE_RESERVE` and `REBATE_PAYABLE` in `@nelo/settle`, which already accrues both per sale. **Finding 1 is done**: `money.ts` now carries 29 bps.
+- The pitch deck's unit economics and premium slides → finding 4 still has to be reflected before submission, and the take rate on those slides is now **0.61%**.

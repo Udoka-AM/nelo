@@ -207,7 +207,7 @@ The insurance line, modelled. Exposure → reserve requirement → what the SKR 
 ```ts
 perVaultExposure(v)        // floor_limit × merchants_reached − collateral − stake
 reserveRequirement(v)      // Poisson tail at a chosen confidence
-reserveLineVerdict(v)      // is the plan's 0.20% line enough?
+reserveLineVerdict(v)      // is the line charged enough? (0.20% was not)
 crossoverStakeValue(v)     // where staking stops making things worse
 premiumCeiling(v)          // what capital relief can actually fund
 unsourcedInputs()          // every guess, and what would settle it
@@ -221,4 +221,4 @@ pnpm --filter @nelo/reserve report
 
 It prints its **unsourced assumptions first**, deliberately — every figure below them inherits that uncertainty.
 
-**16 tests.** See [The reserve model](/economics/reserve-model).
+**17 tests.** See [The reserve model](/economics/reserve-model).
