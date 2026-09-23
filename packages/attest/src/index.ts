@@ -12,6 +12,21 @@
 import { requireOptionalNativeModule } from "expo";
 import { compressPublicKey, derToRawSignature } from "@nelo/voucher";
 
+/**
+ * Recording what a handset turned out to be capable of. Kept in its own file
+ * because it imports nothing — so it is tested and typechecked off-device,
+ * unlike everything else here.
+ */
+export {
+  capability,
+  capabilityLine,
+  recordKeys,
+  type AndroidBuild,
+  type CapabilityInput,
+  type DeviceCapability,
+  type KeyBacking,
+} from "./capability.ts";
+
 interface NativeAttest {
   isStrongBoxAvailable(): boolean;
   generateAttestedKey(

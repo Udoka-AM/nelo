@@ -7,6 +7,9 @@
   "dependencies": {
     "@nelo/voucher": "workspace:*"
   },
+  "scripts": {
+    "test": "node --test \"test/*.test.ts\""
+  },
   "peerDependencies": {
     "expo": "*",
     "react-native": "*"

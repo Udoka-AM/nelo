@@ -4,8 +4,17 @@
     "noEmit": true,
     "declaration": false,
     "allowImportingTsExtensions": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["packages/*/src/**/*.ts", "packages/*/test/**/*.ts", "services/*/src/**/*.ts", "services/*/test/**/*.ts"],
-  "exclude": ["packages/attest/**"]
+  "include": [
+    "packages/*/src/**/*.ts",
+    "packages/*/test/**/*.ts",
+    "services/*/src/**/*.ts",
+    "services/*/test/**/*.ts"
+  ],
+  "exclude": [
+    "packages/attest/src/index.ts"
+  ]
 }
