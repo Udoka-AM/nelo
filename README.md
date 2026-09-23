@@ -130,16 +130,21 @@ need a handset. Failures are labelled for the merchant or for whoever configured
 because *"that code is not right"* and *"SMS login is not enabled for this Privy app"* are
 not the same problem and only one of them is fixable at a counter.
 
-**294 tests pass**: 237 in TypeScript across seven packages, 40 LiteSVM integration tests
-against the built program, and 17 for the curve. All of them, plus four typechecks, `cargo
+**306 tests pass**: 249 in TypeScript across six packages and two services, 40 LiteSVM
+integration tests against the built program, and 17 for the curve. All of them, plus four typechecks, `cargo
 fmt`, and clippy, run in CI on every push — see `.github/workflows/ci.yml`. The Anchor job
 is week 4's graded deliverable, *clone → install → `anchor test` green*, executed on a
 machine that starts with nothing.
 
-Not yet built: StrongBox on a real handset, a live price feed (see above), slashing
-(the freeze blocks the exit, but nothing moves the stake to a reserve yet — there is no
-reserve account), the payout partner adapter itself, and `services/relay`, which is
-still a stub.
+Not yet built: a live price feed (see above), slashing (the freeze blocks the exit, but
+nothing moves the stake to a reserve yet — there is no reserve account), the payout
+partner adapter itself, and the relay's transaction builder.
+
+**StrongBox has still never run.** The payer probe now works on a real handset — 4 of 5,
+with Hermes, the codec and P-256 all answered — but that handset has no secure element,
+which is itself the finding. The two checks it skipped are the ones only hardware can
+answer, and one of them is whether Android Keystore's own DER survives the low-S
+normalisation the chain requires.
 
 > **Neither app has been run.** An EAS development build compiles the whole native side,
 > so `@nelo/attest`'s Kotlin is no longer unproven at the compiler — but a development

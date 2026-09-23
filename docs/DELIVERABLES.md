@@ -88,21 +88,46 @@ Order matters here; each step feeds the next.
 2. **StrongBox keygen and signing.** [`packages/attest`](../packages/attest) as a Kotlin Expo
    module: P-256 keygen with an attestation challenge, sign 105 bytes, return the signature.
    *(Android)*
-   **Written, not yet run.** `packages/attest` has the Kotlin module and the TypeScript
-   interface; `apps/payer` hosts it and its probe screen does the full round-trip —
-   keygen in the secure element, sign the 105 bytes, verify with the merchant's own
-   code. Both conversions (DER → raw r‖s low-S, and uncompressed → compressed key) live
-   in `@nelo/voucher` and are covered by tests that run without a handset.
-   **The Kotlin has never been compiled** — there is no JDK or Android SDK on the dev
-   machine, so it compiles for the first time during the EAS build.
+   **Loads on hardware; the secure-element half is still unrun.** `packages/attest` has
+   the Kotlin module and the TypeScript interface; `apps/payer` hosts it and its probe
+   screen does the full round-trip — keygen in the secure element, sign the 105 bytes,
+   verify with the merchant's own code. Both conversions (DER → raw r‖s low-S, and
+   uncompressed → compressed key) live in `@nelo/voucher` and are covered by tests that
+   run without a handset.
+   **The Kotlin now compiles, links and answers on a real device** — the probe reports
+   the StrongBox check rather than "native module not loaded", which is the only way to
+   tell from JS that the native side actually loaded.
+   **But the handset has no secure element**, so `generateAttestedKey` and the hardware
+   signature never executed. The low-S normalisation is therefore still proven only
+   against `@noble/curves` — a library agreeing with a library — and not against Android
+   Keystore's own DER, which is the thing that would fail on chain and read like a
+   signature bug.
    **Done when:** the probe screen shows the hardware signature verifying on a real
-   handset.
+   handset. Needs a device with StrongBox: Pixel 3 or later, a recent Samsung flagship,
+   or a Seeker.
 
 3. **Capability detection and honest degradation.** Detect StrongBox; where it is absent, fall
    back to **online-only**. *(Android)*
-   **Done when:** the no-StrongBox handset refuses to emit an offline voucher and says why.
-   Silently falling back to a software key would keep the demo working while destroying the
-   entire argument — do not do it.
+   **Met, and observed.** The first handset to run the probe had no secure element, so this
+   path ran before anything was built to exercise it deliberately. `NeloAttestModule.kt`
+   throws rather than retrying without `setIsStrongBoxBacked`, and the probe reports the
+   absence instead of quietly proceeding.
+   **One claim was corrected here.** The probe used to read *"absent (TEE only)"*.
+   `isStrongBoxAvailable()` checks one system feature and cannot see whether the Keystore is
+   TEE-backed or software-backed, so that wording asserted a measurement nobody had taken.
+   It now says only what the check can support, and `packages/attest`'s `capability.ts`
+   records the same three honest states — `strongbox`, `no-strongbox`, `unknown` — with
+   **no `tee`**, because nothing in this repository can currently produce one truthfully.
+   Proving TEE backing needs `KeyInfo.isInsideSecureHardware()` or an attestation
+   certificate's `securityLevel`, and neither is exposed yet.
+   **Why the record exists at all:** `overspendAttemptRate` in `packages/reserve` names
+   StrongBox attestation as the barrier it is priced off, so how many handsets in the
+   launch markets carry one is load-bearing on the 29 bps reserve line — and it is a
+   guess. The probe answers it on every device it runs on; the record is a fixed-shape
+   line to write down, since there is no enrolment flow and no service to post it to.
+   It deliberately carries **no device identifier** — `Serial` and `Fingerprint` are both
+   on `Platform.constants` and neither answers the question. 12 tests, off-device.
+   **Done when:** met.
 
 4. **The vault account and `initialize`.** Replace the stub in
    [`programs/nelo_vault/src/lib.rs`](../programs/nelo_vault/src/lib.rs) with the real `Vault`
@@ -391,7 +416,10 @@ that is not negotiable — half the marks.
 
 1. **The payout partner never answers** and nobody takes the fork. Decide Wed 16 Sep.
 2. **DER → raw r‖s eats three days** because it was left to week three instead of week one.
-3. **StrongBox is assumed** rather than detected, and it surfaces on a demo handset in week
-   four.
+3. ~~**StrongBox is assumed** rather than detected, and it surfaces on a demo handset in week
+   four.~~ **This one happened, in week two rather than week four.** The first handset to run
+   the probe had no secure element. It surfaced early because the capability was detected
+   rather than assumed, which is what this line asked for — the cost is that the offline
+   demo now needs a specific device, not that the product is wrong.
 4. **The video is left to the last two days** and comes in at four minutes. It is 25% of the
    score.

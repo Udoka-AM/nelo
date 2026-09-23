@@ -24,7 +24,7 @@ Three states are kept apart, because conflating them is how a demo ends up claim
   <Card title="The ordinary sale" icon="receipt">
     **Written, and typechecked.** Till, MWA wallet, Solana Pay, payment validation, day-book, balance, SPL collateral, onboarding.
 
-    Caveat: **never rendered.** A dev-client build compiles the native side but does not embed the JS.
+    Caveat: **the merchant app has still never rendered.** A dev-client build compiles the native side but does not embed the JS.
   </Card>
   <Card title="Trust Stake" icon="coins">
     **Proven, on devnet.** 17 curve tests off chain, ~19 on chain in LiteSVM, and `RiskConfig` now live on a real validator with `redeem_voucher` exercised against its new account struct.
@@ -58,13 +58,16 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | Slashing | ❌ Not started |
 | CI | ✅ Three jobs — tests, typecheck, `anchor test` |
 
-## The three things that block the most
+## The four things that block the most
 
 <Steps>
-  <Step title="Run the app on a handset">
-    The one that blocks the most, now that the chain side is settled. The native build compiles, but a development client loads its JS from Metro — so **nothing in either app has rendered**. Every screen, every state transition and every native call is unverified at runtime.
+  <Step title="Find a handset with a secure element">
+    The payer probe has now run on real hardware and scored **4 of 5**. Hermes, the codec, P-256 and the native module boundary are all answered. The fifth is the finding: that handset has **no StrongBox**, so keygen-with-attestation and the hardware signature never executed — and the low-S normalisation of Android Keystore's own DER is still proven only against a library.
 
-    It answers three questions at once: does the JS bundle, does StrongBox behave on real hardware, and does MWA find a wallet.
+    Until a device with a secure element runs the probe, the offline path cannot be demonstrated. A Pixel 3 or later, a recent Samsung flagship, or a Solana Seeker will do it.
+  </Step>
+  <Step title="Render the merchant till">
+    A development client loads its JS from Metro, so compiling the native side proves nothing about screens. The payer app bundling settles that half for both, but no till screen has been drawn and no state transition has run outside a test.
   </Step>
   <Step title="Get a Privy app ID">
     Onboarding's done-when is *setup completed without ever seeing a key*, and it cannot be demonstrated without one. The flow's rules are tested; the SDK calls are typechecked and unexecuted. A build with no app ID runs and simply does not offer the phone route.

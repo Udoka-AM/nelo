@@ -18,8 +18,9 @@ This page is kept honest rather than flattering. The distinction between *a test
 | `programs/nelo_vault` — curve unit tests | 17 | Rust only |
 | `packages/reserve` | 17 | Node only |
 | `packages/ledger` | 13 | Node only |
+| `packages/attest` | 12 | Node only |
 
-**294, all green, all on every push.** Everything but the LiteSVM suite runs with no phone and no validator — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
+**306, all green, all on every push.** Everything but the LiteSVM suite runs with no phone and no validator — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
 
 The 40 LiteSVM tests were the long-standing gap. They went unexecuted for weeks because no machine that had the repo had the Solana toolchain — `release.anza.xyz` is unreachable from the development environment. The first run scored **39 of 40**, and [the one failure was worth more than the 39 passes](#things-that-went-wrong-and-were-caught).
 
@@ -29,7 +30,7 @@ The 40 LiteSVM tests were the long-standing gap. They went unexecuted for weeks 
 
 | Job | What | Cold | Warm |
 |---|---|---|---|
-| **TypeScript** | 212 tests, then four typechecks | ~21s | ~21s |
+| **TypeScript** | 249 tests, then four typechecks | ~21s | ~21s |
 | **Rust (host)** | `cargo fmt`, clippy, the curve's 17 | ~27s | ~27s |
 | **Anchor** | the 40 LiteSVM tests | ~14m | ~9m |
 
@@ -44,14 +45,22 @@ Each check is negative-tested rather than trusted: removing the `ScrollView` imp
 ## What still has never run
 
 <Warning>
-**Neither app has rendered.** An EAS development build compiles the entire native side, so `@nelo/attest`'s Kotlin is no longer unproven at the compiler — but a development client **does not embed the JS bundle**; it loads it from Metro at runtime. So no screen in either app has been drawn, no component has mounted, and the JS has never been bundled at all.
+**The merchant app has never rendered.** A development client **does not embed the JS bundle**; it loads it from Metro at runtime, so compiling the native side proves nothing about the screens. No merchant screen has been drawn and no component has mounted. It typechecks clean under `strict`, which is a real result and not the same result.
 
-Both apps typecheck clean under `strict`. That is a real result and it is not the same result.
+The payer app **has** now rendered on a handset, so the shared halves — Hermes, the bundler, the native module boundary — are no longer in question. The till is.
 </Warning>
 
 <Warning>
-**StrongBox has never run on hardware.** `@nelo/attest` compiles; whether a real secure element produces the attestation chain and the low-S signature the chain expects is untested. The devnet gate deliberately uses a software P-256 key, which isolates *"does the chain do what we think"* from *"does the handset do what we think"*. Only the first is answered.
+**StrongBox still has not run, and now for a different reason.** `@nelo/attest` compiles, loads and answers on a real handset — but the handset that ran it **has no secure element**, so the two deepest checks never executed: keygen with attestation, and a hardware signature verifying against the device key.
+
+That second one is the one to worry about. Android Keystore returns DER with an S that may sit in the upper half of the curve order; a high-S signature verifies on the phone and is **rejected on chain**. `derToRawSignature` normalises it, and is tested against `@noble/curves` — a library agreeing with a library. Whether real Keystore output survives it is still unknown, and it is a defect that would only ever appear on hardware, in a demo.
 </Warning>
+
+<Note>
+**What the handset did answer.** Four checks passed on a real device: BigInt and DataView under Hermes, P-256 sign and verify under Hermes, and the 202-byte round-trip. None of those could be settled off-device — Hermes handles both BigInt and `DataView` differently from Node.
+
+It also produced the finding: **no StrongBox**, on ordinary mid-range hardware. `packages/attest`'s capability record now writes that answer down in a fixed form on every device the probe runs on, because how common that is across the launch markets is an input the reserve model currently guesses at.
+</Note>
 
 <Warning>
 **The Privy calls have never executed.** The flow machine around them has 29 tests, but `useLoginWithSMS` and `useEmbeddedSolanaWallet` need an app ID and a device. The call sites were typechecked against the published `@privy-io/expo` declarations, which catches shape errors and nothing about behaviour.

@@ -13,11 +13,12 @@
  * The real payer UI arrives in week 3. See docs/DELIVERABLES.md.
  */
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { p256 } from "@noble/curves/p256";
 import { decode, encode, signedMessage, verify, type Voucher } from "@nelo/voucher";
 import * as attest from "@nelo/attest";
+import { capability, capabilityLine } from "@nelo/attest";
 
 type Result = { name: string; ok: boolean; detail: string };
 
@@ -99,7 +100,9 @@ function runChecks(): Result[] {
     ok: strongBox,
     detail: strongBox
       ? "present — offline vouchers available"
-      : "absent (TEE only) — correct behaviour is online-only on this handset",
+      : "absent — online-only on this handset. This check sees one system " +
+        "feature, so it cannot tell whether the Keystore is TEE-backed or " +
+        "software-backed; it says only that there is no secure element.",
   });
 
   return out;
@@ -168,6 +171,24 @@ export default function App() {
   const passed = results?.filter((r) => r.ok).length ?? 0;
   const total = results?.length ?? 0;
 
+  // How many handsets in the launch markets actually carry a secure element is
+  // an input the reserve model guesses at, and this app answers it on every
+  // device it runs on. There is nowhere to post the answer yet, so it is shown
+  // as one line to write down.
+  const record = capability({
+    moduleLoaded: attest.isAvailable(),
+    strongBox: attest.isStrongBoxAvailable(),
+    build:
+      Platform.OS === "android"
+        ? {
+            apiLevel: Platform.constants.Version,
+            release: Platform.constants.Release,
+            manufacturer: Platform.constants.Manufacturer,
+            model: Platform.constants.Model,
+          }
+        : null,
+  });
+
   return (
     <View style={styles.screen}>
       <StatusBar style="light" />
@@ -189,6 +210,17 @@ export default function App() {
             </View>
           </View>
         ))}
+
+        <View style={styles.record}>
+          <Text style={styles.eyebrow}>WRITE THIS DOWN</Text>
+          <Text style={styles.recordLine} selectable>
+            {capabilityLine(record)}
+          </Text>
+          <Text style={styles.detail}>
+            One row per handset. Enough of them and the reserve model stops
+            guessing how many phones can hold a key.
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -205,6 +237,13 @@ const styles = StyleSheet.create({
   ok: { color: "#4fb98f" },
   pending: { color: "#d4855e" },
   rowText: { flex: 1 },
+  record: { marginTop: 28, borderTopWidth: 1, borderTopColor: "#282b2f", paddingTop: 18 },
+  recordLine: {
+    color: "#e8e9ea",
+    fontFamily: Platform.OS === "android" ? "monospace" : undefined,
+    fontSize: 13,
+    marginBottom: 8,
+  },
   name: { color: "#e8e9ea", fontSize: 15.5, fontWeight: "600" },
   detail: { color: "#8d9299", fontSize: 13.5, marginTop: 3, lineHeight: 19 },
 });
