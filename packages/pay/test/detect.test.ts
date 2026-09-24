@@ -240,29 +240,43 @@ test("the oldest signature wins — the payment is the first to name the referen
  * pretending to watch.
  */
 test("a failing poll is reported rather than swallowed, and does not end the sale", async () => {
+  // Driven by events, not the clock: the watch is stopped after the third
+  // report, however long the runner takes to get there. The earlier version
+  // counted how many polls fit in 40ms and failed on a loaded CI machine.
   const failures: number[] = [];
+  const controller = new AbortController();
+  const safety = setTimeout(() => controller.abort(), 5_000);
   const fetch = (async () => new Response("nope", { status: 500 })) as unknown as typeof globalThis.fetch;
 
   const outcome = await withFetch(fetch, () =>
     awaitPayment("http://rpc.invalid", REFERENCE, EXPECTED, {
-      timeoutMs: 40,
-      intervalMs: 5,
-      onPollError: (_error, consecutive) => failures.push(consecutive),
+      timeoutMs: null,
+      intervalMs: 1,
+      signal: controller.signal,
+      onPollError: (_error, consecutive) => {
+        failures.push(consecutive);
+        if (failures.length === 3) controller.abort();
+      },
     }),
-  );
+  ).finally(() => clearTimeout(safety));
 
-  assert.equal(outcome.status, "timeout", "the sale ends on its own terms, not on an RPC error");
-  assert.ok(failures.length >= 2, `expected repeated reports, got ${failures.length}`);
-  // Consecutive, so a caller can tell one blink from a wall.
-  assert.deepEqual(failures.slice(0, 3), [1, 2, 3].slice(0, failures.length));
+  // Three reports means the loop survived two failed polls, which is the point:
+  // an RPC error does not end the sale.
+  assert.deepEqual(failures, [1, 2, 3], "consecutive, so a caller can tell one blink from a wall");
+  assert.equal(outcome.status, "timeout", "the watch ended because it was stopped, not on an RPC error");
 });
 
 test("the failure count resets once polling recovers", async () => {
+  // Fail, fail, recover, fail. Only the fourth poll tells a reset from a
+  // running total: it must report 1, not 3.
   let call = 0;
   const seen: number[] = [];
+  const controller = new AbortController();
+  const safety = setTimeout(() => controller.abort(), 5_000);
   const fetch = (async () => {
     call += 1;
-    if (call <= 2) return new Response("nope", { status: 500 });
+    if (call >= 5) controller.abort();
+    if (call === 1 || call === 2 || call === 4) return new Response("nope", { status: 500 });
     return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: [] }), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -271,12 +285,13 @@ test("the failure count resets once polling recovers", async () => {
 
   await withFetch(fetch, () =>
     awaitPayment("http://rpc.invalid", REFERENCE, EXPECTED, {
-      timeoutMs: 40,
-      intervalMs: 5,
+      timeoutMs: null,
+      intervalMs: 1,
+      signal: controller.signal,
       onPollError: (_e, consecutive) => seen.push(consecutive),
     }),
-  );
-  assert.deepEqual(seen, [1, 2], "a recovered poll must not keep counting old failures");
+  ).finally(() => clearTimeout(safety));
+  assert.deepEqual(seen, [1, 2, 1], "a recovered poll must not keep counting old failures");
 });
 
 // ----------------------------------------------------------- not giving up ---
