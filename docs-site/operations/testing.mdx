@@ -66,6 +66,63 @@ It also produced the finding: **no StrongBox**, on ordinary mid-range hardware. 
 **The Privy calls have never executed.** The flow machine around them has 29 tests, but `useLoginWithSMS` and `useEmbeddedSolanaWallet` need an app ID and a device. The call sites were typechecked against the published `@privy-io/expo` declarations, which catches shape errors and nothing about behaviour.
 </Warning>
 
+## Where the handset tests stopped
+
+**Paused 24 Sep, no Android device available. Resuming within three days.** Recorded here
+rather than remembered, because the next session starts cold.
+
+### Answered, and not worth repeating
+
+| | |
+|---|---|
+| Payer probe, Samsung S21 | **7 of 7** — including StrongBox keygen with attestation, and a hardware signature verifying against the device key |
+| Payer probe, mid-range handset | 4 of 5 — no secure element, which is the finding `packages/attest`'s capability record now writes down |
+| Merchant till on device | Renders, connects by MWA, reads its balance, builds the Solana Pay code |
+| Solana Pay in a third-party wallet | Works from **Solflare's home-screen scanner** — amount, token and recipient all read correctly |
+| Privy onboarding | Reaches the phone-number screen with real credentials; `EXPO_PUBLIC_*` inlining confirmed |
+
+The first row retires the risk that mattered most. Android Keystore returns DER with an S
+that may sit in the upper half of the curve order — it verifies on the phone and is
+**rejected on chain**. `derToRawSignature` was only ever checked against `@noble/curves`, a
+library agreeing with a library. It is now checked against real Keystore output.
+
+### The one test still open
+
+**A payment that registers on the till.** Money arrives, the balance reads it back on reload,
+and the terminal does not flip to Paid.
+
+Three defects were found and fixed off-device — a malformed `getSignaturesForAddress` (the
+commitment was a loose third parameter), a `catch {}` that hid it, and polling that stopped
+after 120 seconds while the screen still said the code was live. **None of that is confirmed
+on a handset.** The last attempt was against a bundle whose provenance is unverified: the
+dev client could not reach Metro, and it is not established whether the fix was in the
+bundle that finally loaded.
+
+So the fix is proven by nine tests and unproven in the field.
+
+<Note>
+**First three things when a device is available.**
+
+1. `cd ~/nelo && git pull && git log --oneline -1` — confirm the working tree carries the fix
+   before reading anything into a result.
+2. Take one payment through Solflare's home scanner. The charge screen now prints the
+   **reference** and the full `solana:` request under the QR in development builds.
+3. Read the status line, which now discriminates: `Waiting for payment…` means the RPC is
+   answering and no transaction names the reference; `Cannot reach the network` means it is
+   not; red text means detection worked and validation refused.
+
+Then look the reference up on an explorer. No transaction naming it means the wallet never
+attached it and the terminal is right to wait — which moves the bug upstream, into the
+request rather than the detector.
+</Note>
+
+### Blocked on something other than a device
+
+- **SMS onboarding.** Privy has not enabled SMS for Nigeria on this app. Dashboard setting,
+  not code. The flow machine's 29 tests and the screens are unaffected.
+- **A no-StrongBox handset**, to exercise the degradation path deliberately rather than by
+  accident.
+
 ## What that gap already cost
 
 Not hypothetical. While adding the balance display:
