@@ -11,20 +11,23 @@ This page is kept honest rather than flattering. The distinction between *a test
 |---|---:|---|
 | `packages/pay` | 63 | Node only |
 | `packages/onboard` | 60 | Node only |
-| `packages/queue` | 51 | `pnpm install` |
-| `packages/redeem` | 27 | `pnpm install` |
-| `packages/accept` | 26 | Node only |
+| `packages/queue` | 52 | `pnpm install` |
 | `programs/nelo_vault` — LiteSVM | 45 | Solana toolchain |
 | `services/settle` | 39 | Node only |
-| `packages/voucher` | 29 | `pnpm install` |
+| `packages/voucher` | 37 | `pnpm install` |
+| `packages/redeem` | 32 | `pnpm install` |
+| `packages/accept` | 27 | Node only |
 | `services/relay` | 25 | Node only |
 | `programs/nelo_vault` — curve and precompile-layout unit tests | 19 | Rust only |
-| `programs/nelo_vault` — golden vectors (voucher, redemption tx, error codes) | 5 | Rust only |
+| `packages/enrol` | 18 | `pnpm install` |
 | `packages/reserve` | 17 | Node only |
+| `packages/issue` | 16 | `pnpm install` |
 | `packages/ledger` | 13 | Node only |
 | `packages/attest` | 12 | Node only |
+| `packages/till` | 9 | `pnpm install` |
+| `programs/nelo_vault` — golden vectors (voucher, redemption tx, error codes, account layouts) | 7 | Rust only |
 
-**431, all green, all on every push.** Everything but the LiteSVM suite runs with no phone and no validator — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
+**491, all green, all on every push.** Everything but the LiteSVM suite runs with no phone and no validator — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
 
 The LiteSVM tests were the long-standing gap. They went unexecuted for weeks because no machine that had the repo had the Solana toolchain — `release.anza.xyz` is unreachable from the development environment. The first run scored **39 of 40**, and [the one failure was worth more than the 39 passes](#things-that-went-wrong-and-were-caught).
 
@@ -34,8 +37,8 @@ The LiteSVM tests were the long-standing gap. They went unexecuted for weeks bec
 
 | Job | What | Cold | Warm |
 |---|---|---|---|
-| **TypeScript** | 362 tests, then four typechecks | ~21s | ~21s |
-| **Rust (host)** | `cargo fmt`, clippy, 19 unit tests, 5 golden-vector tests | not yet timed | ~34s |
+| **TypeScript** | 420 tests, then four typechecks | ~21s | ~21s |
+| **Rust (host)** | `cargo fmt`, clippy, 19 unit tests, 7 golden-vector tests | not yet timed | ~34s |
 | **Anchor** | the 45 LiteSVM tests | ~14m | ~2m once the build cache is warm |
 
 The Rust job is deliberately separate from the Anchor one: the curve carries no Anchor types precisely so it can be checked without a validator, and it answers in seconds instead of waiting on a toolchain install. The Anchor job pins from `Anchor.toml`'s own `solana_version` and `anchor_version`, and is week 4's graded deliverable — *clone → install → `anchor test` green* — run on a machine that starts with nothing.
@@ -118,6 +121,23 @@ So the fix is proven by nine tests and unproven in the field.
 Then look the reference up on an explorer. No transaction naming it means the wallet never
 attached it and the terminal is right to wait — which moves the bug upstream, into the
 request rather than the detector.
+</Note>
+
+<Note>
+**The offline path, once a device is back.** Nothing below has run on a handset.
+
+1. **Rebuild the development client.** `expo-camera` is a new native module, so the dev build
+   on the phone cannot load this JS: `pnpm --filter @nelo/merchant build:dev`, then install
+   the new APK.
+2. **Fund the merchant wallet with a little devnet SOL.** Redemptions are signed and paid for
+   by the merchant's own wallet over Mobile Wallet Adapter.
+3. **Open the till online once.** It syncs every vault for devnet USDC. The payer's vault must
+   exist on chain before the till goes offline, or the scan says the payer is not on the list.
+4. **Airplane mode, then Charge → "Customer has no signal? Scan their code."** Needs the
+   payer's QR, and the payer app does not show one yet. That screen is the remaining piece of
+   the week-3 gate.
+5. **Reconnect and tap the orange bar.** The wallet asks to sign; a wallet that adds a
+   priority fee is refused on purpose, with a message saying so.
 </Note>
 
 ### Blocked on something other than a device

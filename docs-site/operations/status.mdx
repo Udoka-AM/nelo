@@ -46,7 +46,10 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | `packages/onboard` | ✅ Proven (60 tests) |
 | `packages/reserve` | ✅ Proven (17 tests) |
 | `packages/accept` | ✅ Proven (26 tests) — offline accept/refuse |
-| `packages/queue` | ✅ Proven (51 tests) against a fake network; ⚠️ not wired into the merchant app |
+| `packages/queue` | ✅ Proven (52 tests) against a fake network; wired into the merchant app, never run on a handset |
+| `packages/enrol` | ✅ Payer list and revocation list, pinned to the program's account layouts (18 tests) |
+| `packages/issue` | ✅ Payer-side issuing, never signs one sequence twice (16 tests); ⚠️ no payer screen uses it yet |
+| `packages/till` | ✅ The till's scan decision (9 tests) |
 | `packages/redeem` | ✅ Matches the program's own builders byte for byte (27 tests); ⚠️ never broadcast to a cluster |
 | `services/settle` — ledger | ✅ Proven (39 tests) |
 | `services/settle` — partner | 🟡 Declared stub |
@@ -116,4 +119,7 @@ Named rather than discovered, because a named stub reads as confidence and a dis
 - **The payout partner adapter.** The interface exists; the implementation waits on sandbox access.
 - **An HTTP surface on `settle`.** It is a library the relay and the app will call, not a server.
 - **Embedded-wallet recovery.** `needs-recovery` is detected and reported; `useRecoverEmbeddedWallet` is not wired, so the retry on that screen will not clear it. It arises when a wallet has to be reconstructed on a new device, which is exactly the case a merchant who changes phones hits — so it is a gap with a date on it, not a permanent omission.
-- **The offline transport.** QR and NFC, and cached enrolment and revocation lists, are week-3 work. The offline queue exists (`packages/queue`) but no app feeds it yet, because nothing reads a voucher off a payer's screen.
+- **The payer's screens.** Issuing (`packages/issue`) and the QR format (`NV1:` + base45) exist and are tested. The payer app does not yet enrol a vault, deposit, or show a voucher as a QR, so the week-3 gate needs that screen before it can run.
+- **NFC.** QR first, as planned; NFC has not been started.
+- **Holes in the replay window.** The window advances only over contiguous redeemed sequences, so a voucher that is never redeemed leaves a hole the base cannot pass. After 127 more vouchers the vault can no longer pay offline. Fixing it is a program change, not yet designed.
+- **Settling for Privy merchants.** Redemptions are signed by the merchant's wallet over Mobile Wallet Adapter. Privy's embedded signer takes `@solana/web3.js` objects this app does not carry, so a Privy merchant's offline payments stay queued until that is wired.

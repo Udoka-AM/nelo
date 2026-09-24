@@ -63,19 +63,22 @@ Every package except `@nelo/voucher` runs with **zero dependencies installed** â
 | Suite | Tests | Needs |
 |---|---:|---|
 | `programs/nelo_vault` (LiteSVM) | 45 | Solana toolchain |
-| `programs/nelo_vault` (golden vectors) | 5 | Rust only |
+| `programs/nelo_vault` (golden vectors) | 7 | Rust only |
 | `programs/nelo_vault` (curve and precompile-layout unit) | 19 | Rust only |
 | `packages/pay` | 63 | Node only |
 | `packages/onboard` | 60 | Node only |
-| `packages/queue` | 51 | `pnpm install` |
+| `packages/queue` | 52 | `pnpm install` |
 | `services/settle` | 39 | Node only |
-| `packages/voucher` | 29 | `pnpm install` |
-| `packages/redeem` | 27 | `pnpm install` |
-| `packages/accept` | 26 | Node only |
+| `packages/voucher` | 37 | `pnpm install` |
+| `packages/redeem` | 32 | `pnpm install` |
+| `packages/accept` | 27 | Node only |
 | `services/relay` | 25 | Node only |
+| `packages/enrol` | 18 | `pnpm install` |
 | `packages/reserve` | 17 | Node only |
+| `packages/issue` | 16 | `pnpm install` |
 | `packages/ledger` | 13 | Node only |
 | `packages/attest` | 12 | Node only |
+| `packages/till` | 9 | `pnpm install` |
 
 <Note>
 Program tests are **Rust + LiteSVM**, in `programs/nelo_vault/tests/`. There is no mocha/TypeScript test path â€” `Anchor.toml` sets `[scripts] test = "cargo test"`, and no local validator is needed.

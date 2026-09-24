@@ -354,10 +354,35 @@ that is not negotiable — half the marks.
    NFC Type 4, `react-native-ble-plx` as fallback. *(Android)*
    **Ship QR before NFC.** The handsets this product targets do not all have usable host card
    emulation, and QR is the path that cannot fail on hardware you do not control.
+   **QR format: built.** `NV1:` + the 202 bytes in base45, 307 characters, in QR's
+   alphanumeric mode. Not raw bytes: scanners return strings, and a byte-mode payload
+   that is not UTF-8 comes back altered, which the merchant would see as a bad signature.
+   The test renders every golden voucher with the apps' own QR library and gets version 10
+   at M. **Merchant scan screen: written**, never run on a handset. **Payer QR screen: not
+   built.**
 2. **Cached enrolment and revocation lists**, synced at last connection. *(Android)*
+   **Built:** [`packages/enrol`](../packages/enrol/src/cache.ts). It holds every vault for the
+   till's mint, since a payer in a dead zone can only be checked against a key already held.
+   A frozen vault is the revocation entry. Layouts are pinned by
+   `tests/account_vectors.rs`; a late snapshot cannot roll a vault backwards.
 3. **Offline verification on the merchant side** — signature, enrolment, revocation, floor
    limit, expiry, `remaining_after`. *(Android)*
    **Done when:** both phones in airplane mode complete a sale.
+   **Checks: built** ([`packages/accept`](../packages/accept/src/index.ts),
+   [`packages/till`](../packages/till/src/index.ts)). Building the till found a missing one:
+   `accept` never checked that a voucher pays *this* merchant. The program pays whoever the
+   voucher names, so a voucher made out to an accomplice would have been taken here and paid
+   there. It is now a required input. The payer's side is
+   [`packages/issue`](../packages/issue/src/issuer.ts), which never signs one sequence over two
+   messages, even across crashes. That pair is exactly what `report_conflict` freezes a vault
+   for.
+   **A design gap this surfaced, not yet addressed:** the replay window advances only over
+   *contiguous* redeemed sequences. A voucher that is never redeemed leaves a hole the base
+   can never pass, for example one the merchant lost or one that expired. After 127 more
+   vouchers from that vault, every new one is `SequenceTooFarAhead`. The payer's issuer
+   refuses before that point, so nothing is lost, but the vault stops working offline. Fixing
+   it needs a program change: a way to skip a sequence that cannot be abused to void vouchers
+   merchants already hold.
 4. **Offline queue and settle-on-reconnect.** Durable nonce accounts so a queued transfer never
    expires. [`services/relay`](../services/relay/src/index.ts) — retry, multi-RPC failover.
    *(Anchor)*

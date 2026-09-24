@@ -130,9 +130,9 @@ need a handset. Failures are labelled for the merchant or for whoever configured
 because *"that code is not right"* and *"SMS login is not enabled for this Privy app"* are
 not the same problem and only one of them is fixable at a counter.
 
-**431 tests pass**: 362 in TypeScript across nine packages and two services, 45 LiteSVM
+**491 tests pass**: 420 in TypeScript across twelve packages and two services, 45 LiteSVM
 integration tests against the built program, 19 Rust unit tests for the curve and the
-precompile layout, and 5 that generate and check the cross-language golden vectors. All of them, plus four typechecks, `cargo
+precompile layout, and 7 that generate and check the cross-language golden vectors. All of them, plus four typechecks, `cargo
 fmt`, and clippy, run in CI on every push — see `.github/workflows/ci.yml`. The Anchor job
 is week 4's graded deliverable, *clone → install → `anchor test` green*, executed on a
 machine that starts with nothing.
