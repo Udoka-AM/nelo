@@ -388,7 +388,7 @@ that is not negotiable — half the marks.
 4. **Offline queue and settle-on-reconnect.** Durable nonce accounts so a queued transfer never
    expires. [`services/relay`](../services/relay/src/index.ts) — retry, multi-RPC failover.
    *(Anchor)*
-   **Built:** [`packages/queue`](../packages/queue/src/queue.ts), 55 tests. **No durable
+   **Built:** [`packages/queue`](../packages/queue/src/queue.ts), 58 tests. **No durable
    nonces**, on purpose. The queue holds vouchers, not signed transactions, and signs each
    redemption with a fresh blockhash when it is sent. So the only deadline is the voucher's
    own expiry, and a nonce account would cost rent and an instruction per redemption for
@@ -417,6 +417,17 @@ that is not negotiable — half the marks.
    vectors the program generates. The till that loses the race is told "paid to someone
    else", not "try again".
 6. **Close-of-day reconciliation.** *(Design + Android)*
+   **Built, never run on a handset.** Offline, goods go before the money, so the week-2
+   close-of-day total (money that has arrived) no longer answers "how did today go".
+   [`reconcileDay`](../packages/ledger/src/reconcile.ts) sorts everything sold on a day into
+   received, still coming, needs a look, and lost, with why for each lost one, and the four
+   always add up to what was sold. An offline sale is dated when the goods changed hands. What
+   is still coming from earlier days is shown apart. It also checks the queue and the day-book
+   against each other and reports any disagreement: settled but not booked, booked but not
+   settled, booked but never taken, or a different amount. The merchant app shows it from the
+   day-book, one day at a time. 9 tests, and three deliberate breaks each fail one.
+   **Not in it:** a check against the chain itself. `reconcileCustody` in `services/settle`
+   does that for the payout leg; the till trusts its own two records.
 7. **Peer-to-peer transfer.** This falls out of the same code — the voucher does not know what
    a merchant is. *(Android)*
    **Done when:** two customers settle a bill between them with no merchant involved.

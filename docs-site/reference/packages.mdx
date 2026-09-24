@@ -95,6 +95,7 @@ localDayKey(atMs, tzOffsetMinutes)   // → "YYYY-MM-DD"
 groupByDay(sales, tzOffset)          // newest day first, newest sale first
 closeOfDay(sales, day, tzOffset)     // → DayTotals
 dayLabel(day, nowMs, tzOffset)       // "Today" / "Yesterday" / the date
+reconcileDay(sales, offline, day, tzOffset)  // → DayClose: sold, received, owed, held, lost
 ```
 
 <Note>
@@ -103,7 +104,11 @@ dayLabel(day, nowMs, tzOffset)       // "Today" / "Yesterday" / the date
 
 The timezone offset is passed in rather than read from the environment, so it is deterministic under test — including non-whole-hour offsets like Chatham Islands (UTC+12:45).
 
-**13 tests.**
+**Close of day counts offline payments too.** The day-book holds money that has arrived, but offline, goods go before the money. `reconcileDay` sorts everything sold on a day into received (on the spot, or offline and settled), still coming, needs a look, and lost, and the four always add up to what was sold. An offline sale belongs to the day the goods changed hands, not the day it settled. What is still coming from earlier days is shown apart from the day's figures.
+
+It also checks the till's two records against each other. A settled offline payment is in both the queue and the day-book, and it is counted once. A payment settled but missing from the day-book, a day-book row the queue says has not settled or never took, and a disagreement on the amount are each reported rather than resolved by picking one.
+
+**22 tests.**
 
 ---
 
@@ -281,4 +286,6 @@ The codes come from `vectors/program-errors-v1.json`, which the program generate
 
 **Signing is injected.** `SettleDeps.prepare` builds with `@nelo/redeem`, signs, and returns the signature without sending. In the merchant app the relayer does it, so the merchant signs nothing. A relayer decline marked `conflict` is refused as paid to someone else.
 
-**55 tests**, against a fake network. Wired into the merchant app, never run on a handset.
+`standing(entry)` puts an entry in the four words close of day uses: settled, owed, held or lost, with why in words a merchant can act on.
+
+**58 tests**, against a fake network. Wired into the merchant app, never run on a handset.

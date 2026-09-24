@@ -47,6 +47,7 @@ import { PrivyProvider } from "@privy-io/expo";
 import { canOnboardWithPhone, privy, rpcUrl } from "./src/config";
 import Onboarding from "./src/Onboarding";
 import ScanPayment from "./src/Scan";
+import CloseOfDay from "./src/CloseOfDay";
 import { syncPayers } from "./src/sync";
 import { settleVouchers } from "./src/settle";
 import { voucherStore } from "./src/offline";
@@ -84,6 +85,7 @@ function Till() {
   const [quoted, setQuoted] = useState<Quoted | null>(null);
   const [balance, setBalance] = useState<Balance | null>(null);
   const [showDaybook, setShowDaybook] = useState(false);
+  const [showClose, setShowClose] = useState(false);
   /** The customer has no signal, so the till scans their code instead. */
   const [scanning, setScanning] = useState(false);
   /** Offline payments taken and not yet settled. */
@@ -368,6 +370,15 @@ function Till() {
     );
   }
 
+  if (showClose) {
+    return (
+      <>
+        <StatusBar style="light" />
+        <CloseOfDay sales={sales} currency={CURRENCY} tz={tz} onDone={() => setShowClose(false)} />
+      </>
+    );
+  }
+
   if (showDaybook) {
     const days = groupByDay(sales, tz);
     return (
@@ -375,9 +386,14 @@ function Till() {
         <StatusBar style="light" />
         <View style={styles.bookHeader}>
           <Text style={styles.bookTitle}>Day-book</Text>
-          <Pressable onPress={() => setShowDaybook(false)} accessibilityRole="button">
-            <Text style={styles.secondaryText}>Done</Text>
-          </Pressable>
+          <View style={styles.bookActions}>
+            <Pressable onPress={() => setShowClose(true)} accessibilityRole="button">
+              <Text style={styles.secondaryText}>Close the day</Text>
+            </Pressable>
+            <Pressable onPress={() => setShowDaybook(false)} accessibilityRole="button">
+              <Text style={styles.secondaryText}>Done</Text>
+            </Pressable>
+          </View>
         </View>
         <ScrollView contentContainerStyle={styles.bookBody}>
           {days.length === 0 ? (
@@ -748,6 +764,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 18,
   },
+  bookActions: { flexDirection: "row", gap: 18 },
   bookTitle: { color: "#e8e9ea", fontSize: 26, fontWeight: "700", letterSpacing: -0.6 },
   bookBody: { paddingBottom: 40 },
   empty: { color: "#8d9299", fontSize: 15.5, lineHeight: 24, marginTop: 28 },

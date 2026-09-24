@@ -42,11 +42,11 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | `programs/nelo_vault` — Trust Stake | ✅ Proven — LiteSVM, then devnet |
 | `packages/voucher` | ✅ Proven, both sides, golden vectors (29 tests) |
 | `packages/pay` | ✅ Proven (54 tests) |
-| `packages/ledger` | ✅ Proven (13 tests) |
+| `packages/ledger` | ✅ Proven (22 tests), including close of day with offline payments |
 | `packages/onboard` | ✅ Proven (60 tests) |
 | `packages/reserve` | ✅ Proven (17 tests) |
 | `packages/accept` | ✅ Proven (26 tests) — offline accept/refuse |
-| `packages/queue` | ✅ Proven (55 tests) against a fake network; wired into the merchant app, never run on a handset |
+| `packages/queue` | ✅ Proven (58 tests) against a fake network; wired into the merchant app, never run on a handset |
 | `packages/enrol` | ✅ Payer list and revocation list, pinned to the program's account layouts (18 tests) |
 | `packages/issue` | ✅ Payer-side issuing, never signs one sequence twice (21 tests) |
 | `apps/payer` | ⚠️ Enrol, deposit, pay offline and show the voucher QR: typechecks and bundles, never run on a handset |

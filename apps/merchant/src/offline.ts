@@ -147,3 +147,16 @@ export async function markReported(id: string, outcome: string): Promise<void> {
   const database = await handle();
   await database.runAsync(`UPDATE conflicts SET reported = ? WHERE id = ?`, outcome, id);
 }
+
+/** Every offline payment this till has taken, with what was charged for it. */
+export async function offlinePayments(): Promise<Unbooked[]> {
+  const database = await handle();
+  const rows = await database.getAllAsync<{ record: string; local_minor: string; currency: string }>(
+    `SELECT record, local_minor, currency FROM vouchers`,
+  );
+  return rows.map((r) => ({
+    entry: fromRecord(JSON.parse(r.record) as EntryRecord),
+    localMinor: BigInt(r.local_minor),
+    currency: r.currency,
+  }));
+}
