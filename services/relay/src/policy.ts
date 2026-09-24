@@ -141,8 +141,11 @@ export function decide(
   }
 
   // Cheapest checks first, and all of them before any lamport moves.
-  if (voucher.expiresAt <= BigInt(nowSeconds)) {
-    // The program would reject it. Submitting anyway spends a fee to be told so.
+  // The program's rule exactly: `now <= expires_at` redeems, so a voucher is
+  // valid through its expiry second and dead only after it. Stricter, and the
+  // relayer refuses vouchers the chain would pay; looser, and it spends a fee
+  // to be told no.
+  if (voucher.expiresAt < BigInt(nowSeconds)) {
     return { sponsor: false, reason: "voucher has expired" };
   }
 

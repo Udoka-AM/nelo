@@ -143,14 +143,18 @@ test("an expired voucher is refused before a lamport moves", () => {
   if (!d.sponsor) assert.match(d.reason, /expired/);
 });
 
-test("expiry is exact at the boundary", () => {
-  // expiresAt == now is expired: the program compares the same way, and a
-  // relayer that disagrees by one second pays for the disagreement.
+test("expiry matches the program at the boundary", () => {
+  // redeem_voucher requires `now <= expires_at`: a voucher is still good in its
+  // expiry second. The earlier version of this test asserted the opposite and
+  // claimed the program agreed; it did not, and the relayer was refusing
+  // vouchers the chain would have paid.
   const atBoundary = voucher({ expiresAt: BigInt(NOW) });
-  assert.equal(decide(request({ voucher: atBoundary }), limits(), spent(), NOW).sponsor, false);
+  assert.equal(decide(request({ voucher: atBoundary }), limits(), spent(), NOW).sponsor, true);
 
-  const oneLater = voucher({ expiresAt: BigInt(NOW + 1) });
-  assert.equal(decide(request({ voucher: oneLater }), limits(), spent(), NOW).sponsor, true);
+  const oneEarlier = voucher({ expiresAt: BigInt(NOW - 1) });
+  const d = decide(request({ voucher: oneEarlier }), limits(), spent(), NOW);
+  assert.equal(d.sponsor, false);
+  if (!d.sponsor) assert.match(d.reason, /expired/);
 });
 
 /**
