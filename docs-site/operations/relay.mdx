@@ -1,0 +1,69 @@
+---
+title: "Relay"
+description: "Running Nelo's relayer on a Mac: it submits merchants' offline vouchers and pays the fees."
+---
+
+The relayer is why a merchant needs no SOL and never signs anything. `redeem_voucher`'s only signer is whoever pays the fee, and the program pays exactly the merchant the voucher names. So the relayer submits the voucher and pays, and it cannot redirect the money.
+
+It runs as one small Node process. For the week-3 demo it runs on a Mac behind a tunnel, because the phones are on mobile data and cannot reach a laptop on a home network.
+
+## What it will pay for
+
+| Limit | Default | Why |
+|---|---|---|
+| Signature-verified vouchers only | always | A forged voucher costs a fee to be refused on chain; it is refused here for free |
+| Daily budget | 0.5 SOL (`RELAY_DAILY_BUDGET_SOL`) | Caps the worst day. Resets at UTC midnight |
+| Per vault per day | 200 (`RELAY_MAX_PER_VAULT`) | One payer cannot use the whole budget |
+| A merchant's first token account | once per merchant | About 0.002 SOL of rent, which is 400 fees. Funding it again for someone who closed it is how a sponsor is drained |
+
+A refusal on budget or the per-vault cap tells the till to retry later; any other refusal is held for a person to look at.
+
+## Run it on the Mac
+
+<Steps>
+  <Step title="A fee-payer key, funded with devnet SOL">
+    ```bash
+    solana-keygen new -o ~/.config/solana/nelo/relay-fee-payer.json
+    solana address -k ~/.config/solana/nelo/relay-fee-payer.json
+    solana airdrop 2 $(solana address -k ~/.config/solana/nelo/relay-fee-payer.json) -u devnet
+    ```
+    If the airdrop is rate-limited, use faucet.solana.com with that address. This key pays fees and nothing else: it has no authority over the program or anyone's funds. Keep it out of the repo like every other keypair.
+  </Step>
+  <Step title="Start it">
+    ```bash
+    cd ~/nelo/services/relay
+    export RELAY_RPC_URL='https://devnet.helius-rpc.com/?api-key=YOUR_KEY'
+    export RELAY_KEYPAIR=~/.config/solana/nelo/relay-fee-payer.json
+    export RELAY_TOKEN=$(openssl rand -hex 24)
+    export RELAY_LEDGER=~/.config/solana/nelo/relay-ledger.json
+    echo "RELAY_TOKEN=$RELAY_TOKEN"   # the merchant app needs this
+    pnpm start
+    ```
+    It listens on `127.0.0.1:8787`. It needs Node 22.18 or later, which runs TypeScript directly. Keep the ledger file: it is how a retried voucher gets the same answer, so it must survive restarts.
+  </Step>
+  <Step title="Put a public address in front of it">
+    ```bash
+    brew install cloudflared
+    cloudflared tunnel --url http://127.0.0.1:8787
+    ```
+    It prints an `https://….trycloudflare.com` address. Check it from a phone's browser: `https://…trycloudflare.com/v1/health` should show the fee payer's address. The quick-tunnel address changes whenever `cloudflared` restarts; a named tunnel keeps one address, and is worth setting up once the demo date is fixed.
+  </Step>
+  <Step title="Point the merchant app at it">
+    In `apps/merchant/.env`:
+    ```
+    EXPO_PUBLIC_NELO_RELAY_URL=https://….trycloudflare.com
+    EXPO_PUBLIC_NELO_RELAY_TOKEN=<the RELAY_TOKEN from above>
+    ```
+    Then restart Metro with `--clear`. No new native build is needed for this.
+  </Step>
+</Steps>
+
+## Keeping it up
+
+The Mac must be awake with both processes running whenever a till settles. `caffeinate -i` in a spare terminal stops it sleeping. If the relayer is down, nothing is lost: the till treats it as offline, keeps the vouchers queued, and tries again on the next round.
+
+## Why it never submits a voucher twice
+
+The till records the signature only after the relayer answers. A till that crashes in between asks again, so the relayer answers a voucher it has already submitted with the same signature, for as long as that transaction can still land. It builds a new one only once the old one is not on chain and its blockhash has expired. Otherwise the till would see "already redeemed" on the second transaction and report its own payment as a double spend.
+
+The submission is written to the ledger before the transaction is sent, and requests are handled one at a time. `services/relay/test/` pins both, with a control test that shows the duplicate send happening without them.

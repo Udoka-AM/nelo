@@ -82,7 +82,7 @@ export type Verdict =
     }
   | {
       kind: "blocked";
-      reason: "above-limit" | "collateral-short" | "sequence-ahead" | "fee-payer-unfunded";
+      reason: "above-limit" | "collateral-short" | "sequence-ahead" | "fee-payer-unfunded" | "relay-declined";
       detail: string;
     }
   | { kind: "transient"; reason: "blockhash" | "network" | "rpc"; detail: string }
@@ -193,6 +193,16 @@ export function classify(err: unknown): Verdict {
       default:
         return { kind: "held", reason: "unknown", detail: `Unrecognised transaction error: ${err}` };
     }
+  }
+
+  // A relayer's refusal, before anything was built. It says itself whether
+  // waiting could change the answer (a spent daily budget) or not.
+  const relay = (err as { RelayDeclined?: { reason?: unknown; retryable?: unknown } } | null)?.RelayDeclined;
+  if (relay && typeof relay === "object") {
+    const reason = typeof relay.reason === "string" ? relay.reason : "the relayer declined";
+    return relay.retryable === true
+      ? { kind: "blocked", reason: "relay-declined", detail: `The relayer will not submit it yet: ${reason}.` }
+      : { kind: "held", reason: "unknown", detail: `The relayer refused it: ${reason}.` };
   }
 
   const ie = (err as { InstructionError?: unknown } | null)?.InstructionError;

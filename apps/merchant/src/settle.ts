@@ -5,20 +5,27 @@
  * the three things it cannot do itself: a blockhash, the merchant's wallet
  * signature, and the RPC calls.
  *
- * ## Who signs
+ * ## Who signs: nobody the merchant has to think about
  *
- * The merchant's own wallet, over Mobile Wallet Adapter. It pays the fee, so
- * the merchant needs a little SOL. That was the choice for the week-3 gate:
- * fewest moving parts. The relayer can take over the fee later without
- * changing the queue. A merchant onboarded through Privy has no wallet app to
- * hand a transaction to, and Privy's own signer wants `@solana/web3.js`
- * objects this app does not carry, so for them settling says so rather than
- * failing oddly. That is a gap with a name, not an accident.
+ * `redeem_voucher`'s only signer is whoever pays the fee. The merchant is an
+ * account the program pays, fixed by the voucher itself. So Nelo's relayer
+ * submits and pays, and the merchant signs nothing and needs no SOL, whether
+ * they signed up with a wallet or through Privy. The relayer cannot redirect
+ * the money: the program pays exactly the merchant the voucher names.
+ *
+ * The till records a signature only after the relayer answers, so crash
+ * safety here rests on the relayer answering a repeated voucher with the same
+ * signature while it can still land. It does; see `services/relay`.
+ *
+ * Without a relayer configured, a merchant who connected a wallet can still
+ * settle by signing with it and paying the fee: the fallback, not the product.
  */
 import { getBase64Decoder } from "@solana/kit";
 import {
   settleOnce,
+  type Declined,
   type Entry,
+  type Prepared,
   type RoundReport,
   type SendResult,
   type SettleDeps,
@@ -26,7 +33,7 @@ import {
 } from "@nelo/queue";
 import { buildRedemption, checkSigned, TOKEN_PROGRAM_ID } from "@nelo/redeem";
 import { record } from "./daybook";
-import { rpcUrl } from "./config";
+import { relayToken, relayUrl, rpcUrl } from "./config";
 import { markBooked, unbooked, voucherStore } from "./offline";
 import { signTransactions } from "./wallet";
 import type { MerchantAccount } from "./account";
@@ -56,14 +63,58 @@ export type Settled =
   /** The wallet signed something other than what was built, or refused. */
   | { kind: "wallet"; reason: string };
 
+/**
+ * Hand one voucher to the relayer. It builds, pays for and sends the
+ * transaction, and answers with its signature: a repeated ask gets the same
+ * one back while it can still land.
+ */
+async function viaRelay(entry: Entry): Promise<Prepared | Declined> {
+  const response = await fetch(`${relayUrl}/v1/redeem`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(relayToken ? { authorization: `Bearer ${relayToken}` } : {}),
+    },
+    body: JSON.stringify({ packet: getBase64Decoder().decode(entry.packet) }),
+  });
+  // 5xx and anything unreadable: treat as offline, and ask again next round.
+  if (response.status >= 500) throw new Error(`relayer unavailable (${response.status})`);
+  if (!response.ok) {
+    return { declined: { RelayDeclined: { reason: `HTTP ${response.status}`, retryable: false } } };
+  }
+  const answer = (await response.json()) as
+    | { status: "sent"; signature: string }
+    | { status: "rejected"; err: unknown }
+    | { status: "declined"; reason: string; retryable: boolean };
+  switch (answer.status) {
+    case "sent":
+      // Already sent by the relayer; there is nothing left to do but record it.
+      return { signature: answer.signature, send: async () => ({ kind: "sent" }) };
+    case "rejected":
+      // Simulation refused it and nothing landed: classify the chain's error.
+      return { declined: answer.err };
+    case "declined":
+      return { declined: { RelayDeclined: { reason: answer.reason, retryable: answer.retryable } } };
+  }
+}
+
 export async function settleVouchers(merchant: MerchantAccount, mint: string): Promise<Settled> {
+  if (relayUrl) {
+    const report = await settleOnce(voucherStore, { now: () => Date.now(), prepare: viaRelay, statuses });
+    await bookSettled(mint);
+    return { kind: "round", report };
+  }
   if (merchant.kind !== "wallet") {
     return {
       kind: "unsupported",
-      reason: "Settling offline payments needs a connected wallet for now. Your payments are safe in the queue.",
+      reason: "Settling needs Nelo's relay, which this build is not configured with. Your payments are safe in the queue.",
     };
   }
+  return settleWithWallet(merchant, mint);
+}
 
+/** The fallback: the merchant's own wallet signs and pays the fee. */
+async function settleWithWallet(merchant: MerchantAccount, mint: string): Promise<Settled> {
   let walletProblem: string | null = null;
 
   const deps: SettleDeps = {
@@ -115,27 +166,29 @@ export async function settleVouchers(merchant: MerchantAccount, mint: string): P
       };
     },
 
-    async statuses(signatures) {
-      const value = await result<{
-        value: ({ err: unknown; confirmationStatus: string | null } | null)[];
-      }>("getSignatureStatuses", [[...signatures], { searchTransactionHistory: true }]);
-      const out = new Map<string, SignatureStatus>();
-      signatures.forEach((signature, i) => {
-        const s = value.value[i];
-        if (!s) out.set(signature, { kind: "not-found" });
-        else if (s.err) out.set(signature, { kind: "failed", err: s.err });
-        else if (s.confirmationStatus === "confirmed" || s.confirmationStatus === "finalized") {
-          out.set(signature, { kind: "confirmed" });
-        } else out.set(signature, { kind: "processing" });
-      });
-      return out;
-    },
+    statuses,
   };
 
   const report = await settleOnce(voucherStore, deps);
   if (walletProblem) return { kind: "wallet", reason: walletProblem };
   await bookSettled(mint);
   return { kind: "round", report };
+}
+
+async function statuses(signatures: readonly string[]): Promise<ReadonlyMap<string, SignatureStatus>> {
+  const value = await result<{
+    value: ({ err: unknown; confirmationStatus: string | null } | null)[];
+  }>("getSignatureStatuses", [[...signatures], { searchTransactionHistory: true }]);
+  const out = new Map<string, SignatureStatus>();
+  signatures.forEach((signature, i) => {
+    const s = value.value[i];
+    if (!s) out.set(signature, { kind: "not-found" });
+    else if (s.err) out.set(signature, { kind: "failed", err: s.err });
+    else if (s.confirmationStatus === "confirmed" || s.confirmationStatus === "finalized") {
+      out.set(signature, { kind: "confirmed" });
+    } else out.set(signature, { kind: "processing" });
+  });
+  return out;
 }
 
 /**

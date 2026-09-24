@@ -57,7 +57,7 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | `packages/attest` | ⚠️ Compiles (EAS build); never run on hardware |
 | `apps/merchant` | ⚠️ Typechecks; native side builds; never rendered |
 | `apps/payer` | ⚠️ Probe only — typechecks, never rendered. Real payer UI is week 3 |
-| `services/relay` | 🟡 Policy + Kora client proven (25 tests); builder is week 3 |
+| `services/relay` | ✅ Submits offline vouchers and pays fees, idempotently (43 tests); runs on the Mac behind a tunnel for the demo |
 | Live price feed | ❌ Blocked on a product decision |
 | Onboarding — the flow's rules | ✅ Proven (29 of `@nelo/onboard`'s 60) |
 | Onboarding — the Privy calls | ⚠️ Typechecked against the SDK; needs an app ID and a device |
@@ -124,4 +124,5 @@ Named rather than discovered, because a named stub reads as confidence and a dis
 - **The payer chooses their own floor limit.** `initialize_vault` accepts any `floor_limit` up to the platform hard cap, which makes staking pointless for anyone who asks for the cap. The payer app does not expose the knob and asks for $50, but the program should bound it.
 - **NFC.** QR first, as planned; NFC has not been started.
 - **Holes in the replay window.** The window advances only over contiguous redeemed sequences, so a voucher that is never redeemed leaves a hole the base cannot pass. After 127 more vouchers the vault can no longer pay offline. Fixing it is a program change, not yet designed.
-- **Settling for Privy merchants.** Redemptions are signed by the merchant's wallet over Mobile Wallet Adapter. Privy's embedded signer takes `@solana/web3.js` objects this app does not carry, so a Privy merchant's offline payments stay queued until that is wired.
+- **Relay hosting.** The relayer runs on the founder's Mac behind a quick tunnel for the demo. A quick tunnel's URL changes when it restarts; production needs a fixed host.
+- **Payer onboarding without SOL.** The payer app still enrols and deposits through the payer's own wallet, which needs SOL for fees and rent. The relayer cannot sponsor those instructions as they stand, because they require the vault owner's signature.

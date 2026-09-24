@@ -43,6 +43,15 @@ export interface Prepared {
   send(): Promise<SendResult>;
 }
 
+/**
+ * Nothing was built or sent, for a reason that is not the network: a relayer
+ * that declines the voucher, say. `err` is classified like any transaction
+ * error, so a relayer can mark a refusal as worth retrying or not.
+ */
+export interface Declined {
+  declined: unknown;
+}
+
 export type SignatureStatus =
   | { kind: "confirmed" }
   | { kind: "failed"; err: unknown }
@@ -53,9 +62,10 @@ export type SignatureStatus =
 export interface SettleDeps {
   /**
    * Build the redemption (`@nelo/redeem`), fetch a blockhash, sign — and do
-   * not send. Throw if the network is unreachable.
+   * not send. Throw if the network is unreachable. Return `Declined` when
+   * something reachable refuses to take it further.
    */
-  prepare(entry: Entry): Promise<Prepared>;
+  prepare(entry: Entry): Promise<Prepared | Declined>;
   /**
    * `getSignatureStatuses` with `searchTransactionHistory: true`, at confirmed
    * commitment. Without the history search, a transaction that landed more
@@ -134,12 +144,19 @@ export async function settleOnce(
 
   // 3. Send what is due.
   for (let e of work.submit) {
-    let prepared: Prepared;
+    let prepared: Prepared | Declined;
     try {
       prepared = await deps.prepare(e);
     } catch {
       report.offline = true;
       return report;
+    }
+    if ("declined" in prepared) {
+      // Nothing is in flight, so this is decided now, like a preflight refusal.
+      e = failed(e, "", prepared.declined, deps.now(), policy);
+      await store.put(e);
+      note(e);
+      continue;
     }
 
     // Durable before it is sent. A crash after this line leaves a signature

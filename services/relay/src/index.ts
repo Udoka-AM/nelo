@@ -27,7 +27,10 @@
  *   `policy.ts`  what may be sponsored, and what it costs. Pure, tested.
  *   `kora.ts`    the JSON-RPC client for the node that holds the key.
  *
- * Between them sits a transaction builder, which is **not written**. See below.
+ *   `redeem.ts`  submitting a voucher as fee payer, idempotently.
+ *   `ledger.ts`  what has been submitted and spent, on disk.
+ *   `server.ts`  the HTTP endpoint the merchant app calls.
+ *   `main.ts`    running it.
  */
 export { createKora, type Kora, type KoraOptions, type SentTransaction } from "./kora.ts";
 export {
@@ -39,19 +42,8 @@ export {
   type SponsorshipRequest,
   type Spent,
 } from "./policy.ts";
-
-/**
- * Not built, and named rather than discovered.
- *
- * Turning an accepted voucher into a `redeem_voucher` transaction needs the
- * Anchor client, the secp256r1 precompile instruction at index 0, and the
- * account list — and none of it can be proven without a validator to run it
- * against. It is week 3's work, alongside the offline queue that will feed it.
- *
- * The order it will have to follow is already fixed by the program: the
- * precompile instruction must be **first**, because `redeem_voucher`
- * introspects instruction 0 and asserts it verified *this* device key over
- * *these* bytes. A builder that puts it anywhere else produces a transaction
- * that fails on chain for a reason that reads like a signature problem.
- */
-export const TRANSACTION_BUILDER = "not implemented — week 3, with the offline queue" as const;
+export { redeem, type RedeemResponse, type RelayRpc, type RelayConfig } from "./redeem.ts";
+export { buildServer, serial } from "./server.ts";
+export { createRelayRpc } from "./rpc.ts";
+export { feePayerFromSecret, loadFeePayer, type FeePayer } from "./feePayer.ts";
+export { emptyLedger, fileLedger, memoryLedger, type Ledger, type LedgerState } from "./ledger.ts";

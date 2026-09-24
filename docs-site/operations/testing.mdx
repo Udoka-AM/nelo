@@ -11,13 +11,13 @@ This page is kept honest rather than flattering. The distinction between *a test
 |---|---:|---|
 | `packages/pay` | 63 | Node only |
 | `packages/onboard` | 60 | Node only |
-| `packages/queue` | 52 | `pnpm install` |
+| `packages/queue` | 54 | `pnpm install` |
 | `programs/nelo_vault` — LiteSVM | 45 | Solana toolchain |
 | `services/settle` | 39 | Node only |
 | `packages/voucher` | 37 | `pnpm install` |
 | `packages/redeem` | 37 | `pnpm install` |
 | `packages/accept` | 27 | Node only |
-| `services/relay` | 25 | Node only |
+| `services/relay` | 43 | Node only |
 | `programs/nelo_vault` — curve and precompile-layout unit tests | 19 | Rust only |
 | `packages/enrol` | 18 | `pnpm install` |
 | `packages/reserve` | 17 | Node only |
@@ -27,7 +27,7 @@ This page is kept honest rather than flattering. The distinction between *a test
 | `packages/till` | 10 | `pnpm install` |
 | `programs/nelo_vault` — golden vectors (voucher, redemption tx, error codes, account layouts) | 7 | Rust only |
 
-**502, all green, all on every push.** Everything but the LiteSVM suite runs with no phone and no validator — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
+**522, all green, all on every push.** Everything but the LiteSVM suite runs with no phone and no validator — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
 
 The LiteSVM tests were the long-standing gap. They went unexecuted for weeks because no machine that had the repo had the Solana toolchain — `release.anza.xyz` is unreachable from the development environment. The first run scored **39 of 40**, and [the one failure was worth more than the 39 passes](#things-that-went-wrong-and-were-caught).
 
@@ -37,7 +37,7 @@ The LiteSVM tests were the long-standing gap. They went unexecuted for weeks bec
 
 | Job | What | Cold | Warm |
 |---|---|---|---|
-| **TypeScript** | 431 tests, then four typechecks | ~21s | ~21s |
+| **TypeScript** | 451 tests, then four typechecks | ~21s | ~21s |
 | **Rust (host)** | `cargo fmt`, clippy, 19 unit tests, 7 golden-vector tests | not yet timed | ~34s |
 | **Anchor** | the 45 LiteSVM tests | ~14m | ~2m once the build cache is warm |
 
@@ -130,8 +130,9 @@ request rather than the detector.
    and the payer app also gained Mobile Wallet Adapter, SQLite and SecureStore:
    `pnpm --filter @nelo/merchant build:dev` and `pnpm --filter @nelo/payer build:dev`, then
    install both APKs.
-2. **Fund the merchant wallet with a little devnet SOL.** Redemptions are signed and paid for
-   by the merchant's own wallet over Mobile Wallet Adapter.
+2. **Start the relay on the Mac and put its tunnel URL and token in `apps/merchant/.env`.**
+   See [Relay](/operations/relay). It pays for settlement, so the merchant needs no SOL and
+   signs nothing, however they signed up.
 3. **Open the till online once.** It syncs every vault for devnet USDC. The payer's vault must
    exist on chain before the till goes offline, or the scan says the payer is not on the list.
 4. **Set up the payer phone online first:** Connect wallet (it needs devnet SOL and devnet
@@ -141,8 +142,9 @@ request rather than the detector.
    merchant**, scan the till's code, **Pay**. Till: **Customer has no signal? Scan their
    code**, scan the payer's code, **Hand over the goods**. Scan the same payer code again: it
    must be refused.
-6. **Reconnect and tap the orange bar.** The wallet asks to sign; a wallet that adds a
-   priority fee is refused on purpose, with a message saying so.
+6. **Reconnect and tap the orange bar.** No wallet prompt: the relay submits. The bar reports
+   each voucher paid, waiting to confirm, or held. The relay's terminal shows nothing on success;
+   `relay-ledger.json` records every submission.
 </Note>
 
 ### Blocked on something other than a device

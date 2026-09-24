@@ -4,15 +4,21 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/index.ts",
-    "test": "node --test \"test/*.test.ts\""
+    "test": "node --test \"test/*.test.ts\"",
+    "start": "node src/main.ts"
   },
   "dependencies": {
+    "@nelo/redeem": "workspace:*",
     "@nelo/voucher": "workspace:*",
+    "@noble/curves": "^1.6.0",
     "fastify": "^5.0.0"
   },
   "main": "./src/index.ts",
-  "description": "Fee sponsorship for offline redemptions: what the relayer will pay for, and the Kora client that pays it.",
+  "description": "The Nelo relayer: submits merchants' offline vouchers and pays the fees, so a merchant settles with no SOL and no wallet.",
   "files": [
     "src"
-  ]
+  ],
+  "devDependencies": {
+    "@solana/kit": "^7.1.1"
+  }
 }

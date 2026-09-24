@@ -324,12 +324,22 @@ importers:
 
   services/relay:
     dependencies:
+      '@nelo/redeem':
+        specifier: workspace:*
+        version: link:../../packages/redeem
       '@nelo/voucher':
         specifier: workspace:*
         version: link:../../packages/voucher
+      '@noble/curves':
+        specifier: ^1.6.0
+        version: 1.9.7
       fastify:
         specifier: ^5.0.0
         version: 5.12.3
+    devDependencies:
+      '@solana/kit':
+        specifier: ^7.1.1
+        version: 7.1.1(typescript@6.0.3)
 
   services/settle:
     dependencies:

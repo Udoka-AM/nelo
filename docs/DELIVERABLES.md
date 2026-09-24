@@ -397,9 +397,12 @@ that is not negotiable — half the marks.
    come from a vector the program generates. A signature is stored before its transaction
    is sent, and an attempt in flight is looked up, never resent. So a redemption that landed
    but was lost track of is not later read as a double spend.
-   **Not done:** the app side. SQLite storage, and a `prepare` that signs, both wait on who
-   signs redemptions, which is still open. Multi-RPC failover belongs in `prepare` and
-   `statuses` as well, and is not written.
+   **App side: done.** The merchant app stores the queue in SQLite and settles through the
+   relayer ([`services/relay`](../services/relay/src/redeem.ts)). The relayer builds, pays for
+   and sends each redemption, so the merchant needs no SOL and signs nothing, whether they
+   signed up with a wallet or through Privy. It answers a repeated voucher with the same
+   signature while that one can still land, which is what keeps a till's retry from reading
+   its own payment as fraud. Multi-RPC failover is still not written.
 5. **Conflict handling.** On the first conflicting voucher the vault freezes permanently.
    *(Anchor)*
 6. **Close-of-day reconciliation.** *(Design + Android)*

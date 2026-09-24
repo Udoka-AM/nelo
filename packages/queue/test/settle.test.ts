@@ -215,3 +215,34 @@ test("the round stops at the first unreachable send", async () => {
   assert.equal(r.offline, true);
   assert.equal(net.prepared.length, 1);
 });
+
+test("a relayer that declines, retryably, leaves the voucher pending with nothing in flight", async () => {
+  const e = entry();
+  const store = memoryStore([e]);
+  let clock = T0;
+  const deps: SettleDeps = {
+    now: () => clock,
+    prepare: async () => ({ declined: { RelayDeclined: { reason: "the relayer's budget for this window is spent", retryable: true } } }),
+    statuses: async () => new Map(),
+  };
+  const r = await settleOnce(store, deps);
+  assert.equal(r.offline, false, "a refusal is not the network being down");
+  const after = store.get(e.id)!;
+  assert.equal(after.status, "pending");
+  assert.deepEqual(after.inFlight, []);
+  assert.equal(after.verdict?.reason, "relay-declined");
+  assert.ok(after.nextAttemptAt > clock, "and waits before asking again");
+  clock += 1;
+});
+
+test("a relayer that refuses outright holds the voucher for a person", async () => {
+  const e = entry();
+  const store = memoryStore([e]);
+  const deps: SettleDeps = {
+    now: () => T0,
+    prepare: async () => ({ declined: { RelayDeclined: { reason: "voucher has expired", retryable: false } } }),
+    statuses: async () => new Map(),
+  };
+  const r = await settleOnce(store, deps);
+  assert.deepEqual(r.held.map((x) => x.id), [e.id]);
+});

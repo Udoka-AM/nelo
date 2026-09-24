@@ -130,7 +130,7 @@ need a handset. Failures are labelled for the merchant or for whoever configured
 because *"that code is not right"* and *"SMS login is not enabled for this Privy app"* are
 not the same problem and only one of them is fixable at a counter.
 
-**502 tests pass**: 431 in TypeScript across twelve packages and two services, 45 LiteSVM
+**522 tests pass**: 451 in TypeScript across twelve packages and two services, 45 LiteSVM
 integration tests against the built program, 19 Rust unit tests for the curve and the
 precompile layout, and 7 that generate and check the cross-language golden vectors. All of them, plus four typechecks, `cargo
 fmt`, and clippy, run in CI on every push — see `.github/workflows/ci.yml`. The Anchor job
@@ -168,7 +168,7 @@ packages/onboard/        Phone + payout validation, and the onboarding flow mach
 packages/reserve/        The insurance line: exposure, reserve, premium ceiling
 packages/voucher/        202-byte wire format: encode, decode, verify
 packages/attest/         Expo native module — StrongBox P-256 + attestation
-services/relay/          Broadcast queue, retry, multi-RPC failover
+services/relay/          The relayer: submits offline vouchers and pays the fees
 services/settle/         Double-entry ledger, payout lifecycle, partner interface
 docs/BUILD.md            The build plan
 docs/DELIVERABLES.md     The build sequence, step by step

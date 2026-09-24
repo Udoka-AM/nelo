@@ -56,3 +56,14 @@ export const canOnboardWithPhone = privy !== null;
  */
 export const rpcUrl =
   process.env.EXPO_PUBLIC_SOLANA_RPC_URL?.trim() || "https://api.devnet.solana.com";
+
+/**
+ * Nelo's relayer: it submits the till's offline vouchers and pays the fees, so
+ * a merchant settles with no SOL and nothing to sign, whichever way they signed
+ * up. See services/relay.
+ *
+ * The token is not a secret from anyone holding the APK. It keeps casual
+ * traffic off the endpoint; the relayer's own policy is what bounds its spend.
+ */
+export const relayUrl = process.env.EXPO_PUBLIC_NELO_RELAY_URL?.trim().replace(/\/+$/, "") || null;
+export const relayToken = process.env.EXPO_PUBLIC_NELO_RELAY_TOKEN?.trim() || null;
