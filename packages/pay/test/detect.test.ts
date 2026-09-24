@@ -5,6 +5,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  awaitPayment,
+  findReference,
   referenceFromBytes,
   validatePayment,
   type ExpectedPayment,
@@ -151,4 +153,228 @@ test("a reference is 32 bytes, base58", () => {
 
 test("references reject the wrong length", () => {
   assert.throws(() => referenceFromBytes(new Uint8Array(31)), /32 bytes/);
+});
+
+// ------------------------------------------------------------- the wire ---
+//
+// The half that had no tests at all, and the half that was broken. Every
+// assertion below is about what leaves the phone, not what comes back.
+
+/** A fetch that records the JSON-RPC bodies it was asked to send. */
+function rpcStub(results: unknown[]) {
+  const sent: { method: string; params: unknown[] }[] = [];
+  let call = 0;
+  const fetch = (async (_url: any, options: any) => {
+    const body = JSON.parse(options.body);
+    sent.push({ method: body.method, params: body.params });
+    const result = results[Math.min(call, results.length - 1)];
+    call += 1;
+    return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }) as unknown as typeof globalThis.fetch;
+  return { fetch, sent };
+}
+
+function withFetch<T>(fetch: typeof globalThis.fetch, run: () => Promise<T>): Promise<T> {
+  const original = globalThis.fetch;
+  globalThis.fetch = fetch;
+  return run().finally(() => {
+    globalThis.fetch = original;
+  });
+}
+
+const REFERENCE = "9EDhKVwHe5csswhp5PcY1DDwJRkfsrZKao7vsQPe7yrh";
+
+/**
+ * The bug this file existed without. `getSignaturesForAddress` takes exactly
+ * two parameters — the address, then a config object — and the commitment lives
+ * inside that object. It was being sent as a loose third parameter, so every
+ * poll was malformed and the terminal never saw a paid sale.
+ */
+test("findReference sends two params, with commitment inside the config", async () => {
+  const { fetch, sent } = rpcStub([[{ signature: "sig1", err: null }]]);
+  await withFetch(fetch, () => findReference("http://rpc.invalid", REFERENCE));
+
+  assert.equal(sent[0].method, "getSignaturesForAddress");
+  assert.equal(sent[0].params.length, 2, "a loose third parameter is malformed");
+  assert.equal(sent[0].params[0], REFERENCE);
+  assert.deepEqual(sent[0].params[1], { limit: 10, commitment: "confirmed" });
+});
+
+/**
+ * Not pedantry: `commitment` defaults to `finalized`, roughly thirteen seconds
+ * behind `confirmed`. A till that waits for finality keeps the customer at the
+ * counter for no reason.
+ */
+test("the commitment asked for is confirmed, not left to default to finalized", async () => {
+  const { fetch, sent } = rpcStub([[]]);
+  await withFetch(fetch, () => findReference("http://rpc.invalid", REFERENCE));
+  assert.equal((sent[0].params[1] as { commitment: string }).commitment, "confirmed");
+});
+
+test("no signatures yet is null, not an error", async () => {
+  const { fetch } = rpcStub([[]]);
+  const found = await withFetch(fetch, () => findReference("http://rpc.invalid", REFERENCE));
+  assert.equal(found, null);
+});
+
+test("the oldest signature wins — the payment is the first to name the reference", async () => {
+  const { fetch } = rpcStub([
+    [
+      { signature: "newest", err: null },
+      { signature: "oldest", err: null },
+    ],
+  ]);
+  const found = await withFetch(fetch, () => findReference("http://rpc.invalid", REFERENCE));
+  assert.equal(found, "oldest");
+});
+
+// ------------------------------------------------------ failures, visibly ---
+
+/**
+ * The second half of the same defect. The old `catch {}` could not tell a
+ * network blink from a request that will be rejected every single time, and the
+ * difference is the whole bug: one is patience, the other is a terminal
+ * pretending to watch.
+ */
+test("a failing poll is reported rather than swallowed, and does not end the sale", async () => {
+  const failures: number[] = [];
+  const fetch = (async () => new Response("nope", { status: 500 })) as unknown as typeof globalThis.fetch;
+
+  const outcome = await withFetch(fetch, () =>
+    awaitPayment("http://rpc.invalid", REFERENCE, EXPECTED, {
+      timeoutMs: 40,
+      intervalMs: 5,
+      onPollError: (_error, consecutive) => failures.push(consecutive),
+    }),
+  );
+
+  assert.equal(outcome.status, "timeout", "the sale ends on its own terms, not on an RPC error");
+  assert.ok(failures.length >= 2, `expected repeated reports, got ${failures.length}`);
+  // Consecutive, so a caller can tell one blink from a wall.
+  assert.deepEqual(failures.slice(0, 3), [1, 2, 3].slice(0, failures.length));
+});
+
+test("the failure count resets once polling recovers", async () => {
+  let call = 0;
+  const seen: number[] = [];
+  const fetch = (async () => {
+    call += 1;
+    if (call <= 2) return new Response("nope", { status: 500 });
+    return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: [] }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }) as unknown as typeof globalThis.fetch;
+
+  await withFetch(fetch, () =>
+    awaitPayment("http://rpc.invalid", REFERENCE, EXPECTED, {
+      timeoutMs: 40,
+      intervalMs: 5,
+      onPollError: (_e, consecutive) => seen.push(consecutive),
+    }),
+  );
+  assert.deepEqual(seen, [1, 2], "a recovered poll must not keep counting old failures");
+});
+
+// ----------------------------------------------------------- not giving up ---
+
+/**
+ * **This is the test that catches a hard-coded deadline**, and it earns its
+ * place by construction: the abort at thirty polls is a safety net, not the
+ * expected stop. Twenty milliseconds at five-millisecond intervals is about
+ * five polls, so reaching thirty means `timeoutMs` was ignored.
+ *
+ * Worth saying why it is written this way. The sibling test below — "keeps
+ * watching when timeoutMs is null" — **passes either way**, because an abort
+ * ends the loop whether the deadline is honoured or hard-coded at two minutes.
+ * It documents the intent; it does not prove it. This one does.
+ */
+test("a finite timeoutMs is honoured rather than ignored", async () => {
+  let polls = 0;
+  const controller = new AbortController();
+  const fetch = (async () => {
+    polls += 1;
+    if (polls >= 30) controller.abort();
+    return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: [] }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }) as unknown as typeof globalThis.fetch;
+
+  const outcome = await withFetch(fetch, () =>
+    awaitPayment("http://rpc.invalid", REFERENCE, EXPECTED, {
+      timeoutMs: 20,
+      intervalMs: 5,
+      signal: controller.signal,
+    }),
+  );
+
+  assert.equal(outcome.status, "timeout");
+  assert.ok(polls < 30, `the deadline was ignored — polled ${polls} times before the safety abort`);
+});
+
+/**
+ * The code stays on screen until the merchant takes it down, so the watch must
+ * too. The old two-minute default returned `timeout`, and nothing restarted it
+ * — a customer paying at 2m01s was never seen, while the screen still said the
+ * code was valid.
+ */
+test("keeps watching when timeoutMs is null, until aborted", async () => {
+  let polls = 0;
+  const controller = new AbortController();
+  const fetch = (async () => {
+    polls += 1;
+    if (polls >= 6) controller.abort();
+    return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: [] }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }) as unknown as typeof globalThis.fetch;
+
+  const outcome = await withFetch(fetch, () =>
+    awaitPayment("http://rpc.invalid", REFERENCE, EXPECTED, {
+      timeoutMs: null,
+      intervalMs: 1,
+      signal: controller.signal,
+    }),
+  );
+
+  assert.equal(outcome.status, "timeout");
+  assert.ok(polls >= 6, `stopped after ${polls} polls — it should have kept going`);
+});
+
+test("a payment found on a later poll is still caught", async () => {
+  let call = 0;
+  const fetch = (async (_url: any, options: any) => {
+    const body = JSON.parse(options.body);
+    call += 1;
+    let result: unknown = [];
+    if (body.method === "getSignaturesForAddress") {
+      result = call < 4 ? [] : [{ signature: "late", err: null }];
+    } else {
+      result = {
+        meta: {
+          err: null,
+          preTokenBalances: [{ owner: MERCHANT, mint: USDC, uiTokenAmount: { amount: "0" } }],
+          postTokenBalances: [
+            { owner: MERCHANT, mint: USDC, uiTokenAmount: { amount: "12500000" } },
+          ],
+        },
+      };
+    }
+    return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }) as unknown as typeof globalThis.fetch;
+
+  const outcome = await withFetch(fetch, () =>
+    awaitPayment("http://rpc.invalid", REFERENCE, EXPECTED, { timeoutMs: null, intervalMs: 1 }),
+  );
+
+  assert.equal(outcome.status, "paid");
+  if (outcome.status === "paid") assert.equal(outcome.signature, "late");
 });

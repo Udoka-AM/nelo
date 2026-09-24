@@ -10,7 +10,7 @@ This page is kept honest rather than flattering. The distinction between *a test
 | Suite | Tests | Needs |
 |---|---:|---|
 | `packages/onboard` | 60 | Node only |
-| `packages/pay` | 54 | Node only |
+| `packages/pay` | 63 | Node only |
 | `programs/nelo_vault` — LiteSVM | 40 | Solana toolchain |
 | `services/settle` | 39 | Node only |
 | `packages/voucher` | 29 | `pnpm install` |
@@ -20,7 +20,7 @@ This page is kept honest rather than flattering. The distinction between *a test
 | `packages/ledger` | 13 | Node only |
 | `packages/attest` | 12 | Node only |
 
-**306, all green, all on every push.** Everything but the LiteSVM suite runs with no phone and no validator — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
+**315, all green, all on every push.** Everything but the LiteSVM suite runs with no phone and no validator — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
 
 The 40 LiteSVM tests were the long-standing gap. They went unexecuted for weeks because no machine that had the repo had the Solana toolchain — `release.anza.xyz` is unreachable from the development environment. The first run scored **39 of 40**, and [the one failure was worth more than the 39 passes](#things-that-went-wrong-and-were-caught).
 
@@ -30,7 +30,7 @@ The 40 LiteSVM tests were the long-standing gap. They went unexecuted for weeks 
 
 | Job | What | Cold | Warm |
 |---|---|---|---|
-| **TypeScript** | 249 tests, then four typechecks | ~21s | ~21s |
+| **TypeScript** | 258 tests, then four typechecks | ~21s | ~21s |
 | **Rust (host)** | `cargo fmt`, clippy, the curve's 17 | ~27s | ~27s |
 | **Anchor** | the 40 LiteSVM tests | ~14m | ~9m |
 

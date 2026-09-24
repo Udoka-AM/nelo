@@ -356,7 +356,11 @@ test("a failure clears the spinner and leaves the step alone, so it can be retri
 test("a wrong code is the merchant's to fix; a misconfigured app is not", () => {
   assert.equal(explain({ code: "invalid_credentials" }).audience, "merchant");
   assert.equal(explain({ code: "too_many_requests" }).audience, "merchant");
-  assert.equal(explain({ code: "not_supported" }).audience, "merchant");
+
+  // Was asserted as "merchant" until it fired on a real Nigerian number and the
+  // cause turned out to be a dashboard setting. A merchant told to try another
+  // number would have gone looking for a second SIM that would fail too.
+  assert.equal(explain({ code: "not_supported" }).audience, "operator");
 
   assert.equal(explain({ code: "disallowed_login_method" }).audience, "operator");
   assert.equal(explain({ code: "invalid_native_app_id" }).audience, "operator");

@@ -44,7 +44,7 @@ import { currentRate, type Quoted } from "./src/rate";
 import { connect } from "./src/wallet";
 import { remember, restore, type MerchantAccount } from "./src/account";
 import { PrivyProvider } from "@privy-io/expo";
-import { canOnboardWithPhone, privy } from "./src/config";
+import { canOnboardWithPhone, privy, rpcUrl } from "./src/config";
 import Onboarding from "./src/Onboarding";
 import {
   awaitPayment,
@@ -61,7 +61,9 @@ import {
 // comes from Mobile Wallet Adapter, and Nelo never holds the key.
 const USDC_DEVNET = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
 const CURRENCY = { code: "NGN", symbol: "₦", minorDigits: 2 };
-const RPC_URL = "https://api.devnet.solana.com";
+// Configurable; see src/config.ts for why the public endpoint is not enough
+// once detection polls for real.
+const RPC_URL = rpcUrl;
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "·", "0", "⌫"];
 
@@ -72,6 +74,8 @@ function Till() {
   const [merchant, setMerchant] = useState<MerchantAccount | null>(null);
   const [reference, setReference] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<PaymentOutcome | null>(null);
+  /** Set when polling has failed repeatedly — the terminal cannot see the chain. */
+  const [pollTrouble, setPollTrouble] = useState(false);
   const [sales, setSales] = useState<Sale[]>([]);
   const [quoted, setQuoted] = useState<Quoted | null>(null);
   const [balance, setBalance] = useState<Balance | null>(null);
@@ -157,6 +161,7 @@ function Till() {
     if (!charging || !merchant || !reference || !quoted) return;
     const controller = new AbortController();
     setOutcome(null);
+    setPollTrouble(false);
     awaitPayment(
       RPC_URL,
       reference,
@@ -165,7 +170,20 @@ function Till() {
         splToken: USDC_DEVNET,
         amountBaseUnits: localToTokenBaseUnits(minor, quoted!.rate),
       },
-      { signal: controller.signal },
+      {
+        signal: controller.signal,
+        // The code is on screen until the merchant takes it down, so the watch
+        // runs that long too. A two-minute deadline meant the terminal quietly
+        // stopped looking while still showing a live code.
+        timeoutMs: null,
+        intervalMs: 2_500,
+        // Three consecutive failures is not a blink. Saying so beats a spinner
+        // that means "no payment yet" and "I have been broken this whole time"
+        // with the same pixels.
+        onPollError: (_error, consecutive) => {
+          if (!controller.signal.aborted) setPollTrouble(consecutive >= 3);
+        },
+      },
     )
       .then(async (result) => {
         if (controller.signal.aborted) return;
@@ -196,6 +214,7 @@ function Till() {
     // be indistinguishable and the second sale would settle the first.
     setReference(referenceFromBytes(Crypto.getRandomBytes(32)));
     setOutcome(null);
+    setPollTrouble(false);
     setCharging(true);
   }
 
@@ -203,6 +222,7 @@ function Till() {
     setCharging(false);
     setReference(null);
     setOutcome(null);
+    setPollTrouble(false);
   }
 
   function press(key: string) {
@@ -383,7 +403,11 @@ function Till() {
             {outcome === null ? (
               <>
                 <ActivityIndicator color="#8d9299" size="small" />
-                <Text style={styles.statusWaiting}>Waiting for payment…</Text>
+                <Text style={pollTrouble ? styles.statusBad : styles.statusWaiting}>
+                  {pollTrouble
+                    ? "Cannot reach the network — a payment may not show here"
+                    : "Waiting for payment…"}
+                </Text>
               </>
             ) : outcome.status === "invalid" ? (
               <Text style={styles.statusBad}>{outcome.reason}</Text>

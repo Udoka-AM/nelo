@@ -341,7 +341,6 @@ export function explain(error: unknown): Notice {
 const MERCHANT_MESSAGES: Record<string, string> = {
   invalid_credentials: "That code is not right. Check the message and type it again.",
   too_many_requests: "Too many tries. Wait a minute, then ask for a new code.",
-  not_supported: "We cannot send a code to that number. Try another mobile number.",
   invalid_data: "That number was refused. Check it and try again.",
   user_unsubscribed:
     "That number has opted out of our messages, so a code cannot reach it. Use another number.",
@@ -361,6 +360,18 @@ const OPERATOR_MESSAGES: Record<string, string> = {
   invalid_native_app_id:
     "Privy does not recognise this build's Android application ID. Add it to the app's allowed app identifiers.",
   disallowed_login_method: "SMS login is not enabled for this Privy app.",
+  // Filed here after it fired for real, on a Nigerian number, against an app
+  // whose dashboard simply had not enabled SMS for that country. It used to sit
+  // in the merchant table as "try another mobile number" — advice that cannot
+  // work when every number in the country is refused, and that lands on the
+  // merchant as though they had mistyped their own phone.
+  //
+  // It can also mean a non-mobile line, which a merchant *could* fix. But they
+  // cannot tell the two apart from the outside, and only one of them is worth
+  // sending someone to find a second SIM for. So the message names both and the
+  // audience is whoever can actually check.
+  not_supported:
+    "Privy will not send a code to that destination. Check the app's enabled SMS countries first; it can also mean the number is not a mobile line.",
   allowlist_rejected: "This Privy app has an allowlist and the number is not on it.",
   max_accounts_reached: "This Privy app has reached its user limit.",
   feature_not_enabled: "Embedded Solana wallets are not enabled for this Privy app.",

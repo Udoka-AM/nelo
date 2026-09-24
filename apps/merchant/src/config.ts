@@ -39,3 +39,20 @@ export const privy: PrivyConfig | null = appId
  * something wrong.
  */
 export const canOnboardWithPhone = privy !== null;
+
+/**
+ * Which RPC the till talks to.
+ *
+ * `api.devnet.solana.com` is the public endpoint and it rate-limits hard. That
+ * was survivable while the terminal polled a malformed request nobody could
+ * see; now that detection actually works and polls every couple of seconds for
+ * as long as a code is on screen, a shared public endpoint is the next thing to
+ * fail — and it fails as 429s, which look exactly like a customer who has not
+ * paid yet.
+ *
+ * So it is configurable, with the public endpoint as the default: a build with
+ * no RPC configured still runs, and anyone doing a real demo can point it at
+ * something with a quota.
+ */
+export const rpcUrl =
+  process.env.EXPO_PUBLIC_SOLANA_RPC_URL?.trim() || "https://api.devnet.solana.com";

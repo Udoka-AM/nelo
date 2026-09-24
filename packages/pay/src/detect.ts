@@ -106,7 +106,25 @@ export function validatePayment(
 
 // ------------------------------------------------------------- the chain ---
 
-/** The signature of the first transaction naming this reference, if any. */
+/**
+ * The signature of the first transaction naming this reference, if any.
+ *
+ * **Two parameters, and `commitment` goes inside the config object.** This read
+ * `[reference, { limit: 10 }, "confirmed"]` for its whole life — three
+ * parameters, with the commitment loose on the end. `getSignaturesForAddress`
+ * takes `(address, config)`, so that request was malformed on every poll, and
+ * `awaitPayment` swallowed the error: the terminal watched a paid sale forever
+ * and never noticed.
+ *
+ * The shape was borrowed from `getTokenAccountsByOwner` in `balance.ts`, which
+ * genuinely does take three — `(owner, filter, config)`. Ten lines below,
+ * `fetchTransaction` had it right all along. Nothing caught it because no test
+ * asserted what went on the wire; `test/detect.test.ts` now does.
+ *
+ * `commitment` matters beyond being well-formed: it defaults to `finalized`,
+ * which lags `confirmed` by around thirteen seconds. A merchant at a counter
+ * should not wait out finality to hand over a loaf of bread.
+ */
 export async function findReference(
   rpcUrl: string,
   reference: string,
@@ -114,7 +132,7 @@ export async function findReference(
   const signatures = await rpc<{ signature: string; err: unknown }[]>(
     rpcUrl,
     "getSignaturesForAddress",
-    [reference, { limit: 10 }, "confirmed"],
+    [reference, { limit: 10, commitment: "confirmed" }],
   );
   // Oldest first: the payment is the first transaction to name the reference.
   const found = signatures.at(-1);
@@ -136,6 +154,32 @@ export type PaymentOutcome =
   | { status: "invalid"; signature: string; reason: string }
   | { status: "timeout" };
 
+export interface AwaitOptions {
+  /**
+   * How long to keep watching. **`null` means until aborted**, which is what a
+   * terminal wants: the code is on screen until the merchant takes it down, and
+   * polling that quietly stops while the QR is still displayed is a terminal
+   * that lies. The old default of two minutes did exactly that — it returned
+   * `timeout`, the effect that called it never re-ran, and a customer paying a
+   * second later was never seen.
+   */
+  timeoutMs?: number | null;
+  intervalMs?: number;
+  signal?: AbortSignal;
+  /**
+   * Called for every failed poll, with the consecutive-failure count.
+   *
+   * This exists because the `catch {}` it replaces hid a permanently malformed
+   * request behind a comment about flaky networks. A bare catch cannot tell
+   * "the network blinked" from "every request we will ever send is rejected",
+   * and the second one looks exactly like patience from the outside.
+   *
+   * Transient failures are still not the merchant's problem and should not
+   * interrupt a sale — but something has to be able to see them.
+   */
+  onPollError?: (error: unknown, consecutiveFailures: number) => void;
+}
+
 /**
  * Watch for a payment against one reference.
  *
@@ -147,19 +191,24 @@ export async function awaitPayment(
   rpcUrl: string,
   reference: string,
   expected: ExpectedPayment,
-  options: { timeoutMs?: number; intervalMs?: number; signal?: AbortSignal } = {},
+  options: AwaitOptions = {},
 ): Promise<PaymentOutcome> {
-  const timeoutMs = options.timeoutMs ?? 120_000;
+  const timeoutMs = options.timeoutMs === undefined ? 120_000 : options.timeoutMs;
   const intervalMs = options.intervalMs ?? 1_500;
-  const deadline = Date.now() + timeoutMs;
+  const deadline = timeoutMs === null ? Infinity : Date.now() + timeoutMs;
+  let consecutiveFailures = 0;
 
   while (Date.now() < deadline) {
     if (options.signal?.aborted) return { status: "timeout" };
     let signature: string | null = null;
     try {
       signature = await findReference(rpcUrl, reference);
-    } catch {
-      // A flaky RPC must not end the sale; keep polling until the deadline.
+      consecutiveFailures = 0;
+    } catch (error) {
+      // Reported, not swallowed. A sale still must not end because one request
+      // failed, so this keeps polling either way.
+      consecutiveFailures += 1;
+      options.onPollError?.(error, consecutiveFailures);
     }
     if (signature) {
       const tx = await fetchTransaction(rpcUrl, signature);
