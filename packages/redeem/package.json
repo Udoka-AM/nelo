@@ -6,9 +6,7 @@
   "description": "The redemption transaction a merchant broadcasts on reconnect: secp256r1 precompile first, redeem_voucher second. Pinned byte for byte to the program.",
   "dependencies": {
     "@nelo/voucher": "workspace:*",
-    "@noble/hashes": "^1.8.0"
-  },
-  "devDependencies": {
+    "@noble/hashes": "^1.8.0",
     "@noble/curves": "^1.6.0",
     "@solana/kit": "^7.1.1"
   },

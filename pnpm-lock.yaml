@@ -193,13 +193,12 @@ importers:
       '@nelo/voucher':
         specifier: workspace:*
         version: link:../voucher
-      '@noble/hashes':
-        specifier: ^1.8.0
-        version: 1.8.0
-    devDependencies:
       '@noble/curves':
         specifier: ^1.6.0
         version: 1.9.7
+      '@noble/hashes':
+        specifier: ^1.8.0
+        version: 1.8.0
       '@solana/kit':
         specifier: ^7.1.1
         version: 7.1.1(typescript@6.0.3)
@@ -209,6 +208,25 @@ importers:
       '@nelo/voucher':
         specifier: workspace:*
         version: link:../voucher
+
+  packages/till:
+    dependencies:
+      '@nelo/accept':
+        specifier: workspace:*
+        version: link:../accept
+      '@nelo/enrol':
+        specifier: workspace:*
+        version: link:../enrol
+      '@nelo/queue':
+        specifier: workspace:*
+        version: link:../queue
+      '@nelo/voucher':
+        specifier: workspace:*
+        version: link:../voucher
+    devDependencies:
+      '@noble/curves':
+        specifier: ^1.6.0
+        version: 1.9.7
 
   packages/voucher:
     dependencies:

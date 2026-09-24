@@ -250,3 +250,4 @@ export function redeemInstructions(input: RedeemInput): readonly [Instruction, I
 
   return [precompile, redeem];
 }
+export * from "./transaction.ts";

@@ -1,0 +1,22 @@
+{
+  "name": "@nelo/till",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "description": "The till's decision on a scanned code: QR, cached enrolment, offline acceptance and the charge, in one answer.",
+  "dependencies": {
+    "@nelo/accept": "workspace:*",
+    "@nelo/enrol": "workspace:*",
+    "@nelo/queue": "workspace:*",
+    "@nelo/voucher": "workspace:*"
+  },
+  "devDependencies": {
+    "@noble/curves": "^1.6.0"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.ts\""
+  },
+  "files": [
+    "src"
+  ]
+}
