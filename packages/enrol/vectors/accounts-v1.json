@@ -1,0 +1,64 @@
+{
+  "riskConfig": {
+    "dataHex": "c977f5f4281b001f666666666666666666666666666666666666666666666666666666666666666677777777777777777777777777777777777777777777777777777777777777770403020100e1f5050000000000c2eb0b0000000080841e000000000088138051010000000000fd",
+    "fields": {
+      "authority": "7tj9biW3KRJ7EEWmVUGigHiouCTXhV2dzcyvwma7Cyu7",
+      "bump": 253,
+      "haircutBps": 5000,
+      "hardCap": "200000000",
+      "kBps": 16909060,
+      "stakeMint": "93MB2qRDNVLxbmmPuYpLdAqn3u2x9ZhaVZK5wELHueP8",
+      "stakePrice": "2000000",
+      "stakeReference": "100000000",
+      "unstakeCooldown": "86400"
+    }
+  },
+  "riskConfigDiscriminatorHex": "c977f5f4281b001f",
+  "riskConfigSpace": 111,
+  "vaultDiscriminatorHex": "d308e82b02987577",
+  "vaultSpace": 213,
+  "vaults": [
+    {
+      "dataHex": "d308e82b0298757744444444444444444444444444444444444444444444444444444444444444445555555555555555555555555555555555555555555555555555555555555555020102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2009090909090909090909090909090909090909090909090909090909090909090065cd1d0000000008070605040302010500000000000000000000000000008080f0fa0200000000bbf9a16a0000000000e8764817000000393000902f5009000000feffffffffffffff00fe",
+      "fields": {
+        "attestationId": "0909090909090909090909090909090909090909090909090909090909090909",
+        "balance": "500000000",
+        "bump": 254,
+        "devicePubkey": "020102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+        "floorLimit": "50000000",
+        "mint": "6k78AbasGMFFrhG95Pj6jQbqkVt7FQMhVgemxJovWKR6",
+        "owner": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5",
+        "pendingUnstake": "40000000000",
+        "reputationBps": 12345,
+        "seqBase": "72623859790382856",
+        "seqBitmap": "170141183460469231731687303715884105733",
+        "stake": "100000000000",
+        "status": 0,
+        "unlockAt": "1789000123",
+        "unstakeUnlockAt": "-2"
+      },
+      "name": "staked_and_active"
+    },
+    {
+      "dataHex": "d308e82b02987577fefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfdfd030303030303030303030303030303030303030303030303030303030303030303ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0000000000000080ffffffffffffffffffffffffffffffffffffffffffffffffff7f0101",
+      "fields": {
+        "attestationId": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "balance": "18446744073709551615",
+        "bump": 1,
+        "devicePubkey": "030303030303030303030303030303030303030303030303030303030303030303",
+        "floorLimit": "18446744073709551615",
+        "mint": "J6UnDBpacT9KHuHQMaXTcUFzmBDvQ5hTNEd1kALa2Hbr",
+        "owner": "JAQ5MVHbCkSYRzXunsrNuM2m1LS859PGveHfoYPAmcvZ",
+        "pendingUnstake": "18446744073709551615",
+        "reputationBps": 65535,
+        "seqBase": "18446744073709551615",
+        "seqBitmap": "340282366920938463463374607431768211455",
+        "stake": "18446744073709551615",
+        "status": 1,
+        "unlockAt": "-9223372036854775808",
+        "unstakeUnlockAt": "9223372036854775807"
+      },
+      "name": "frozen_at_the_limits"
+    }
+  ]
+}

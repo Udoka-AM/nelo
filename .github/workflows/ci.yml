@@ -79,12 +79,13 @@ jobs:
         run: cargo test -p nelo_vault --lib
 
       # The cross-language contracts: the voucher wire format, the redemption
-      # transaction the TypeScript builder must reproduce byte for byte, and
-      # the error codes the settle queue reads chain answers by. None needs the
+      # transaction the TypeScript builder must reproduce byte for byte, the
+      # error codes the settle queue reads chain answers by, and the account
+      # layouts the merchant's enrolment cache decodes. None needs the
       # built program, so they answer here rather than after the Anchor job's
       # toolchain install.
       - name: Golden vectors
-        run: cargo test -p nelo_vault --test vectors --test tx_vectors --test error_vectors
+        run: cargo test -p nelo_vault --test vectors --test tx_vectors --test error_vectors --test account_vectors
 
   anchor:
     name: Anchor (45 LiteSVM tests)

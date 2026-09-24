@@ -1,0 +1,22 @@
+{
+  "name": "@nelo/enrol",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "description": "The merchant's cached enrolment and revocation list: every vault for its mint and the risk config, decoded from account data and pinned to the program's layouts.",
+  "dependencies": {
+    "@nelo/accept": "workspace:*",
+    "@nelo/redeem": "workspace:*",
+    "@nelo/voucher": "workspace:*"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.ts\""
+  },
+  "files": [
+    "src",
+    "vectors"
+  ],
+  "devDependencies": {
+    "@noble/curves": "^1.6.0"
+  }
+}
