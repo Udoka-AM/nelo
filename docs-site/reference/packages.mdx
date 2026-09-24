@@ -222,3 +222,30 @@ pnpm --filter @nelo/reserve report
 It prints its **unsourced assumptions first**, deliberately — every figure below them inherits that uncertainty.
 
 **17 tests.** See [The reserve model](/economics/reserve-model).
+
+---
+
+## `@nelo/redeem`
+
+The transaction a merchant broadcasts on reconnect to turn a voucher into USDC. Two instructions, in this order:
+
+```ts
+const [precompile, redeem] = redeemInstructions({
+  voucher,        // the 202-byte packet, or a decoded Voucher
+  payer,          // merchant or relayer — signs and pays the fee
+  mint,           // the vault's mint; the voucher does not carry it
+  tokenProgram,   // SPL Token or Token-2022 — required, it is an ATA seed
+});
+```
+
+The objects are `@solana/kit`'s instruction shape, so they drop into a kit transaction message.
+
+**Nothing may come before the precompile.** `redeem_voucher` reads it at instruction index 0. Some wallets prepend a ComputeBudget instruction for priority fees when they sign; that would move the precompile to index 1 and fail every redemption. Compute-budget instructions work from any position, so append them after these two.
+
+**Pinned to the program, not to a reading of it.** `programs/nelo_vault/tests/tx_vectors.rs` generates `vectors/redeem-v1.json` from Anchor's own `instruction::RedeemVoucher` and `accounts::RedeemVoucher`, `anchor_spl`'s ATA derivation, and the crate's `precompile_instruction_data`. The LiteSVM suite uses that same writer to submit vouchers to the real precompile, so the layout both sides share is one the chain has accepted.
+
+**PDAs without `crypto.subtle`.** `@solana/addresses` derives addresses through WebCrypto, which Hermes lacks and neither app polyfills. This package derives them synchronously with SHA-256 and an on-curve check written to match curve25519-dalek, which is what the runtime runs, rather than stricter RFC 8032 decoding. The two differ on non-canonical encodings, and one disagreement would be a PDA the program does not recognise. The vectors carry dalek's verdict on those encodings, and the tests compare against `@solana/addresses` on 400 random points and 120 derivations.
+
+**High-S signatures are folded here too.** A high-S signature verifies offline, so a merchant takes the voucher, but the precompile then rejects it. Folding needs no key, so the builder does it.
+
+**27 tests.** Never broadcast to a cluster yet. That happens in the week-3 gate.

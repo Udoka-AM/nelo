@@ -11,17 +11,19 @@ This page is kept honest rather than flattering. The distinction between *a test
 |---|---:|---|
 | `packages/onboard` | 60 | Node only |
 | `packages/pay` | 63 | Node only |
+| `packages/redeem` | 27 | `pnpm install` |
 | `packages/accept` | 26 | Node only |
 | `programs/nelo_vault` — LiteSVM | 40 | Solana toolchain |
 | `services/settle` | 39 | Node only |
 | `packages/voucher` | 29 | `pnpm install` |
 | `services/relay` | 25 | Node only |
-| `programs/nelo_vault` — curve unit tests | 17 | Rust only |
+| `programs/nelo_vault` — curve and precompile-layout unit tests | 19 | Rust only |
+| `programs/nelo_vault` — golden vectors (voucher, redemption tx) | 3 | Rust only |
 | `packages/reserve` | 17 | Node only |
 | `packages/ledger` | 13 | Node only |
 | `packages/attest` | 12 | Node only |
 
-**341, all green, all on every push.** Everything but the LiteSVM suite runs with no phone and no validator — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
+**373, all green, all on every push.** Everything but the LiteSVM suite runs with no phone and no validator — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
 
 The 40 LiteSVM tests were the long-standing gap. They went unexecuted for weeks because no machine that had the repo had the Solana toolchain — `release.anza.xyz` is unreachable from the development environment. The first run scored **39 of 40**, and [the one failure was worth more than the 39 passes](#things-that-went-wrong-and-were-caught).
 
@@ -31,8 +33,8 @@ The 40 LiteSVM tests were the long-standing gap. They went unexecuted for weeks 
 
 | Job | What | Cold | Warm |
 |---|---|---|---|
-| **TypeScript** | 284 tests, then four typechecks | ~21s | ~21s |
-| **Rust (host)** | `cargo fmt`, clippy, the curve's 17 | ~27s | ~27s |
+| **TypeScript** | 311 tests, then four typechecks | ~21s | ~21s |
+| **Rust (host)** | `cargo fmt`, clippy, 19 unit tests, 3 golden-vector tests | ~27s | ~27s |
 | **Anchor** | the 40 LiteSVM tests | ~14m | ~9m |
 
 The Rust job is deliberately separate from the Anchor one: the curve carries no Anchor types precisely so it can be checked without a validator, and it answers in seconds instead of waiting on a toolchain install. The Anchor job pins from `Anchor.toml`'s own `solana_version` and `anchor_version`, and is week 4's graded deliverable — *clone → install → `anchor test` green* — run on a machine that starts with nothing.
