@@ -34,8 +34,8 @@ The 40 LiteSVM tests were the long-standing gap. They went unexecuted for weeks 
 | Job | What | Cold | Warm |
 |---|---|---|---|
 | **TypeScript** | 311 tests, then four typechecks | ~21s | ~21s |
-| **Rust (host)** | `cargo fmt`, clippy, 19 unit tests, 3 golden-vector tests | ~27s | ~27s |
-| **Anchor** | the 40 LiteSVM tests | ~14m | ~9m |
+| **Rust (host)** | `cargo fmt`, clippy, 19 unit tests, 3 golden-vector tests | not yet timed | ~34s |
+| **Anchor** | the 40 LiteSVM tests | ~14m | ~2m once the build cache is warm |
 
 The Rust job is deliberately separate from the Anchor one: the curve carries no Anchor types precisely so it can be checked without a validator, and it answers in seconds instead of waiting on a toolchain install. The Anchor job pins from `Anchor.toml`'s own `solana_version` and `anchor_version`, and is week 4's graded deliverable — *clone → install → `anchor test` green* — run on a machine that starts with nothing.
 
