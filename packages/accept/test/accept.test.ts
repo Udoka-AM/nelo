@@ -39,6 +39,8 @@ const OTHER_KEY = p256.getPublicKey(OTHER_PRIVATE_KEY, true);
 
 const VAULT_BYTES = new Uint8Array(32).fill(1);
 const VAULT = encodeBase58(VAULT_BYTES);
+const MERCHANT_BYTES = new Uint8Array(32).fill(2);
+const MERCHANT = encodeBase58(MERCHANT_BYTES);
 
 function sign(
   fields: Omit<Voucher, "signature" | "devicePubkey">,
@@ -59,7 +61,7 @@ function voucher(over: Partial<Omit<Voucher, "signature" | "devicePubkey">> = {}
     seq: 5n,
     amount: 5_000_000n,
     remainingAfter: 45_000_000n,
-    merchant: new Uint8Array(32).fill(2),
+    merchant: MERCHANT_BYTES,
     expiresAt: BigInt(NOW + 3600),
     salt: new Uint8Array(8).fill(3),
     ...over,
@@ -92,7 +94,7 @@ const risk = (over: Partial<RiskParams> = {}): RiskParams => ({
 });
 
 const run = (over: Partial<Parameters<typeof accept>[0]> = {}) =>
-  accept({ bytes: encode(voucher()), enrolment: enrolment(), risk: risk(), now: NOW, ...over });
+  accept({ bytes: encode(voucher()), enrolment: enrolment(), risk: risk(), merchant: MERCHANT, now: NOW, ...over });
 
 const kinds = (risks: Risk[]) => risks.map((r) => r.kind).sort();
 
@@ -117,6 +119,15 @@ test("every acceptance names the sequence as unconfirmed, because it is", () => 
 
 // ------------------------------------------ refusals: settled with no network ---
 
+test("a voucher made out to a different merchant is refused, however well signed", () => {
+  // The program pays whoever the voucher names. Taking this one hands the
+  // goods over here and the money to someone else.
+  const elsewhere = run({ bytes: encode(voucher({ merchant: new Uint8Array(32).fill(8) })) });
+  assert.equal(elsewhere.take, false);
+  if (!elsewhere.take) assert.match(elsewhere.reason, /different merchant/);
+  assert.equal(run({ merchant: encodeBase58(new Uint8Array(32).fill(8)) }).take, false, "and from the other side");
+});
+
 test("a forged signature is refused, and it is verification that catches it", () => {
   const forged = voucher();
   forged.signature = Uint8Array.from(forged.signature);
@@ -125,6 +136,7 @@ test("a forged signature is refused, and it is verification that catches it", ()
     bytes: encode(forged),
     enrolment: enrolment(),
     risk: risk(),
+    merchant: MERCHANT,
     now: NOW,
   });
   assert.equal(decision.take, false);
@@ -367,7 +379,7 @@ test("the hard cap binds", () => {
 // ----------------------------------------------------------------- hygiene ---
 
 test("the decision never mutates what it was given", () => {
-  const input = { bytes: encode(voucher()), enrolment: enrolment(), risk: risk(), now: NOW };
+  const input = { bytes: encode(voucher()), enrolment: enrolment(), risk: risk(), merchant: MERCHANT, now: NOW };
   const before = structuredClone({ e: input.enrolment, r: input.risk, b: input.bytes });
   accept(input);
   assert.deepEqual({ e: input.enrolment, r: input.risk, b: input.bytes }, before);

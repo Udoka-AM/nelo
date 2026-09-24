@@ -272,6 +272,7 @@ test("a merchant's offline check takes what this issuer produces", async () => {
     bytes: r.packet,
     enrolment,
     risk: { kBps: 0, stakeReference: 1n, hardCap: 10n ** 12n, stakePrice: 0n, haircutBps: 0 },
+    merchant: MERCHANT,
     now: NOW,
   });
   assert.equal(decision.take, true, decision.take ? "" : decision.reason);

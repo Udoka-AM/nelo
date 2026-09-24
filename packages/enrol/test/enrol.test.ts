@@ -260,9 +260,10 @@ test("a voucher signed by the cached key is taken; one signed by any other key i
       devicePubkey: p256.getPublicKey(key, true),
     });
 
-  const good = accept({ bytes: sign(sk), enrolment: l.enrolment, risk: l.risk, now });
+  const merchant = encodeBase58(fields.merchant);
+  const good = accept({ bytes: sign(sk), enrolment: l.enrolment, risk: l.risk, merchant, now });
   assert.equal(good.take, true, good.take ? "" : good.reason);
 
-  const other = accept({ bytes: sign(p256.utils.randomPrivateKey()), enrolment: l.enrolment, risk: l.risk, now });
+  const other = accept({ bytes: sign(p256.utils.randomPrivateKey()), enrolment: l.enrolment, risk: l.risk, merchant, now });
   assert.equal(other.take, false);
 });

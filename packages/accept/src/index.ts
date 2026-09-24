@@ -200,6 +200,12 @@ export interface AcceptInput {
   bytes: Uint8Array;
   enrolment: Enrolment;
   risk: RiskParams;
+  /**
+   * This till's own address, base58. The program pays whoever the voucher
+   * names, so a voucher made out to anyone else is worthless here, however
+   * well it is signed.
+   */
+  merchant: string;
   /** Unix seconds, from the merchant's own clock. */
   now: number;
   /**
@@ -233,6 +239,14 @@ export function accept(input: AcceptInput): Acceptance {
 
   if (encodeBase58(voucher.vault) !== enrolment.vault) {
     return refuse("this voucher names a different vault");
+  }
+
+  // A voucher is not bearer. It pays the merchant it names and nobody else, so
+  // a payer showing one made out to an accomplice gets the goods from this till
+  // and pays the accomplice. The program cannot catch this: it pays exactly
+  // what was signed.
+  if (encodeBase58(voucher.merchant) !== input.merchant) {
+    return refuse("this voucher pays a different merchant");
   }
 
   // `now <= expires_at` on chain. Refusing at equality would reject a voucher
