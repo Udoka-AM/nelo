@@ -39,6 +39,62 @@ impl VoucherArgs {
     }
 }
 
+/// Instruction data for the secp256r1 precompile, verifying one signature,
+/// laid out exactly as [`assert_precompile_verified`] reads it back.
+///
+/// The writer sits beside the reader on purpose. The layout is a contract
+/// between three parties — this program, the native precompile, and whatever
+/// assembles the transaction on a phone or a relay — and the only way to keep
+/// three copies of one byte layout from drifting is to have one copy. Every
+/// other builder, including the TypeScript one in `packages/redeem`, is checked
+/// byte for byte against this through `tests/tx_vectors.rs`.
+///
+/// Layout, all integers little-endian:
+///
+/// ```text
+///   0      count           = 1
+///   1      padding         = 0
+///   2..16  seven u16s      signature offset, its ix index,
+///                          public key offset, its ix index,
+///                          message offset, message length, its ix index
+///   16..   public key (33) ‖ signature (64) ‖ message
+/// ```
+///
+/// Every instruction index is `u16::MAX`, the precompile's "this instruction"
+/// sentinel. [`assert_precompile_verified`] refuses anything else, because an
+/// index pointing at another instruction lets an attacker have the precompile
+/// verify one set of bytes while the program reads a different set.
+///
+/// Never called on chain — no instruction invokes it — so the panic on an
+/// oversized message only ever fires in off-chain or test code, where a
+/// silently truncated length would be far worse than a loud one.
+pub fn precompile_instruction_data(
+    message: &[u8],
+    signature: &[u8; SIGNATURE_SERIALIZED_SIZE],
+    pubkey: &[u8; COMPRESSED_PUBKEY_SERIALIZED_SIZE],
+) -> Vec<u8> {
+    let message_len =
+        u16::try_from(message.len()).expect("a secp256r1 message length must fit in a u16");
+    let pubkey_offset = PRECOMPILE_DATA_START as u16;
+    let signature_offset = pubkey_offset + COMPRESSED_PUBKEY_SERIALIZED_SIZE as u16;
+    let message_offset = signature_offset + SIGNATURE_SERIALIZED_SIZE as u16;
+
+    let mut data = Vec::with_capacity(message_offset as usize + message.len());
+    data.push(1); // exactly one signature
+    data.push(0); // padding
+    data.extend_from_slice(&signature_offset.to_le_bytes());
+    data.extend_from_slice(&u16::MAX.to_le_bytes());
+    data.extend_from_slice(&pubkey_offset.to_le_bytes());
+    data.extend_from_slice(&u16::MAX.to_le_bytes());
+    data.extend_from_slice(&message_offset.to_le_bytes());
+    data.extend_from_slice(&message_len.to_le_bytes());
+    data.extend_from_slice(&u16::MAX.to_le_bytes());
+    data.extend_from_slice(pubkey);
+    data.extend_from_slice(signature);
+    data.extend_from_slice(message);
+    data
+}
+
 /// Assert that the secp256r1 precompile — running as instruction 0 of this same
 /// transaction — verified `expected_message` against `expected_pubkey`.
 ///
@@ -150,4 +206,55 @@ pub fn consume_sequence(vault: &mut Vault, seq: u64) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod precompile_layout {
+    //! The writer's output, decoded by hand against the constants the reader
+    //! uses. Runs in the fast host job, with no validator, so a layout slip is
+    //! caught in seconds rather than after a toolchain install.
+
+    use super::*;
+
+    fn u16_at(data: &[u8], at: usize) -> u16 {
+        u16::from_le_bytes([data[at], data[at + 1]])
+    }
+
+    #[test]
+    fn every_field_lands_where_the_header_says() {
+        let message = [0xabu8; SIGNED_LEN];
+        let signature = [0xcdu8; SIGNATURE_SERIALIZED_SIZE];
+        let pubkey = [0xefu8; COMPRESSED_PUBKEY_SERIALIZED_SIZE];
+        let data = precompile_instruction_data(&message, &signature, &pubkey);
+
+        assert_eq!(data[0], 1, "exactly one signature");
+        let o = SIG_OFFSETS_START;
+        let (sig_off, pk_off, msg_off) = (
+            u16_at(&data, o) as usize,
+            u16_at(&data, o + 4) as usize,
+            u16_at(&data, o + 8) as usize,
+        );
+        let msg_len = u16_at(&data, o + 10) as usize;
+
+        assert_eq!(&data[pk_off..pk_off + 33], &pubkey);
+        assert_eq!(&data[sig_off..sig_off + 64], &signature);
+        assert_eq!(msg_len, SIGNED_LEN);
+        assert_eq!(&data[msg_off..msg_off + msg_len], &message);
+        assert_eq!(data.len(), msg_off + msg_len, "no trailing bytes");
+    }
+
+    /// The property the reader's security rests on. If any index is not the
+    /// sentinel, the precompile can be pointed at bytes the program never reads.
+    #[test]
+    fn every_instruction_index_is_the_self_sentinel() {
+        let data = precompile_instruction_data(
+            &[0u8; SIGNED_LEN],
+            &[0u8; SIGNATURE_SERIALIZED_SIZE],
+            &[0u8; COMPRESSED_PUBKEY_SERIALIZED_SIZE],
+        );
+        let o = SIG_OFFSETS_START;
+        assert_eq!(u16_at(&data, o + 2), u16::MAX, "signature ix index");
+        assert_eq!(u16_at(&data, o + 6), u16::MAX, "public key ix index");
+        assert_eq!(u16_at(&data, o + 12), u16::MAX, "message ix index");
+    }
 }

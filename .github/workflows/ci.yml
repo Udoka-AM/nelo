@@ -37,7 +37,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
-      # 284 across seven packages and two services, on Node's own test runner. There is no vitest
+      # 311 across eight packages and two services, on Node's own test runner. There is no vitest
       # or jest anywhere in this repo, and no build step before the tests.
       - name: Tests
         run: pnpm -r test
@@ -71,11 +71,19 @@ jobs:
         run: cargo clippy -p nelo_vault --lib -- -D warnings
 
       # The floor-limit curve is written with no Anchor types precisely so it
-      # can be checked without a validator. 17 tests, seconds, no Solana
-      # toolchain — which is why this job is separate from the one below and
-      # gives an answer long before it does.
-      - name: Curve unit tests
+      # can be checked without a validator. 19 tests — the curve's 17 and the
+      # precompile layout's 2 — seconds, no Solana toolchain, which is why this
+      # job is separate from the one below and gives an answer long before it
+      # does.
+      - name: Library unit tests
         run: cargo test -p nelo_vault --lib
+
+      # The cross-language contracts: the voucher wire format, and the
+      # redemption transaction the TypeScript builder must reproduce byte for
+      # byte. Neither needs the built program, so they answer here rather than
+      # after the Anchor job's toolchain install.
+      - name: Golden vectors
+        run: cargo test -p nelo_vault --test vectors --test tx_vectors
 
   anchor:
     name: Anchor (40 LiteSVM tests)

@@ -172,31 +172,18 @@ fn sign(sk: &SigningKey, message: &[u8]) -> [u8; 64] {
     out
 }
 
-/// Hand-built so the offsets under test are the ones the program parses,
-/// rather than whatever a helper crate happens to emit.
+/// The precompile instruction, verifying one signature.
+///
+/// Built by the crate's own writer rather than a copy of it, so every voucher
+/// test in this file also proves the layout the TypeScript builder is pinned to
+/// (tests/tx_vectors.rs) is one both the real precompile and the program accept.
+/// That is not circular: the precompile LiteSVM runs is the native one, and it
+/// knows nothing of our writer.
 fn secp256r1_ix(message: &[u8], signature: &[u8; 64], pubkey: &[u8; 33]) -> Instruction {
-    let pk_off: u16 = 16;
-    let sig_off: u16 = pk_off + 33;
-    let msg_off: u16 = sig_off + 64;
-
-    let mut data = Vec::new();
-    data.push(1u8); // one signature
-    data.push(0u8); // padding
-    data.extend_from_slice(&sig_off.to_le_bytes());
-    data.extend_from_slice(&u16::MAX.to_le_bytes()); // signature lives here
-    data.extend_from_slice(&pk_off.to_le_bytes());
-    data.extend_from_slice(&u16::MAX.to_le_bytes()); // pubkey lives here
-    data.extend_from_slice(&msg_off.to_le_bytes());
-    data.extend_from_slice(&(message.len() as u16).to_le_bytes());
-    data.extend_from_slice(&u16::MAX.to_le_bytes()); // message lives here
-    data.extend_from_slice(pubkey);
-    data.extend_from_slice(signature);
-    data.extend_from_slice(message);
-
     Instruction {
         program_id: SECP256R1_ID,
         accounts: vec![],
-        data,
+        data: nelo_vault::voucher::precompile_instruction_data(message, signature, pubkey),
     }
 }
 
