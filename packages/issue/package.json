@@ -5,11 +5,13 @@
   "main": "./src/index.ts",
   "description": "Issuing vouchers on the payer's phone, without ever signing one sequence over two messages.",
   "dependencies": {
-    "@nelo/voucher": "workspace:*"
+    "@nelo/voucher": "workspace:*",
+    "@nelo/accept": "workspace:*",
+    "@nelo/enrol": "workspace:*"
   },
   "devDependencies": {
     "@noble/curves": "^1.6.0",
-    "@nelo/accept": "workspace:*"
+    "@nelo/pay": "workspace:*"
   },
   "scripts": {
     "test": "node --test \"test/*.test.ts\""

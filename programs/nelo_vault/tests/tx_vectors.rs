@@ -21,7 +21,9 @@
 
 use {
     anchor_lang::{
-        prelude::Pubkey, solana_program::instruction::AccountMeta, InstructionData, ToAccountMetas,
+        prelude::Pubkey,
+        solana_program::instruction::{AccountMeta, Instruction},
+        InstructionData, ToAccountMetas,
     },
     anchor_spl::associated_token::get_associated_token_address_with_program_id,
     nelo_vault::voucher::{precompile_instruction_data, VoucherArgs},
@@ -249,8 +251,77 @@ fn curve_cases() -> Vec<[u8; 32]> {
     out
 }
 
+/// The payer's two setup instructions: open a vault with a device key, and
+/// lock collateral in it. The phone builds both; these pin what it must build.
+fn enrolment() -> Value {
+    let owner = Pubkey::new_from_array([0x44; 32]);
+    let mint = DEVNET_USDC;
+    let vault = vault_of(&owner);
+    let mut device = [0u8; 33];
+    device[0] = 0x03;
+    for (i, b) in device.iter_mut().enumerate().skip(1) {
+        *b = (i * 7) as u8;
+    }
+    let attestation_id = [0x5au8; 32];
+    let floor_limit: u64 = 50_000_000;
+    let amount: u64 = 25_000_000;
+
+    let init = Instruction {
+        program_id: nelo_vault::id(),
+        accounts: nelo_vault::accounts::InitializeVault {
+            owner,
+            vault,
+            mint,
+            vault_token: get_associated_token_address_with_program_id(&vault, &mint, &SPL_TOKEN),
+            token_program: SPL_TOKEN,
+            associated_token_program: ATA_PROGRAM,
+            system_program: SYSTEM_PROGRAM,
+        }
+        .to_account_metas(None),
+        data: nelo_vault::instruction::InitializeVault {
+            device_pubkey: device,
+            attestation_id,
+            floor_limit,
+        }
+        .data(),
+    };
+    let deposit = Instruction {
+        program_id: nelo_vault::id(),
+        accounts: nelo_vault::accounts::Deposit {
+            owner,
+            vault,
+            mint,
+            owner_token: get_associated_token_address_with_program_id(&owner, &mint, &SPL_TOKEN),
+            vault_token: get_associated_token_address_with_program_id(&vault, &mint, &SPL_TOKEN),
+            token_program: SPL_TOKEN,
+        }
+        .to_account_metas(None),
+        data: nelo_vault::instruction::Deposit { amount }.data(),
+    };
+    let ix_json = |ix: &Instruction| {
+        json!({
+            "programId": ix.program_id.to_string(),
+            "dataHex": hex(&ix.data),
+            "accounts": ix.accounts.iter().map(account_json).collect::<Vec<_>>(),
+        })
+    };
+    json!({
+        "input": {
+            "owner": owner.to_string(),
+            "mint": mint.to_string(),
+            "devicePubkeyHex": hex(&device),
+            "attestationIdHex": hex(&attestation_id),
+            "floorLimit": floor_limit.to_string(),
+            "amount": amount.to_string(),
+        },
+        "initializeVault": ix_json(&init),
+        "deposit": ix_json(&deposit),
+    })
+}
+
 fn all() -> Value {
     json!({
+        "enrolment": enrolment(),
         "transactions": cases().iter().map(expected).collect::<Vec<_>>(),
         "curve": curve_cases()
             .iter()

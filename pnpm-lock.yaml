@@ -182,13 +182,19 @@ importers:
 
   packages/issue:
     dependencies:
+      '@nelo/accept':
+        specifier: workspace:*
+        version: link:../accept
+      '@nelo/enrol':
+        specifier: workspace:*
+        version: link:../enrol
       '@nelo/voucher':
         specifier: workspace:*
         version: link:../voucher
     devDependencies:
-      '@nelo/accept':
+      '@nelo/pay':
         specifier: workspace:*
-        version: link:../accept
+        version: link:../pay
       '@noble/curves':
         specifier: ^1.6.0
         version: 1.9.7

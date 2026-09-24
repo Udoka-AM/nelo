@@ -253,6 +253,93 @@
       "onCurve": true
     }
   ],
+  "enrolment": {
+    "deposit": {
+      "accounts": [
+        {
+          "isSigner": true,
+          "isWritable": true,
+          "pubkey": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5"
+        },
+        {
+          "isSigner": false,
+          "isWritable": true,
+          "pubkey": "W1USiFQdcHz4QNK7xhwGktXuhqegc12xo3iNiuTpMvj"
+        },
+        {
+          "isSigner": false,
+          "isWritable": false,
+          "pubkey": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"
+        },
+        {
+          "isSigner": false,
+          "isWritable": true,
+          "pubkey": "BW2ZemBus5ETWGaESZVBwJqH3RsLpHoC4kxnKaZbjSZE"
+        },
+        {
+          "isSigner": false,
+          "isWritable": true,
+          "pubkey": "CFaHV6T3RRgnyoRsFg2zbkHHUFYxhwhx1AaP7f8avhiD"
+        },
+        {
+          "isSigner": false,
+          "isWritable": false,
+          "pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "dataHex": "f223c68952e1f2b640787d0100000000",
+      "programId": "29QdPRQC8C5v6C8gMcBqtw9T4RxYyZ1wqThkEj3XJeQx"
+    },
+    "initializeVault": {
+      "accounts": [
+        {
+          "isSigner": true,
+          "isWritable": true,
+          "pubkey": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5"
+        },
+        {
+          "isSigner": false,
+          "isWritable": true,
+          "pubkey": "W1USiFQdcHz4QNK7xhwGktXuhqegc12xo3iNiuTpMvj"
+        },
+        {
+          "isSigner": false,
+          "isWritable": false,
+          "pubkey": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"
+        },
+        {
+          "isSigner": false,
+          "isWritable": true,
+          "pubkey": "CFaHV6T3RRgnyoRsFg2zbkHHUFYxhwhx1AaP7f8avhiD"
+        },
+        {
+          "isSigner": false,
+          "isWritable": false,
+          "pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "isSigner": false,
+          "isWritable": false,
+          "pubkey": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "isSigner": false,
+          "isWritable": false,
+          "pubkey": "11111111111111111111111111111111"
+        }
+      ],
+      "dataHex": "30bfa32c47813fa403070e151c232a31383f464d545b626970777e858c939aa1a8afb6bdc4cbd2d9e05a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a80f0fa0200000000",
+      "programId": "29QdPRQC8C5v6C8gMcBqtw9T4RxYyZ1wqThkEj3XJeQx"
+    },
+    "input": {
+      "amount": "25000000",
+      "attestationIdHex": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+      "devicePubkeyHex": "03070e151c232a31383f464d545b626970777e858c939aa1a8afb6bdc4cbd2d9e0",
+      "floorLimit": "50000000",
+      "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+      "owner": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5"
+    }
+  },
   "transactions": [
     {
       "input": {

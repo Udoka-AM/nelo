@@ -28,6 +28,7 @@ import {
   type Blockhash,
 } from "@solana/kit";
 import { decode, encode, encodeBase58, signedMessage } from "@nelo/voucher";
+import { buildTransaction, depositInstruction, initializeVaultInstruction, vaultAddress } from "../src/index.ts";
 import {
   AccountRole,
   findProgramAddress,
@@ -339,3 +340,76 @@ for (const v of VECTORS.transactions) {
     assert.equal(hex(new Uint8Array(decoded.instructions[1]!.data!)), v.redeem.dataHex);
   });
 }
+
+// ---- enrolment and deposit, against Anchor's own builders ----
+
+const E = (VECTORS as unknown as { enrolment: unknown }).enrolment as {
+  input: Record<string, string>;
+  initializeVault: { programId: string; dataHex: string; accounts: { pubkey: string; isSigner: boolean; isWritable: boolean }[] };
+  deposit: { programId: string; dataHex: string; accounts: { pubkey: string; isSigner: boolean; isWritable: boolean }[] };
+};
+
+test("initialize_vault matches Anchor: data, accounts, roles", () => {
+  const ix = initializeVaultInstruction({
+    owner: E.input.owner!,
+    mint: E.input.mint!,
+    tokenProgram: TOKEN_PROGRAM_ID,
+    devicePubkey: unhex(E.input.devicePubkeyHex!),
+    attestationId: unhex(E.input.attestationIdHex!),
+    floorLimit: BigInt(E.input.floorLimit!),
+  });
+  assert.equal(ix.programAddress, E.initializeVault.programId);
+  assert.equal(hex(ix.data), E.initializeVault.dataHex);
+  assert.deepEqual(ix.accounts, E.initializeVault.accounts.map((a) => ({ address: a.pubkey, role: roleOf(a) })));
+});
+
+test("deposit matches Anchor: data, accounts, roles", () => {
+  const ix = depositInstruction({
+    owner: E.input.owner!,
+    mint: E.input.mint!,
+    tokenProgram: TOKEN_PROGRAM_ID,
+    amount: BigInt(E.input.amount!),
+  });
+  assert.equal(hex(ix.data), E.deposit.dataHex);
+  assert.deepEqual(ix.accounts, E.deposit.accounts.map((a) => ({ address: a.pubkey, role: roleOf(a) })));
+});
+
+test("the vault is the owner's PDA, as the program derives it", () => {
+  assert.equal(vaultAddress(E.input.owner!), E.initializeVault.accounts[1]!.pubkey);
+});
+
+test("enrolment refuses an uncompressed key, a short attestation id, and a zero deposit", () => {
+  const base = {
+    owner: E.input.owner!,
+    mint: E.input.mint!,
+    tokenProgram: TOKEN_PROGRAM_ID,
+    devicePubkey: unhex(E.input.devicePubkeyHex!),
+    attestationId: unhex(E.input.attestationIdHex!),
+    floorLimit: 1n,
+  };
+  const uncompressed = unhex(E.input.devicePubkeyHex!);
+  uncompressed[0] = 4;
+  assert.throws(() => initializeVaultInstruction({ ...base, devicePubkey: uncompressed }), /compressed/);
+  assert.throws(() => initializeVaultInstruction({ ...base, attestationId: new Uint8Array(31) }), /32 bytes/);
+  assert.throws(() => depositInstruction({ ...base, amount: 0n }), /more than zero/);
+});
+
+test("enrolment and deposit fit one transaction for the wallet to sign", () => {
+  const owner = E.input.owner!;
+  const u = buildTransaction(
+    [
+      initializeVaultInstruction({
+        owner,
+        mint: E.input.mint!,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        devicePubkey: unhex(E.input.devicePubkeyHex!),
+        attestationId: unhex(E.input.attestationIdHex!),
+        floorLimit: 1n,
+      }),
+      depositInstruction({ owner, mint: E.input.mint!, tokenProgram: TOKEN_PROGRAM_ID, amount: 1n }),
+    ],
+    owner,
+    { blockhash: encodeBase58(new Uint8Array(32).fill(9)), lastValidBlockHeight: 1n },
+  );
+  assert.ok(u.wire.length <= 1232);
+});

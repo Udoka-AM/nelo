@@ -28,7 +28,7 @@ import {
 } from "@solana/kit";
 import { ed25519 } from "@noble/curves/ed25519";
 import { decodeBase58, encodeBase58 } from "@nelo/voucher";
-import { redeemInstructions, type RedeemInput } from "./index.ts";
+import { redeemInstructions, type Instruction, type RedeemInput } from "./index.ts";
 
 /** Solana's packet limit for a whole transaction. */
 export const PACKET_LIMIT = 1232;
@@ -48,10 +48,22 @@ export interface Lifetime {
 
 /** The payer in `input` pays the fee and is the only signer. */
 export function buildRedemption(input: RedeemInput, lifetime: Lifetime): Unsigned {
-  const instructions = redeemInstructions(input);
+  return buildTransaction(redeemInstructions(input), input.payer, lifetime);
+}
+
+/**
+ * Any instructions as a legacy transaction with one signer, the fee payer. The
+ * payer app uses it for enrolment and deposit; the checks in
+ * {@link checkSigned} apply the same way.
+ */
+export function buildTransaction(
+  instructions: readonly Instruction[],
+  feePayer: string,
+  lifetime: Lifetime,
+): Unsigned {
   const message = pipe(
     createTransactionMessage({ version: "legacy" }),
-    (m) => setTransactionMessageFeePayer(address(input.payer), m),
+    (m) => setTransactionMessageFeePayer(address(feePayer), m),
     (m) =>
       setTransactionMessageLifetimeUsingBlockhash(
         { blockhash: lifetime.blockhash as Blockhash, lastValidBlockHeight: lifetime.lastValidBlockHeight },
@@ -62,8 +74,8 @@ export function buildRedemption(input: RedeemInput, lifetime: Lifetime): Unsigne
   );
   const compiled = compileTransaction(message);
   const wire = new Uint8Array(getTransactionEncoder().encode(compiled));
-  if (wire.length > PACKET_LIMIT) throw new Error(`redemption is ${wire.length} bytes, over the packet limit`);
-  return { wire, message: new Uint8Array(compiled.messageBytes), feePayer: input.payer };
+  if (wire.length > PACKET_LIMIT) throw new Error(`transaction is ${wire.length} bytes, over the packet limit`);
+  return { wire, message: new Uint8Array(compiled.messageBytes), feePayer };
 }
 
 export type Checked =
