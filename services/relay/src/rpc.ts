@@ -2,14 +2,14 @@
  * The relayer's RPC calls, over `fetch`. Kept apart from `redeem.ts` so that
  * file is tested against a fake with the same five methods.
  */
-import type { RelayRpc } from "./redeem.ts";
+import type { ConflictRpc } from "./conflict.ts";
 
 interface Body<T> {
   result?: T;
   error?: { message?: string; data?: { err?: unknown } };
 }
 
-export function createRelayRpc(url: string, fetchImpl: typeof fetch = fetch): RelayRpc {
+export function createRelayRpc(url: string, fetchImpl: typeof fetch = fetch): ConflictRpc {
   let id = 0;
   async function call<T>(method: string, params: unknown[]): Promise<Body<T>> {
     const response = await fetchImpl(url, {
@@ -40,6 +40,13 @@ export function createRelayRpc(url: string, fetchImpl: typeof fetch = fetch): Re
         { encoding: "base64", commitment: "confirmed" },
       ]);
       return r.value !== null;
+    },
+    async accountData(address) {
+      const r = await result<{ value: { data: [string, string] } | null }>("getAccountInfo", [
+        address,
+        { encoding: "base64", commitment: "confirmed" },
+      ]);
+      return r.value ? new Uint8Array(Buffer.from(r.value.data[0], "base64")) : null;
     },
     async signatureKnown(signature) {
       const r = await result<{ value: (unknown | null)[] }>("getSignatureStatuses", [

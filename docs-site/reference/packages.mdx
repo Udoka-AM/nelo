@@ -248,7 +248,9 @@ The objects are `@solana/kit`'s instruction shape, so they drop into a kit trans
 
 **High-S signatures are folded here too.** A high-S signature verifies offline, so a merchant takes the voucher, but the precompile then rejects it. Folding needs no key, so the builder does it.
 
-**27 tests.** Never broadcast to a cluster yet. That happens in the week-3 gate.
+**Double spends too.** `checkConflict(a, b)` says whether two packets prove one: same vault, same sequence, different messages, same key, and both signatures valid. `reportConflictInstructions(a, b, reporter)` returns the two precompile instructions and `report_conflict`, in the order the program reads them. `slashInstruction` builds the permissionless crank that moves a frozen vault's stake to the reserve. All three are pinned to vectors the program generates.
+
+**41 tests.** Never broadcast to a cluster yet. That happens in the week-3 gate.
 
 ---
 
@@ -277,6 +279,6 @@ The codes come from `vectors/program-errors-v1.json`, which the program generate
 
 **It never mistakes its own success for fraud.** A signature is stored before its transaction is sent. An entry with an attempt in flight is looked up with `searchTransactionHistory`, never resent. And "already redeemed" is believed only once every attempt of the merchant's own is known not to have landed.
 
-**Signing is injected.** `SettleDeps.prepare` builds with `@nelo/redeem`, signs, and returns the signature without sending. Who signs, the merchant's embedded wallet or the relayer, is still an open decision.
+**Signing is injected.** `SettleDeps.prepare` builds with `@nelo/redeem`, signs, and returns the signature without sending. In the merchant app the relayer does it, so the merchant signs nothing. A relayer decline marked `conflict` is refused as paid to someone else.
 
-**51 tests**, against a fake network. Not yet wired into the merchant app, which has no voucher intake yet.
+**55 tests**, against a fake network. Wired into the merchant app, never run on a handset.

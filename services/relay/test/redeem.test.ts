@@ -158,12 +158,15 @@ test("a send that dies in transit is answered as sent, and looked up rather than
 
 test("a different voucher at a sequence already submitted is declined for good", async () => {
   const { net, deps } = setup();
-  await redeem(packet({ amount: 5_000_000n }), deps);
+  const first = packet({ amount: 5_000_000n });
+  await redeem(first, deps);
   const r = await redeem(packet({ amount: 9_000_000n }), deps);
   assert.deepEqual(r, {
     status: "declined",
     reason: "a different voucher at this sequence was already submitted",
     retryable: false,
+    // The other half of the proof, handed back so the pair can be reported.
+    conflictWith: Buffer.from(first).toString("base64"),
   });
   assert.equal(net.sent.length, 1);
 });

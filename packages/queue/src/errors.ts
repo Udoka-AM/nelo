@@ -197,9 +197,15 @@ export function classify(err: unknown): Verdict {
 
   // A relayer's refusal, before anything was built. It says itself whether
   // waiting could change the answer (a spent daily budget) or not.
-  const relay = (err as { RelayDeclined?: { reason?: unknown; retryable?: unknown } } | null)?.RelayDeclined;
+  const relay = (err as { RelayDeclined?: { reason?: unknown; retryable?: unknown; conflict?: unknown } } | null)
+    ?.RelayDeclined;
   if (relay && typeof relay === "object") {
     const reason = typeof relay.reason === "string" ? relay.reason : "the relayer declined";
+    if (relay.conflict === true) {
+      // Another voucher at this sequence reached the relayer first: the payer
+      // spent the same money twice, and the relayer has reported it.
+      return BY_NAME.SequenceAlreadyRedeemed!;
+    }
     return relay.retryable === true
       ? { kind: "blocked", reason: "relay-declined", detail: `The relayer will not submit it yet: ${reason}.` }
       : { kind: "held", reason: "unknown", detail: `The relayer refused it: ${reason}.` };

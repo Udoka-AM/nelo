@@ -53,8 +53,12 @@ export type RedeemResponse =
   | { status: "sent"; signature: string }
   /** Simulation refused it: nothing landed, and `err` says why. */
   | { status: "rejected"; err: unknown }
-  /** The relayer will not pay for it. `retryable` if waiting could change that. */
-  | { status: "declined"; reason: string; retryable: boolean };
+  /**
+   * The relayer will not pay for it. `retryable` if waiting could change that.
+   * `conflictWith` is the *other* voucher at this sequence, base64, when this
+   * one lost to a double spend: the caller reports the pair.
+   */
+  | { status: "declined"; reason: string; retryable: boolean; conflictWith?: string };
 
 export interface RedeemDeps {
   rpc: RelayRpc;
@@ -113,6 +117,7 @@ export async function redeem(packet: Uint8Array, deps: RedeemDeps): Promise<Rede
         status: "declined",
         reason: "a different voucher at this sequence was already submitted",
         retryable: false,
+        ...(existing.packet ? { conflictWith: existing.packet } : {}),
       };
     }
     if (await rpc.signatureKnown(existing.signature)) return { status: "sent", signature: existing.signature };
@@ -159,6 +164,7 @@ export async function redeem(packet: Uint8Array, deps: RedeemDeps): Promise<Rede
 
   const submission: Submission = {
     message,
+    packet: toBase64(packet),
     signature,
     lastValidBlockHeight: lifetime.lastValidBlockHeight,
     costLamports: decision.costLamports,

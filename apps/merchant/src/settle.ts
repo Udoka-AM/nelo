@@ -34,7 +34,7 @@ import {
 import { buildRedemption, checkSigned, TOKEN_PROGRAM_ID } from "@nelo/redeem";
 import { record } from "./daybook";
 import { relayToken, relayUrl, rpcUrl } from "./config";
-import { markBooked, unbooked, voucherStore } from "./offline";
+import { markBooked, markReported, unbooked, unreported, voucherStore } from "./offline";
 import { signTransactions } from "./wallet";
 import type { MerchantAccount } from "./account";
 
@@ -57,7 +57,7 @@ async function result<T>(method: string, params: unknown[]): Promise<T> {
 }
 
 export type Settled =
-  | { kind: "round"; report: RoundReport }
+  | { kind: "round"; report: RoundReport; conflictsReported?: number }
   /** A Privy merchant: nothing here can sign for them yet. */
   | { kind: "unsupported"; reason: string }
   /** The wallet signed something other than what was built, or refused. */
@@ -85,7 +85,7 @@ async function viaRelay(entry: Entry): Promise<Prepared | Declined> {
   const answer = (await response.json()) as
     | { status: "sent"; signature: string }
     | { status: "rejected"; err: unknown }
-    | { status: "declined"; reason: string; retryable: boolean };
+    | { status: "declined"; reason: string; retryable: boolean; conflict?: boolean };
   switch (answer.status) {
     case "sent":
       // Already sent by the relayer; there is nothing left to do but record it.
@@ -94,15 +94,46 @@ async function viaRelay(entry: Entry): Promise<Prepared | Declined> {
       // Simulation refused it and nothing landed: classify the chain's error.
       return { declined: answer.err };
     case "declined":
-      return { declined: { RelayDeclined: { reason: answer.reason, retryable: answer.retryable } } };
+      return {
+        declined: {
+          RelayDeclined: { reason: answer.reason, retryable: answer.retryable, conflict: answer.conflict === true },
+        },
+      };
   }
+}
+
+/**
+ * Send every double spend this till caught to the relayer. Offline, or the
+ * relayer down, it stays for the next round.
+ */
+async function reportConflicts(): Promise<number> {
+  let reported = 0;
+  for (const c of await unreported()) {
+    const response = await fetch(`${relayUrl}/v1/conflict`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(relayToken ? { authorization: `Bearer ${relayToken}` } : {}),
+      },
+      body: JSON.stringify({ a: c.a, b: c.b }),
+    }).catch(() => null);
+    if (!response || response.status >= 500) break;
+    const answer = (await response.json().catch(() => ({}))) as { status?: string };
+    // Reported, already frozen, or not proof at all: either way, done asking.
+    if (answer.status && answer.status !== "rejected") {
+      await markReported(c.id, answer.status);
+      if (answer.status === "reported") reported++;
+    }
+  }
+  return reported;
 }
 
 export async function settleVouchers(merchant: MerchantAccount, mint: string): Promise<Settled> {
   if (relayUrl) {
     const report = await settleOnce(voucherStore, { now: () => Date.now(), prepare: viaRelay, statuses });
     await bookSettled(mint);
-    return { kind: "round", report };
+    const conflictsReported = report.offline ? 0 : await reportConflicts();
+    return { kind: "round", report, conflictsReported };
   }
   if (merchant.kind !== "wallet") {
     return {

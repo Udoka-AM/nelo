@@ -137,3 +137,11 @@ test("anything unrecognised is held, and says what it was", () => {
   }
   assert.match(classify("SomethingNew").detail, /SomethingNew/);
 });
+
+test("a relayer's decline says whether to wait, hold, or call it a double spend", () => {
+  assert.equal(classify({ RelayDeclined: { reason: "budget", retryable: true } }).kind, "blocked");
+  assert.equal(classify({ RelayDeclined: { reason: "odd", retryable: false } }).kind, "held");
+  const lost = classify({ RelayDeclined: { reason: "a different voucher at this sequence was already submitted", retryable: false, conflict: true } });
+  assert.equal(lost.kind, "refused");
+  if (lost.kind === "refused") assert.equal(lost.reason, "paid-to-someone-else");
+});

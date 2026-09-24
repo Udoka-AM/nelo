@@ -413,3 +413,62 @@ test("enrolment and deposit fit one transaction for the wallet to sign", () => {
   );
   assert.ok(u.wire.length <= 1232);
 });
+
+// ---- conflict report and slash, against Anchor's own builders ----
+
+import { checkConflict, reportConflictInstructions, slashInstruction } from "../src/index.ts";
+
+const C = (VECTORS as unknown as { conflict: {
+  input: { packetAHex: string; packetBHex: string; reporter: string; stakeMint: string };
+  precompileAHex: string;
+  precompileBHex: string;
+  reportConflict: { programId: string; dataHex: string; accounts: { pubkey: string; isSigner: boolean; isWritable: boolean }[] };
+  slash: { programId: string; dataHex: string; accounts: { pubkey: string; isSigner: boolean; isWritable: boolean }[] };
+} }).conflict;
+const PA = unhex(C.input.packetAHex);
+const PB = unhex(C.input.packetBHex);
+
+test("a conflict report is two precompiles then report_conflict, byte for byte as Anchor builds it", () => {
+  const [a, b, report] = reportConflictInstructions(PA, PB, C.input.reporter);
+  assert.equal(a.programAddress, SECP256R1_PROGRAM_ID);
+  assert.equal(hex(a.data), C.precompileAHex, "voucher A verified at index 0");
+  assert.equal(hex(b.data), C.precompileBHex, "voucher B verified at index 1");
+  assert.equal(report.programAddress, C.reportConflict.programId);
+  assert.equal(hex(report.data), C.reportConflict.dataHex);
+  assert.deepEqual(report.accounts, C.reportConflict.accounts.map((x) => ({ address: x.pubkey, role: roleOf(x) })));
+});
+
+test("the conflict report fits one transaction", () => {
+  const u = buildTransaction(reportConflictInstructions(PA, PB, C.input.reporter), C.input.reporter, {
+    blockhash: encodeBase58(new Uint8Array(32).fill(9)),
+    lastValidBlockHeight: 1n,
+  });
+  assert.ok(u.wire.length <= 1232, `${u.wire.length} bytes`);
+});
+
+test("slash matches Anchor: data, accounts, roles", () => {
+  const vault = C.reportConflict.accounts[1]!.pubkey;
+  const ix = slashInstruction({ cranker: C.input.reporter, vault, stakeMint: C.input.stakeMint });
+  assert.equal(hex(ix.data), C.slash.dataHex);
+  assert.deepEqual(ix.accounts, C.slash.accounts.map((x) => ({ address: x.pubkey, role: roleOf(x) })));
+});
+
+test("only a real conflict is accepted: same vault and sequence, different bytes, one key", () => {
+  assert.ok(checkConflict(PA, PB).ok);
+  assert.match((checkConflict(PA, PA) as { reason: string }).reason, /same payment/);
+
+  const va = decode(PA);
+  const other = (o: Partial<typeof va>) => encode({ ...va, ...o });
+  assert.match((checkConflict(PA, other({ seq: va.seq + 1n })) as { reason: string }).reason, /different sequences/);
+  assert.match((checkConflict(PA, other({ vault: new Uint8Array(32).fill(1) })) as { reason: string }).reason, /different vaults/);
+  assert.match(
+    (checkConflict(PA, other({ amount: 1n, devicePubkey: new Uint8Array(33).fill(2) })) as { reason: string }).reason,
+    /different keys/,
+  );
+  assert.throws(() => reportConflictInstructions(PA, PA, C.input.reporter), /same payment/);
+
+  // A forged "conflict": a real voucher and a copy with its amount changed but
+  // the original signature. Paying to submit it would cost a fee for nothing.
+  const forged = encode({ ...decode(PA), amount: decode(PA).amount + 1n });
+  assert.match((checkConflict(PA, forged) as { reason: string }).reason, /does not verify/);
+});

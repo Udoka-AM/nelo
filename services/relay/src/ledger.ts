@@ -18,6 +18,12 @@ import { closeSync, existsSync, fsyncSync, openSync, readFileSync, renameSync, w
 export interface Submission {
   /** Hex of the 105 signed bytes: the identity of the voucher. */
   message: string;
+  /**
+   * The whole voucher, base64. Kept because a *different* voucher at the same
+   * sequence arriving later is half of a double-spend proof, and this is the
+   * other half.
+   */
+  packet?: string;
   signature: string;
   lastValidBlockHeight: number;
   costLamports: number;
@@ -25,9 +31,23 @@ export interface Submission {
   submittedAt: number;
 }
 
+export interface ConflictReport {
+  /** Both vouchers, base64: the proof, kept whatever happens on chain. */
+  a: string;
+  b: string;
+  vault: string;
+  signature: string | null;
+  lastValidBlockHeight: number;
+  reportedAt: number;
+  /** Set once the vault's stake has been moved to the reserve. */
+  slashSignature: string | null;
+}
+
 export interface LedgerState {
   /** `${vault}:${seq}` → the live submission for that voucher. */
   submissions: Record<string, Submission>;
+  /** `${vault}:${seq}` → the double spend reported for it. */
+  conflicts?: Record<string, ConflictReport>;
   /** Merchants whose token account the relayer has funded. Once each. */
   fundedMerchants: string[];
   /** UTC day, `YYYY-MM-DD`, that the spend below belongs to. */
@@ -42,7 +62,7 @@ export interface Ledger {
 }
 
 export function emptyLedger(day: string): LedgerState {
-  return { submissions: {}, fundedMerchants: [], day, spentLamports: 0, perVault: {} };
+  return { submissions: {}, conflicts: {}, fundedMerchants: [], day, spentLamports: 0, perVault: {} };
 }
 
 /** The day's spend resets at UTC midnight; everything else carries over. */

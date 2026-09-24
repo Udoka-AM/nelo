@@ -1,6 +1,6 @@
 ---
 title: "Services"
-description: "The double-entry ledger behind the payout leg, and the relay that isn't built yet."
+description: "The double-entry ledger behind the payout leg, and the relayer that settles offline vouchers."
 ---
 
 ## `@nelo/settle`
@@ -103,8 +103,18 @@ Swapping in a licensed partner is a constructor change. That is deliberate: it p
 
 ## `@nelo/relay`
 
-<Warning>
-**Not built.** Still a one-line stub.
-</Warning>
+Submits a merchant's offline vouchers and pays their fees, so the merchant needs no SOL and signs nothing. `redeem_voucher` pays exactly the merchant the voucher names, so the relayer can submit a voucher but cannot redirect it.
 
-Intended scope: broadcast queue, retry, multi-RPC failover, and durable nonce accounts so a queued offline transfer never expires before it settles. It is week-3 work.
+```
+POST /v1/redeem    { packet }   → sent | rejected | declined
+POST /v1/conflict  { a, b }     → reported | already-frozen | rejected | declined
+GET  /v1/health
+```
+
+**Asked twice, it answers once.** A voucher it has already submitted gets the same signature back while that transaction can still land. The ledger entry is written before the transaction is sent, and requests are handled one at a time.
+
+**Double spends.** Two vouchers at one sequence, from a till or seen by the relayer itself, are reported with `report_conflict`. A sweep every minute then cranks `slash` on each frozen vault that still holds stake.
+
+**No durable nonces**, since it signs each redemption fresh. Multi-RPC failover is not written. Running it: [the relayer runbook](/operations/relay).
+
+**51 tests**, against a fake network.

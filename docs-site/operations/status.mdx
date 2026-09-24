@@ -46,23 +46,23 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | `packages/onboard` | ✅ Proven (60 tests) |
 | `packages/reserve` | ✅ Proven (17 tests) |
 | `packages/accept` | ✅ Proven (26 tests) — offline accept/refuse |
-| `packages/queue` | ✅ Proven (52 tests) against a fake network; wired into the merchant app, never run on a handset |
+| `packages/queue` | ✅ Proven (55 tests) against a fake network; wired into the merchant app, never run on a handset |
 | `packages/enrol` | ✅ Payer list and revocation list, pinned to the program's account layouts (18 tests) |
 | `packages/issue` | ✅ Payer-side issuing, never signs one sequence twice (21 tests) |
 | `apps/payer` | ⚠️ Enrol, deposit, pay offline and show the voucher QR: typechecks and bundles, never run on a handset |
 | `packages/till` | ✅ The till's scan decision (9 tests) |
-| `packages/redeem` | ✅ Matches the program's own builders byte for byte (27 tests); ⚠️ never broadcast to a cluster |
+| `packages/redeem` | ✅ Matches the program's own builders byte for byte, for redemption, conflict reports and slashing (41 tests); ⚠️ never broadcast to a cluster |
 | `services/settle` — ledger | ✅ Proven (39 tests) |
 | `services/settle` — partner | 🟡 Declared stub |
 | `packages/attest` | ⚠️ Compiles (EAS build); never run on hardware |
 | `apps/merchant` | ⚠️ Typechecks; native side builds; never rendered |
 | `apps/payer` | ⚠️ Probe only — typechecks, never rendered. Real payer UI is week 3 |
-| `services/relay` | ✅ Submits offline vouchers and pays fees, idempotently (43 tests); runs on the Mac behind a tunnel for the demo |
+| `services/relay` | ✅ Submits offline vouchers and pays fees, idempotently; reports double spends and cranks slashing (51 tests); runs on the Mac behind a tunnel for the demo |
 | Live price feed | ❌ Blocked on a product decision |
 | Onboarding — the flow's rules | ✅ Proven (29 of `@nelo/onboard`'s 60) |
 | Onboarding — the Privy calls | ⚠️ Typechecked against the SDK; needs an app ID and a device |
 | Gasless relayer | 🟡 Sponsorship policy done; needs a Kora node and the builder |
-| Slashing | ✅ Stake moves to the reserve (5 LiteSVM tests); ❌ nothing pays out of it yet |
+| Slashing | ✅ Stake moves to the reserve (5 LiteSVM tests); the relayer reports conflicts and cranks it, never run on a cluster; ❌ nothing pays out of the reserve yet |
 | CI | ✅ Three jobs — tests, typecheck, `anchor test` |
 
 ## The four things that block the most

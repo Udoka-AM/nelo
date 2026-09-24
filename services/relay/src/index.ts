@@ -29,7 +29,8 @@
  *
  *   `redeem.ts`  submitting a voucher as fee payer, idempotently.
  *   `ledger.ts`  what has been submitted and spent, on disk.
- *   `server.ts`  the HTTP endpoint the merchant app calls.
+ *   `conflict.ts` reporting a double spend, and slashing the stake behind it.
+ *   `server.ts`  the HTTP endpoints the merchant app calls.
  *   `main.ts`    running it.
  */
 export { createKora, type Kora, type KoraOptions, type SentTransaction } from "./kora.ts";
@@ -43,7 +44,8 @@ export {
   type Spent,
 } from "./policy.ts";
 export { redeem, type RedeemResponse, type RelayRpc, type RelayConfig } from "./redeem.ts";
-export { buildServer, serial } from "./server.ts";
+export { buildRelay, buildServer, serial, type Relay } from "./server.ts";
+export { reportConflict, sweep, type ConflictResponse, type ConflictRpc } from "./conflict.ts";
 export { createRelayRpc } from "./rpc.ts";
 export { feePayerFromSecret, loadFeePayer, type FeePayer } from "./feePayer.ts";
 export { emptyLedger, fileLedger, memoryLedger, type Ledger, type LedgerState } from "./ledger.ts";

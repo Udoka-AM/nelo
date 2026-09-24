@@ -67,3 +67,14 @@ The Mac must be awake with both processes running whenever a till settles. `caff
 The till records the signature only after the relayer answers. A till that crashes in between asks again, so the relayer answers a voucher it has already submitted with the same signature, for as long as that transaction can still land. It builds a new one only once the old one is not on chain and its blockhash has expired. Otherwise the till would see "already redeemed" on the second transaction and report its own payment as a double spend.
 
 The submission is written to the ledger before the transaction is sent, and requests are handled one at a time. `services/relay/test/` pins both, with a control test that shows the duplicate send happening without them.
+
+## Double spends
+
+Two different vouchers from one vault with the same sequence number are proof that the payer spent the same money twice. The relayer acts on that proof in two steps:
+
+1. **Report.** It sends `report_conflict`, which freezes the vault for good. The proof can come from two places:
+   - a till that scanned both vouchers posts the pair to `POST /v1/conflict` with `{ "a": "<base64>", "b": "<base64>" }`;
+   - the relayer sees it itself when a second till submits a different voucher at a sequence it already submitted. That till's voucher is declined with `conflict: true`, and the report goes out at once.
+2. **Slash.** Every minute, a sweep looks at each reported vault. Once the vault is frozen and still holds stake, the sweep sends `slash`, which moves the stake to the reserve. The log shows `slashed <vault>: <signature>`.
+
+The relayer checks both signatures before it pays for anything. It sends nothing for a vault that is already frozen, and a repeated report gets the same transaction back. Reports are kept in the ledger file with everything else.

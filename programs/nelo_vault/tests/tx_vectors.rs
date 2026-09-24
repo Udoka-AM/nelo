@@ -319,8 +319,108 @@ fn enrolment() -> Value {
     })
 }
 
+/// A double spend, as the relayer reports it, and the slash that follows.
+/// Two different vouchers at one sequence, both signed by the same device key:
+/// precompile at 0 for A, at 1 for B, then report_conflict.
+fn conflict() -> Value {
+    let sk = device_key();
+    let pubkey: [u8; 33] = sk
+        .verifying_key()
+        .to_encoded_point(true)
+        .as_bytes()
+        .try_into()
+        .unwrap();
+    let owner = Pubkey::new_from_array([0x44; 32]);
+    let vault = vault_of(&owner);
+    let merchant = Pubkey::new_from_array([0x22; 32]);
+    let make = |amount: u64, other: Pubkey| VoucherArgs {
+        version: 1,
+        vault,
+        seq: 9,
+        amount,
+        remaining_after: 1,
+        merchant: other,
+        expires_at: 1_789_000_000,
+        salt: [3u8; 8],
+    };
+    let a = make(10_000_000, merchant);
+    let b = make(20_000_000, Pubkey::new_from_array([0x23; 32]));
+    let packet = |v: &VoucherArgs| {
+        let msg = v.signed_message();
+        let mut out = msg.to_vec();
+        out.extend_from_slice(&sign_low_s(&sk, &msg));
+        out.extend_from_slice(&pubkey);
+        out
+    };
+    let (pa, pb) = (packet(&a), packet(&b));
+    let reporter = Pubkey::new_from_array([0x33; 32]);
+
+    let report = Instruction {
+        program_id: nelo_vault::id(),
+        accounts: nelo_vault::accounts::ReportConflict {
+            reporter,
+            vault,
+            instructions: INSTRUCTIONS_SYSVAR,
+        }
+        .to_account_metas(None),
+        data: nelo_vault::instruction::ReportConflict {
+            voucher_a: a.clone(),
+            voucher_b: b.clone(),
+        }
+        .data(),
+    };
+
+    let config = Pubkey::find_program_address(&[b"risk"], &nelo_vault::id()).0;
+    let stake_mint = Pubkey::new_from_array([0x77; 32]);
+    let slash = Instruction {
+        program_id: nelo_vault::id(),
+        accounts: nelo_vault::accounts::Slash {
+            cranker: reporter,
+            vault,
+            config,
+            stake_mint,
+            vault_stake_token: get_associated_token_address_with_program_id(
+                &vault,
+                &stake_mint,
+                &SPL_TOKEN,
+            ),
+            reserve_stake_token: get_associated_token_address_with_program_id(
+                &config,
+                &stake_mint,
+                &SPL_TOKEN,
+            ),
+            token_program: SPL_TOKEN,
+            associated_token_program: ATA_PROGRAM,
+            system_program: SYSTEM_PROGRAM,
+        }
+        .to_account_metas(None),
+        data: nelo_vault::instruction::Slash {}.data(),
+    };
+
+    let ix_json = |ix: &Instruction| {
+        json!({
+            "programId": ix.program_id.to_string(),
+            "dataHex": hex(&ix.data),
+            "accounts": ix.accounts.iter().map(account_json).collect::<Vec<_>>(),
+        })
+    };
+    json!({
+        "input": {
+            "packetAHex": hex(&pa),
+            "packetBHex": hex(&pb),
+            "reporter": reporter.to_string(),
+            "stakeMint": stake_mint.to_string(),
+        },
+        "precompileAHex": hex(&precompile_instruction_data(&a.signed_message(), &sign_low_s(&sk, &a.signed_message()), &pubkey)),
+        "precompileBHex": hex(&precompile_instruction_data(&b.signed_message(), &sign_low_s(&sk, &b.signed_message()), &pubkey)),
+        "reportConflict": ix_json(&report),
+        "slash": ix_json(&slash),
+    })
+}
+
 fn all() -> Value {
     json!({
+        "conflict": conflict(),
         "enrolment": enrolment(),
         "transactions": cases().iter().map(expected).collect::<Vec<_>>(),
         "curve": curve_cases()

@@ -388,7 +388,7 @@ that is not negotiable — half the marks.
 4. **Offline queue and settle-on-reconnect.** Durable nonce accounts so a queued transfer never
    expires. [`services/relay`](../services/relay/src/index.ts) — retry, multi-RPC failover.
    *(Anchor)*
-   **Built:** [`packages/queue`](../packages/queue/src/queue.ts), 51 tests. **No durable
+   **Built:** [`packages/queue`](../packages/queue/src/queue.ts), 55 tests. **No durable
    nonces**, on purpose. The queue holds vouchers, not signed transactions, and signs each
    redemption with a fresh blockhash when it is sent. So the only deadline is the voucher's
    own expiry, and a nonce account would cost rent and an instruction per redemption for
@@ -405,6 +405,17 @@ that is not negotiable — half the marks.
    its own payment as fraud. Multi-RPC failover is still not written.
 5. **Conflict handling.** On the first conflicting voucher the vault freezes permanently.
    *(Anchor)*
+   **Built, end to end, never run on a cluster.** Two different vouchers at one sequence, from
+   the enrolled key, are the proof. Either side can find the pair. A till that scans the
+   second one refuses the sale and keeps both. The relayer finds it when two tills submit the
+   same sequence. Either way the relayer sends `report_conflict`, which freezes the vault, and
+   a sweep every minute then cranks `slash`, which moves the stake to the reserve. The
+   relayer pays for both, so the merchant who caught it needs no SOL. It checks both
+   signatures before paying for anything, sends nothing for a vault already frozen, and
+   answers a repeated report with the same transaction. The builders
+   ([`packages/redeem/src/conflict.ts`](../packages/redeem/src/conflict.ts)) are pinned to
+   vectors the program generates. The till that loses the race is told "paid to someone
+   else", not "try again".
 6. **Close-of-day reconciliation.** *(Design + Android)*
 7. **Peer-to-peer transfer.** This falls out of the same code — the voucher does not know what
    a merchant is. *(Android)*

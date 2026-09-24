@@ -183,6 +183,7 @@ function Till() {
           r.refused.length ? `${r.refused.length} refused` : "",
           r.held.length ? `${r.held.length} need a look` : "",
           r.expired.length ? `${r.expired.length} expired` : "",
+          settled.conflictsReported ? `${settled.conflictsReported} double spend reported` : "",
         ].filter(Boolean);
         setSettleNote(
           r.offline ? "No signal — try again when you are online." : parts.join(" · ") || "Nothing due yet.",

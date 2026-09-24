@@ -30,6 +30,12 @@ async function handle(): Promise<SQLite.SQLiteDatabase> {
       key   TEXT PRIMARY KEY NOT NULL,
       value TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS conflicts (
+      id        TEXT PRIMARY KEY NOT NULL,
+      a         TEXT NOT NULL,
+      b         TEXT NOT NULL,
+      reported  TEXT
+    );
     CREATE TABLE IF NOT EXISTS vouchers (
       id           TEXT PRIMARY KEY NOT NULL,
       record       TEXT NOT NULL,
@@ -118,4 +124,26 @@ export async function unbooked(): Promise<Unbooked[]> {
 export async function markBooked(id: string): Promise<void> {
   const database = await handle();
   await database.runAsync(`UPDATE vouchers SET booked = 1 WHERE id = ?`, id);
+}
+
+/**
+ * A double spend this till caught: two different vouchers at one sequence.
+ * Kept until the relayer has reported it, which freezes the payer's vault and
+ * slashes their stake. Stored as base64, the form the relayer takes.
+ */
+export async function addConflict(id: string, a: string, b: string): Promise<void> {
+  const database = await handle();
+  await database.runAsync(`INSERT OR IGNORE INTO conflicts (id, a, b) VALUES (?, ?, ?)`, id, a, b);
+}
+
+export async function unreported(): Promise<{ id: string; a: string; b: string }[]> {
+  const database = await handle();
+  return database.getAllAsync<{ id: string; a: string; b: string }>(
+    `SELECT id, a, b FROM conflicts WHERE reported IS NULL`,
+  );
+}
+
+export async function markReported(id: string, outcome: string): Promise<void> {
+  const database = await handle();
+  await database.runAsync(`UPDATE conflicts SET reported = ? WHERE id = ?`, outcome, id);
 }

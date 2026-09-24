@@ -14,7 +14,7 @@
 import { loadFeePayer } from "./feePayer.ts";
 import { fileLedger, utcDay } from "./ledger.ts";
 import { createRelayRpc } from "./rpc.ts";
-import { buildServer } from "./server.ts";
+import { buildRelay } from "./server.ts";
 
 const USDC_DEVNET = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
 
@@ -32,7 +32,7 @@ const feePayer = loadFeePayer(required("RELAY_KEYPAIR"));
 const mint = process.env.RELAY_MINT?.trim() || USDC_DEVNET;
 const budgetSol = Number(process.env.RELAY_DAILY_BUDGET_SOL ?? "0.5");
 
-const app = buildServer({
+const relay = buildRelay({
   now,
   ...(process.env.RELAY_TOKEN?.trim() ? { token: process.env.RELAY_TOKEN.trim() } : {}),
   deps: {
@@ -55,6 +55,14 @@ const app = buildServer({
 
 const port = Number(process.env.RELAY_PORT ?? "8787");
 const host = process.env.RELAY_HOST?.trim() || "127.0.0.1";
-await app.listen({ port, host });
+await relay.app.listen({ port, host });
+
+// Once a minute: slash any reported vault that has frozen and still holds stake.
+setInterval(() => {
+  relay
+    .sweep()
+    .then((r) => r.slashed.forEach((s) => console.log(`slashed ${s.vault}: ${s.signature}`)))
+    .catch((e) => console.error("sweep failed:", e instanceof Error ? e.message : e));
+}, 60_000);
 console.log(`nelo relay on http://${host}:${port} · fee payer ${feePayer.address} · mint ${mint}`);
 if (!process.env.RELAY_TOKEN) console.warn("RELAY_TOKEN is not set: anyone who finds the URL can submit vouchers.");

@@ -1,4 +1,86 @@
 {
+  "conflict": {
+    "input": {
+      "packetAHex": "01076e60e33a1fa13e521f9c57cb1f47c7077927b6b8f20f4c196ac10b7755b234090000000000000080969800000000000100000000000000222222222222222222222222222222222222222222222222222222222222222240f9a16a0000000003030303030303036a1d0413a6b85a993f166a31ce641b5578632fb0dd4dd522e691faf475f113f7187ff52d34ddbb55069c28fe7dfae7c24815d5181aedffc85b0fb9d92ffb7f72020b3d58ffeeb0525da579bcc33edb4e1e0036f8e2afc63aac57bcf511efd8531f",
+      "packetBHex": "01076e60e33a1fa13e521f9c57cb1f47c7077927b6b8f20f4c196ac10b7755b2340900000000000000002d3101000000000100000000000000232323232323232323232323232323232323232323232323232323232323232340f9a16a000000000303030303030303ee9c3411ce8010b2ddbdd4048538128ff8a57eb2c876ef52e40c987beb56cb4849b19a12abce277ae8d57de3b6109ad665dcc66c692411dd609e43d789625cd2020b3d58ffeeb0525da579bcc33edb4e1e0036f8e2afc63aac57bcf511efd8531f",
+      "reporter": "4Ss5JMkXAD9Z7cktFEdrqeMuT6jGMF1pVozTyPHZ6zT4",
+      "stakeMint": "93MB2qRDNVLxbmmPuYpLdAqn3u2x9ZhaVZK5wELHueP8"
+    },
+    "precompileAHex": "01003100ffff1000ffff71006900ffff020b3d58ffeeb0525da579bcc33edb4e1e0036f8e2afc63aac57bcf511efd8531f6a1d0413a6b85a993f166a31ce641b5578632fb0dd4dd522e691faf475f113f7187ff52d34ddbb55069c28fe7dfae7c24815d5181aedffc85b0fb9d92ffb7f7201076e60e33a1fa13e521f9c57cb1f47c7077927b6b8f20f4c196ac10b7755b234090000000000000080969800000000000100000000000000222222222222222222222222222222222222222222222222222222222222222240f9a16a000000000303030303030303",
+    "precompileBHex": "01003100ffff1000ffff71006900ffff020b3d58ffeeb0525da579bcc33edb4e1e0036f8e2afc63aac57bcf511efd8531fee9c3411ce8010b2ddbdd4048538128ff8a57eb2c876ef52e40c987beb56cb4849b19a12abce277ae8d57de3b6109ad665dcc66c692411dd609e43d789625cd201076e60e33a1fa13e521f9c57cb1f47c7077927b6b8f20f4c196ac10b7755b2340900000000000000002d3101000000000100000000000000232323232323232323232323232323232323232323232323232323232323232340f9a16a000000000303030303030303",
+    "reportConflict": {
+      "accounts": [
+        {
+          "isSigner": true,
+          "isWritable": true,
+          "pubkey": "4Ss5JMkXAD9Z7cktFEdrqeMuT6jGMF1pVozTyPHZ6zT4"
+        },
+        {
+          "isSigner": false,
+          "isWritable": true,
+          "pubkey": "W1USiFQdcHz4QNK7xhwGktXuhqegc12xo3iNiuTpMvj"
+        },
+        {
+          "isSigner": false,
+          "isWritable": false,
+          "pubkey": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "dataHex": "6ab75ea385f9f22901076e60e33a1fa13e521f9c57cb1f47c7077927b6b8f20f4c196ac10b7755b234090000000000000080969800000000000100000000000000222222222222222222222222222222222222222222222222222222222222222240f9a16a00000000030303030303030301076e60e33a1fa13e521f9c57cb1f47c7077927b6b8f20f4c196ac10b7755b2340900000000000000002d3101000000000100000000000000232323232323232323232323232323232323232323232323232323232323232340f9a16a000000000303030303030303",
+      "programId": "29QdPRQC8C5v6C8gMcBqtw9T4RxYyZ1wqThkEj3XJeQx"
+    },
+    "slash": {
+      "accounts": [
+        {
+          "isSigner": true,
+          "isWritable": true,
+          "pubkey": "4Ss5JMkXAD9Z7cktFEdrqeMuT6jGMF1pVozTyPHZ6zT4"
+        },
+        {
+          "isSigner": false,
+          "isWritable": false,
+          "pubkey": "W1USiFQdcHz4QNK7xhwGktXuhqegc12xo3iNiuTpMvj"
+        },
+        {
+          "isSigner": false,
+          "isWritable": false,
+          "pubkey": "9JEJkGp3evd8wFAztEyjPLgTaRucThLyDJ5nkwdJg9ry"
+        },
+        {
+          "isSigner": false,
+          "isWritable": false,
+          "pubkey": "93MB2qRDNVLxbmmPuYpLdAqn3u2x9ZhaVZK5wELHueP8"
+        },
+        {
+          "isSigner": false,
+          "isWritable": true,
+          "pubkey": "6cdxTGds8nY9GByLxz8nqSUXD4YLQny87VXRHw8LGYEo"
+        },
+        {
+          "isSigner": false,
+          "isWritable": true,
+          "pubkey": "FiKdvvKKKEDBetwJ2y2XQtDx7uTi7ef8p2UspGjesrJg"
+        },
+        {
+          "isSigner": false,
+          "isWritable": false,
+          "pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "isSigner": false,
+          "isWritable": false,
+          "pubkey": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "isSigner": false,
+          "isWritable": false,
+          "pubkey": "11111111111111111111111111111111"
+        }
+      ],
+      "dataHex": "cc8d12a108b15c8e",
+      "programId": "29QdPRQC8C5v6C8gMcBqtw9T4RxYyZ1wqThkEj3XJeQx"
+    }
+  },
   "curve": [
     {
       "hex": "0000000000000000000000000000000000000000000000000000000000000000",

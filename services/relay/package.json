@@ -8,6 +8,7 @@
     "start": "node src/main.ts"
   },
   "dependencies": {
+    "@nelo/enrol": "workspace:*",
     "@nelo/redeem": "workspace:*",
     "@nelo/voucher": "workspace:*",
     "@noble/curves": "^1.6.0",

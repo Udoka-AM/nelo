@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { p256 } from "@noble/curves/p256";
 import { ed25519 } from "@noble/curves/ed25519";
 import { encode, encodeBase58, signedMessage } from "@nelo/voucher";
-import { buildServer, emptyLedger, feePayerFromSecret, fileLedger, memoryLedger, redeem, serial, type RelayRpc } from "../src/index.ts";
+import { buildServer, emptyLedger, feePayerFromSecret, fileLedger, memoryLedger, redeem, serial, type ConflictRpc } from "../src/index.ts";
 
 const NOW = 1_789_000_000;
 const USDC = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
@@ -37,9 +37,10 @@ function packetBase64(): string {
   return Buffer.from(bytes).toString("base64");
 }
 
-function server(o: { token?: string; rpc?: Partial<RelayRpc> } = {}) {
+function server(o: { token?: string; rpc?: Partial<ConflictRpc> } = {}) {
   const sent: string[] = [];
-  const rpc: RelayRpc = {
+  const rpc: ConflictRpc = {
+    accountData: async () => null,
     latestBlockhash: async () => ({ blockhash: encodeBase58(new Uint8Array(32).fill(3)), lastValidBlockHeight: 1_000 }),
     blockHeight: async () => 900,
     accountExists: async () => true,
