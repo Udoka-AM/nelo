@@ -23,7 +23,14 @@
     "plugins": [
       "expo-dev-client",
       "expo-secure-store",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Nelo uses the camera only to scan customers' payment codes.",
+          "recordAudioAndroid": false
+        }
+      ]
     ],
     "extra": {
       "eas": {

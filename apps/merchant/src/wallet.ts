@@ -17,6 +17,7 @@
 import { transact } from "@solana-mobile/mobile-wallet-adapter-protocol";
 import * as SecureStore from "expo-secure-store";
 import { base64AddressToBase58 } from "@nelo/pay";
+import { getBase64Decoder, getBase64Encoder } from "@solana/kit";
 import { forget, remember, type MerchantAccount } from "./account";
 
 /** Shown in the wallet's authorisation sheet. */
@@ -62,6 +63,37 @@ export async function connect(): Promise<MerchantAccount | null> {
   await remember(merchant);
   return merchant;
 }
+
+/**
+ * Have the merchant's wallet sign transactions — sign only, never send. The
+ * caller checks the signed bytes are what it built before anything goes out;
+ * see `@nelo/redeem`'s `checkSigned`.
+ *
+ * One wallet session for the whole batch, so settling five vouchers is one
+ * approval rather than five.
+ */
+export async function signTransactions(transactions: readonly Uint8Array[]): Promise<Uint8Array[]> {
+  const authToken = await SecureStore.getItemAsync(AUTH_TOKEN_KEY);
+  const { signed, token } = await transact(async (wallet) => {
+    const auth = await wallet.authorize({
+      identity: APP_IDENTITY,
+      chain: CHAIN,
+      ...(authToken ? { auth_token: authToken } : {}),
+    });
+    const result = await wallet.signTransactions({
+      payloads: transactions.map((t) => base64.decode(t)),
+    });
+    return { signed: result.signed_payloads, token: auth.auth_token };
+  });
+  await SecureStore.setItemAsync(AUTH_TOKEN_KEY, token);
+  return signed.map((s) => new Uint8Array(base64.encode(s)));
+}
+
+/** Kit's codecs, named for what they do here: bytes to base64 text and back. */
+const base64 = {
+  decode: (bytes: Uint8Array): string => getBase64Decoder().decode(bytes),
+  encode: (text: string): Uint8Array => new Uint8Array(getBase64Encoder().encode(text)),
+};
 
 export async function disconnect(): Promise<void> {
   const authToken = await SecureStore.getItemAsync(AUTH_TOKEN_KEY);

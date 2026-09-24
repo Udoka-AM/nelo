@@ -46,6 +46,10 @@ import { remember, restore, type MerchantAccount } from "./src/account";
 import { PrivyProvider } from "@privy-io/expo";
 import { canOnboardWithPhone, privy, rpcUrl } from "./src/config";
 import Onboarding from "./src/Onboarding";
+import ScanPayment from "./src/Scan";
+import { syncPayers } from "./src/sync";
+import { settleVouchers } from "./src/settle";
+import { voucherStore } from "./src/offline";
 import {
   awaitPayment,
   encodeTransferRequest,
@@ -80,6 +84,12 @@ function Till() {
   const [quoted, setQuoted] = useState<Quoted | null>(null);
   const [balance, setBalance] = useState<Balance | null>(null);
   const [showDaybook, setShowDaybook] = useState(false);
+  /** The customer has no signal, so the till scans their code instead. */
+  const [scanning, setScanning] = useState(false);
+  /** Offline payments taken and not yet settled. */
+  const [owed, setOwed] = useState(0);
+  const [settling, setSettling] = useState(false);
+  const [settleNote, setSettleNote] = useState<string | null>(null);
 
   // The merchant's own clock decides which day a sale belongs to.
   const tz = useMemo(() => -new Date().getTimezoneOffset(), []);
@@ -136,6 +146,57 @@ function Till() {
   useEffect(() => {
     void refreshBalance();
   }, [refreshBalance]);
+
+  const refreshOwed = useCallback(async () => {
+    try {
+      const entries = await voucherStore.all();
+      setOwed(entries.filter((e) => e.status === "pending").length);
+    } catch {
+      // The count is a convenience; the queue itself is untouched.
+    }
+  }, []);
+
+  // Refresh the payer list whenever the till opens with a merchant. Offline,
+  // this fails quietly and the list already on the phone is used.
+  useEffect(() => {
+    if (!merchant) return;
+    void syncPayers(USDC_DEVNET).catch(() => {});
+    void refreshOwed();
+  }, [merchant, refreshOwed]);
+
+  async function onSettle() {
+    if (!merchant) return;
+    setSettling(true);
+    setSettleNote(null);
+    try {
+      // A fresh payer list first: it is also the freshest view of which
+      // payers have been frozen since the till last looked.
+      await syncPayers(USDC_DEVNET).catch(() => {});
+      const settled = await settleVouchers(merchant, USDC_DEVNET);
+      if (settled.kind !== "round") {
+        setSettleNote(settled.reason);
+      } else {
+        const r = settled.report;
+        const parts = [
+          r.settled.length ? `${r.settled.length} paid` : "",
+          r.sent ? `${r.sent} sent, waiting to confirm` : "",
+          r.refused.length ? `${r.refused.length} refused` : "",
+          r.held.length ? `${r.held.length} need a look` : "",
+          r.expired.length ? `${r.expired.length} expired` : "",
+        ].filter(Boolean);
+        setSettleNote(
+          r.offline ? "No signal — try again when you are online." : parts.join(" · ") || "Nothing due yet.",
+        );
+      }
+      setSales(await recent());
+      void refreshBalance();
+    } catch (e) {
+      setSettleNote(e instanceof Error ? e.message : "Could not settle.");
+    } finally {
+      setSettling(false);
+      void refreshOwed();
+    }
+  }
 
   const tokenAmount = useMemo(
     () => (quoted ? formatTokenAmount(localToTokenBaseUnits(minor, quoted.rate)) : "—"),
@@ -385,6 +446,28 @@ function Till() {
     );
   }
 
+  if (charging && scanning && merchant && quoted) {
+    return (
+      <View style={styles.screen}>
+        <StatusBar style="light" />
+        <ScanPayment
+          merchant={merchant.address}
+          chargedBaseUnits={localToTokenBaseUnits(minor, quoted.rate)}
+          chargedLocalMinor={minor}
+          currency={CURRENCY}
+          onDone={(took) => {
+            setScanning(false);
+            void refreshOwed();
+            if (took) {
+              setMinor(0n);
+              endCharge();
+            }
+          }}
+        />
+      </View>
+    );
+  }
+
   if (charging && url) {
     return (
       <View style={styles.screen}>
@@ -415,6 +498,11 @@ function Till() {
               <Text style={styles.statusBad}>No payment yet — the code is still valid</Text>
             ) : null}
           </View>
+          {/* The other way to be paid: the customer's phone has no signal, so
+              it shows a code and this till reads it. */}
+          <Pressable style={styles.offlineButton} onPress={() => setScanning(true)} accessibilityRole="button">
+            <Text style={styles.offlineButtonText}>Customer has no signal? Scan their code</Text>
+          </Pressable>
           <Pressable style={styles.secondary} onPress={endCharge} accessibilityRole="button">
             <Text style={styles.secondaryText}>Cancel</Text>
           </Pressable>
@@ -483,6 +571,25 @@ function Till() {
           </Text>
         </Text>
       </Pressable>
+
+      {owed > 0 || settleNote ? (
+        <Pressable
+          style={styles.owedBar}
+          onPress={onSettle}
+          disabled={settling || owed === 0}
+          accessibilityRole="button"
+          accessibilityLabel="Settle offline payments"
+        >
+          <Text style={styles.owedText}>
+            {settling
+              ? "Settling…"
+              : owed > 0
+                ? `${owed} offline ${owed === 1 ? "payment" : "payments"} to settle · Settle now`
+                : "All offline payments settled"}
+          </Text>
+          {settleNote ? <Text style={styles.owedNote}>{settleNote}</Text> : null}
+        </Pressable>
+      ) : null}
 
       <View style={styles.amountBox}>
         <Text style={styles.currency}>{CURRENCY.code}</Text>
@@ -659,4 +766,21 @@ const styles = StyleSheet.create({
   saleTime: { color: "#8d9299", fontSize: 13.5, width: 46 },
   saleAmount: { color: "#e8e9ea", fontSize: 15.5, flex: 1 },
   saleToken: { color: "#8d9299", fontSize: 13 },
+  offlineButton: {
+    borderWidth: 1,
+    borderColor: "#282b2f",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+  },
+  offlineButtonText: { color: "#4fb98f", fontSize: 15 },
+  owedBar: {
+    marginTop: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: "#1f1a14",
+  },
+  owedText: { color: "#d4a15e", fontSize: 14.5, fontWeight: "600" },
+  owedNote: { color: "#8d9299", fontSize: 13, marginTop: 4 },
 });
