@@ -15,7 +15,7 @@
  * The answer to the second one is smaller than the deck's illustrative figure.
  * That is a finding, not a bug — see `premiumCeiling`.
  */
-import { floorLimit, limitSlope, type CurveParams } from "./curve.ts";
+import { floorLimit, limitSlope, type CurveParams } from "@nelo/voucher";
 import { DEFAULTS, values, type Assumptions, type Values } from "./assumptions.ts";
 
 export const curveFrom = (v: Values): CurveParams => ({

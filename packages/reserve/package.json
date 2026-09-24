@@ -8,5 +8,10 @@
     "test": "node --test \"test/*.test.ts\"",
     "report": "node src/report.ts"
   },
-  "files": ["src"]
+  "files": [
+    "src"
+  ],
+  "dependencies": {
+    "@nelo/voucher": "workspace:*"
+  }
 }

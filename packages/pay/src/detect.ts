@@ -12,7 +12,7 @@
  * and the transaction did not fail. That validation is the pure part below,
  * and it is where the tests are.
  */
-import { encodeBase58 } from "./base58.ts";
+import { encodeBase58 } from "@nelo/voucher";
 import { rpc } from "./rpc.ts";
 
 /** A reference is a marker, never a signer — 32 random bytes is all it needs. */

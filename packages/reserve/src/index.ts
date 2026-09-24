@@ -15,5 +15,7 @@
  * not that it says what is true.
  */
 export * from "./assumptions.ts";
-export * from "./curve.ts";
+// The curve moved to @nelo/voucher — it is protocol, not model. Re-exported
+// so every existing consumer of @nelo/reserve is unaffected.
+export { floorLimit, isqrt, limitSlope, type CurveParams } from "@nelo/voucher";
 export * from "./model.ts";

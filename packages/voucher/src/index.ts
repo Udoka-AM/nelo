@@ -209,3 +209,26 @@ export function compressPublicKey(uncompressed: Uint8Array): Uint8Array {
   out.set(uncompressed.subarray(1, 33), 1);
   return out;
 }
+
+/**
+ * The floor-limit curve, mirroring `programs/nelo_vault/src/curve.rs`.
+ *
+ * Here because it is protocol: `redeem_voucher` computes it from vault state at
+ * redemption, and a merchant deciding offline whether to accept has to arrive
+ * at the same number from the same inputs.
+ */
+export {
+  floorLimit,
+  isqrt,
+  limitSlope,
+  type CurveParams,
+} from "./limit.ts";
+
+/**
+ * Base58, as Solana writes addresses.
+ *
+ * Here for the same reason the curve is: both sides of a payment have to agree
+ * on it, and it belongs with the format rather than with whichever package
+ * happened to need it first. `@nelo/pay` re-exports it unchanged.
+ */
+export * from "./base58.ts";

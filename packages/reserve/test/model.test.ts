@@ -7,7 +7,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULTS, DOLLAR, unsourcedInputs, values } from "../src/assumptions.ts";
-import { floorLimit, isqrt, type CurveParams } from "../src/curve.ts";
+import { floorLimit, isqrt, type CurveParams } from "@nelo/voucher";
 import {
   crossoverStakeValue,
   marginalExposurePerStake,

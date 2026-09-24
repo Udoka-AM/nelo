@@ -125,6 +125,12 @@ importers:
         specifier: ~6.0.3
         version: 6.0.3
 
+  packages/accept:
+    dependencies:
+      '@nelo/voucher':
+        specifier: workspace:*
+        version: link:../voucher
+
   packages/attest:
     dependencies:
       '@nelo/voucher':
@@ -141,9 +147,17 @@ importers:
 
   packages/onboard: {}
 
-  packages/pay: {}
+  packages/pay:
+    dependencies:
+      '@nelo/voucher':
+        specifier: workspace:*
+        version: link:../voucher
 
-  packages/reserve: {}
+  packages/reserve:
+    dependencies:
+      '@nelo/voucher':
+        specifier: workspace:*
+        version: link:../voucher
 
   packages/voucher:
     dependencies:

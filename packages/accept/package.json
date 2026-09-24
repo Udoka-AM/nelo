@@ -1,0 +1,14 @@
+{
+  "name": "@nelo/accept",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "description": "Can this merchant take this voucher, right now, with no network? Mirrors what redeem_voucher will check later.",
+  "dependencies": {
+    "@nelo/voucher": "workspace:*"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.ts\""
+  },
+  "files": ["src"]
+}

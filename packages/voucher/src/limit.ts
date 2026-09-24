@@ -1,14 +1,22 @@
 /**
  * A mirror of the on-chain floor-limit curve.
  *
- * The authority is `programs/nelo_vault/src/curve.rs`. This exists so the model
- * can reason about the same limit the chain will actually enforce, and it
- * reproduces the Rust integer semantics — floor division at every step — rather
- * than the smooth formula, because a model that disagrees with the program by a
- * rounding step is a model of something else.
+ * The authority is `programs/nelo_vault/src/curve.rs`. This reproduces the Rust
+ * integer semantics — floor division at every step — rather than the smooth
+ * formula, because a mirror that disagrees with the program by a rounding step
+ * is a mirror of something else.
  *
- * `test/curve.test.ts` pins it against the worked values in the Rust tests. If
- * the two ever drift, that test is where it shows up.
+ * ## Why it lives here
+ *
+ * It began in `@nelo/reserve`, where it was needed to model what the chain
+ * would enforce. But the curve is **protocol**: it is what `redeem_voucher`
+ * computes from vault state at the moment of redemption, and a merchant
+ * deciding offline whether to take a voucher has to compute exactly the same
+ * number. A till that imported the reserve model to answer that would be
+ * carrying a commercial artefact into the payment path.
+ *
+ * So it sits beside the wire format, which is the other thing both sides must
+ * agree on byte for byte. `@nelo/reserve` re-exports it, unchanged.
  */
 
 const BPS = 10_000;

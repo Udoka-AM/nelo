@@ -146,7 +146,7 @@ export {
   decodeBase58,
   decodeBase64,
   encodeBase58,
-} from "./base58.ts";
+} from "@nelo/voucher";
 export {
   awaitPayment,
   fetchTransaction,

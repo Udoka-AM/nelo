@@ -130,7 +130,7 @@ need a handset. Failures are labelled for the merchant or for whoever configured
 because *"that code is not right"* and *"SMS login is not enabled for this Privy app"* are
 not the same problem and only one of them is fixable at a counter.
 
-**315 tests pass**: 258 in TypeScript across six packages and two services, 40 LiteSVM
+**341 tests pass**: 284 in TypeScript across six packages and two services, 40 LiteSVM
 integration tests against the built program, and 17 for the curve. All of them, plus four typechecks, `cargo
 fmt`, and clippy, run in CI on every push — see `.github/workflows/ci.yml`. The Anchor job
 is week 4's graded deliverable, *clone → install → `anchor test` green*, executed on a
