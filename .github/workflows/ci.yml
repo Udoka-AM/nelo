@@ -37,7 +37,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
-      # 311 across eight packages and two services, on Node's own test runner. There is no vitest
+      # 362 across nine packages and two services, on Node's own test runner. There is no vitest
       # or jest anywhere in this repo, and no build step before the tests.
       - name: Tests
         run: pnpm -r test
@@ -78,12 +78,13 @@ jobs:
       - name: Library unit tests
         run: cargo test -p nelo_vault --lib
 
-      # The cross-language contracts: the voucher wire format, and the
-      # redemption transaction the TypeScript builder must reproduce byte for
-      # byte. Neither needs the built program, so they answer here rather than
-      # after the Anchor job's toolchain install.
+      # The cross-language contracts: the voucher wire format, the redemption
+      # transaction the TypeScript builder must reproduce byte for byte, and
+      # the error codes the settle queue reads chain answers by. None needs the
+      # built program, so they answer here rather than after the Anchor job's
+      # toolchain install.
       - name: Golden vectors
-        run: cargo test -p nelo_vault --test vectors --test tx_vectors
+        run: cargo test -p nelo_vault --test vectors --test tx_vectors --test error_vectors
 
   anchor:
     name: Anchor (45 LiteSVM tests)

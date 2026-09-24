@@ -249,3 +249,34 @@ The objects are `@solana/kit`'s instruction shape, so they drop into a kit trans
 **High-S signatures are folded here too.** A high-S signature verifies offline, so a merchant takes the voucher, but the precompile then rejects it. Folding needs no key, so the builder does it.
 
 **27 tests.** Never broadcast to a cluster yet. That happens in the week-3 gate.
+
+---
+
+## `@nelo/queue`
+
+The merchant's offline queue: vouchers taken and not yet paid, and what to do about each one when the network comes back.
+
+```ts
+enqueue(find, packet, now)        // added | duplicate | conflict (both packets kept)
+plan(entries, now)                // { check, submit, expire }
+settleOnce(store, deps)           // one round against the network
+```
+
+**It holds vouchers, not transactions, so it needs no durable nonces.** Each redemption is built and signed when it is sent, with a fresh blockhash. The only deadline is the voucher's own `expiresAt`, and the queue keeps trying for five minutes past it, because the chain's clock is the one that counts.
+
+**Every chain answer means one of four things:**
+
+| Verdict | Examples | What happens |
+|---|---|---|
+| refused | `SequenceAlreadyRedeemed`, `VoucherExpired`, `DeviceKeyMismatch` | Stops; the merchant is told why |
+| blocked | `AboveFloorLimit`, `InsufficientCollateral`, `SequenceTooFarAhead`, no SOL for the fee | Retries slowly: each can become a yes |
+| transient | `BlockhashNotFound`, network | Retries soon, backing off |
+| held | account-check failures, the precompile refusing, anything unknown | Kept for a person; `release` puts it back |
+
+The codes come from `vectors/program-errors-v1.json`, which the program generates from `NeloError`. Inserting an error variant mid-list fails that test before it can make the queue misread the chain.
+
+**It never mistakes its own success for fraud.** A signature is stored before its transaction is sent. An entry with an attempt in flight is looked up with `searchTransactionHistory`, never resent. And "already redeemed" is believed only once every attempt of the merchant's own is known not to have landed.
+
+**Signing is injected.** `SettleDeps.prepare` builds with `@nelo/redeem`, signs, and returns the signature without sending. Who signs, the merchant's embedded wallet or the relayer, is still an open decision.
+
+**51 tests**, against a fake network. Not yet wired into the merchant app, which has no voucher intake yet.

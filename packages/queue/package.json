@@ -1,0 +1,17 @@
+{
+  "name": "@nelo/queue",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "description": "The merchant's offline queue: vouchers taken and not yet paid, and what each chain answer means when the network comes back.",
+  "dependencies": {
+    "@nelo/voucher": "workspace:*"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.ts\""
+  },
+  "files": [
+    "src",
+    "vectors"
+  ]
+}

@@ -361,6 +361,18 @@ that is not negotiable — half the marks.
 4. **Offline queue and settle-on-reconnect.** Durable nonce accounts so a queued transfer never
    expires. [`services/relay`](../services/relay/src/index.ts) — retry, multi-RPC failover.
    *(Anchor)*
+   **Built:** [`packages/queue`](../packages/queue/src/queue.ts), 51 tests. **No durable
+   nonces**, on purpose. The queue holds vouchers, not signed transactions, and signs each
+   redemption with a fresh blockhash when it is sent. So the only deadline is the voucher's
+   own expiry, and a nonce account would cost rent and an instruction per redemption for
+   nothing. Every chain answer is sorted into refused, blocked (retry slowly: the limit,
+   collateral and replay window all move), transient or held for a person. The error codes
+   come from a vector the program generates. A signature is stored before its transaction
+   is sent, and an attempt in flight is looked up, never resent. So a redemption that landed
+   but was lost track of is not later read as a double spend.
+   **Not done:** the app side. SQLite storage, and a `prepare` that signs, both wait on who
+   signs redemptions, which is still open. Multi-RPC failover belongs in `prepare` and
+   `statuses` as well, and is not written.
 5. **Conflict handling.** On the first conflicting voucher the vault freezes permanently.
    *(Anchor)*
 6. **Close-of-day reconciliation.** *(Design + Android)*
