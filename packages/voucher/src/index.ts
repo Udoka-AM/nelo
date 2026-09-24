@@ -232,3 +232,4 @@ export {
  * happened to need it first. `@nelo/pay` re-exports it unchanged.
  */
 export * from "./base58.ts";
+export * from "./qr.ts";

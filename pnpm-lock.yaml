@@ -215,6 +215,10 @@ importers:
       '@noble/curves':
         specifier: ^1.6.0
         version: 1.9.7
+    devDependencies:
+      qrcode:
+        specifier: 1.5.4
+        version: 1.5.4
 
   services/relay:
     dependencies:
