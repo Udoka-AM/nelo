@@ -32,7 +32,7 @@
  * Everything here is pure: entries in, entries out, the clock passed in.
  * Storage is the app's (SQLite), and the I/O is `settle.ts`'s.
  */
-import { decode, encodeBase58 } from "@nelo/voucher";
+import { decode, encodeBase58, SIGNED_LEN } from "@nelo/voucher";
 import { classify, type Verdict } from "./errors.ts";
 
 export type Status =
@@ -123,7 +123,10 @@ export function entryId(vault: string, seq: bigint): string {
 
 export type Enqueued =
   | { kind: "added"; entry: Entry }
-  /** The same bytes again — a rescan, a double tap. Nothing to do. */
+  /**
+   * The same signed message again: a rescan, a double tap, or the payer's
+   * phone re-signing after a crash. Nothing to do.
+   */
   | { kind: "duplicate"; entry: Entry }
   /**
    * A *different* voucher at a sequence this till already holds. The payer's
@@ -151,7 +154,11 @@ export function enqueue(
 
   const existing = find(id);
   if (existing) {
-    return sameBytes(existing.packet, packet)
+    // Compare the signed message, not the whole packet. A payer's phone that
+    // crashed mid-payment signs the same message again, and ECDSA gives a new
+    // signature each time. Those are one voucher, and the program agrees: it
+    // refuses two identical messages as `NotAConflict`.
+    return sameBytes(existing.packet.subarray(0, SIGNED_LEN), packet.subarray(0, SIGNED_LEN))
       ? { kind: "duplicate", entry: existing }
       : { kind: "conflict", existing, incoming: packet.slice() };
   }

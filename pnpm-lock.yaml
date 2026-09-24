@@ -159,6 +159,19 @@ importers:
         specifier: ^1.6.0
         version: 1.9.7
 
+  packages/issue:
+    dependencies:
+      '@nelo/voucher':
+        specifier: workspace:*
+        version: link:../voucher
+    devDependencies:
+      '@nelo/accept':
+        specifier: workspace:*
+        version: link:../accept
+      '@noble/curves':
+        specifier: ^1.6.0
+        version: 1.9.7
+
   packages/ledger: {}
 
   packages/onboard: {}

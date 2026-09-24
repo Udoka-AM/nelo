@@ -42,6 +42,16 @@ test("the same bytes twice is a duplicate, not a second entry", () => {
   assert.equal(r.kind, "duplicate");
 });
 
+test("the same message with a different signature is a duplicate, not a conflict", () => {
+  // A payer's phone re-signs the same message after a crash, and ECDSA gives a
+  // new signature. Calling that a conflict would accuse the payer of fraud.
+  const first = entry();
+  const resigned = packet();
+  resigned[105] ^= 0xff;
+  const r = enqueue((id) => (id === first.id ? first : undefined), resigned, T0 + 5);
+  assert.equal(r.kind, "duplicate");
+});
+
 test("different bytes at a held sequence are a conflict, with both packets kept", () => {
   const first = entry({ amount: 5_000_000n });
   const other = packet({ amount: 9_000_000n });
