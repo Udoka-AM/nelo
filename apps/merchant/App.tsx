@@ -418,6 +418,27 @@ function Till() {
           <Pressable style={styles.secondary} onPress={endCharge} accessibilityRole="button">
             <Text style={styles.secondaryText}>Cancel</Text>
           </Pressable>
+
+          {/* Development builds only. Two debugging sessions have now turned on
+              "what was actually in that QR" and "which key is the terminal
+              watching", and both were unanswerable from the outside — the URL
+              lives in a QR nobody can read back, and the reference is a random
+              key that exists only in memory. A merchant never sees this; it is
+              gated on __DEV__. Long-press to copy, or look the reference up on
+              an explorer: if no transaction names it, the customer's wallet
+              never attached it. */}
+          {__DEV__ ? (
+            <View style={styles.debug}>
+              <Text style={styles.debugLabel}>REFERENCE</Text>
+              <Text style={styles.debugText} selectable>
+                {reference}
+              </Text>
+              <Text style={styles.debugLabel}>REQUEST</Text>
+              <Text style={styles.debugText} selectable>
+                {url}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
     );
@@ -566,6 +587,15 @@ const styles = StyleSheet.create({
   secondary: { marginTop: 12, paddingVertical: 14, paddingHorizontal: 40 },
   secondaryText: { color: "#8d9299", fontSize: 16 },
   secondaryCentred: { color: "#8d9299", fontSize: 15.5, textAlign: "center", lineHeight: 22 },
+  debug: {
+    marginTop: 22,
+    borderTopWidth: 1,
+    borderTopColor: "#282b2f",
+    paddingTop: 12,
+    width: "100%",
+  },
+  debugLabel: { color: "#5f646b", fontSize: 9.5, letterSpacing: 1.6, marginBottom: 3 },
+  debugText: { color: "#8d9299", fontSize: 10.5, marginBottom: 10 },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 24 },
   statusWaiting: { color: "#8d9299", fontSize: 14.5 },
   statusBad: { color: "#d4855e", fontSize: 14.5, textAlign: "center" },
