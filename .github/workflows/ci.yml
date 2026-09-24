@@ -86,7 +86,7 @@ jobs:
         run: cargo test -p nelo_vault --test vectors --test tx_vectors
 
   anchor:
-    name: Anchor (40 LiteSVM tests)
+    name: Anchor (45 LiteSVM tests)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

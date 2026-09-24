@@ -130,16 +130,16 @@ need a handset. Failures are labelled for the merchant or for whoever configured
 because *"that code is not right"* and *"SMS login is not enabled for this Privy app"* are
 not the same problem and only one of them is fixable at a counter.
 
-**373 tests pass**: 311 in TypeScript across eight packages and two services, 40 LiteSVM
+**378 tests pass**: 311 in TypeScript across eight packages and two services, 45 LiteSVM
 integration tests against the built program, 19 Rust unit tests for the curve and the
 precompile layout, and 3 that generate and check the cross-language golden vectors. All of them, plus four typechecks, `cargo
 fmt`, and clippy, run in CI on every push — see `.github/workflows/ci.yml`. The Anchor job
 is week 4's graded deliverable, *clone → install → `anchor test` green*, executed on a
 machine that starts with nothing.
 
-Not yet built: a live price feed (see above), slashing (the freeze blocks the exit, but
-nothing moves the stake to a reserve yet — there is no reserve account), the payout
-partner adapter itself, and the relay's transaction builder.
+Not yet built: a live price feed (see above), paying out of the reserve (slashing moves a
+frozen vault's stake into it, but nothing yet moves it back out — that waits on a decision
+about who is compensated and how), and the payout partner adapter itself.
 
 **StrongBox has still never run.** The payer probe now works on a real handset — 4 of 5,
 with Hermes, the codec and P-256 all answered — but that handset has no secure element,

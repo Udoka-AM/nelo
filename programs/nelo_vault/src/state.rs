@@ -31,6 +31,11 @@ pub struct Vault {
     // ---- Trust Stake ----
     /// SKR staked against this vault, in stake-mint base units. First-loss
     /// capital: it is what the higher offline limit is bought with.
+    ///
+    /// On a frozen vault this is the stake that set the limit merchants were
+    /// given, and `slash` leaves it in place after moving the tokens to the
+    /// reserve. The vault's stake token account is what records the tokens
+    /// actually held. See `instructions::slash`.
     pub stake: u64,
     /// Reputation multiplier in bps, published by the risk authority from
     /// settled volume, dispute rate and tenure. Decays with inactivity.

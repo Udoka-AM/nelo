@@ -10,6 +10,7 @@
 //! Collateral is SPL — USDC in production. A proven double-spend freezes the vault via
 //! `report_conflict`; the freeze blocks the payer's exit but deliberately
 //! leaves redemption open, so honest merchants can still claim collateral.
+//! `slash` then moves the frozen vault's stake into the platform reserve.
 
 pub mod constants;
 pub mod curve;
@@ -119,5 +120,10 @@ pub mod nelo_vault {
     /// Collect the requested stake, once the cooldown has elapsed.
     pub fn unstake(ctx: Context<Unstake>) -> Result<()> {
         instructions::stake::handle_unstake(ctx)
+    }
+
+    /// Move a frozen vault's stake into the platform reserve. Permissionless.
+    pub fn slash(ctx: Context<Slash>) -> Result<()> {
+        instructions::slash::handle_slash(ctx)
     }
 }

@@ -1434,3 +1434,150 @@ fn an_unstaked_vault_keeps_its_enrolled_limit() {
     assert_eq!(state.reputation_bps, 10_000, "neutral at enrolment");
     assert_limit(&mut ctx, 0, FLOOR_LIMIT);
 }
+
+// ---- Slashing ----
+
+fn reserve_stake_token(ctx: &Ctx) -> Pubkey {
+    ata(&ctx.risk_config, &ctx.stake_mint)
+}
+
+/// A funded third party: slashing is permissionless, so the tests crank it as
+/// someone who is neither the payer nor the risk authority.
+fn cranker(ctx: &mut Ctx) -> Keypair {
+    let k = Keypair::new();
+    ctx.svm.airdrop(&k.pubkey(), LAMPORTS).unwrap();
+    k
+}
+
+fn slash_into(ctx: &mut Ctx, cranker: &Keypair, reserve: Pubkey) -> Result<(), String> {
+    let ix = Instruction::new_with_bytes(
+        nelo_vault::id(),
+        &nelo_vault::instruction::Slash {}.data(),
+        nelo_vault::accounts::Slash {
+            cranker: cranker.pubkey(),
+            vault: ctx.vault,
+            config: ctx.risk_config,
+            stake_mint: ctx.stake_mint,
+            vault_stake_token: ctx.vault_stake_token,
+            reserve_stake_token: reserve,
+            token_program: SPL_TOKEN_ID,
+            associated_token_program: ATA_PROGRAM_ID,
+            system_program: system_program::ID,
+        }
+        .to_account_metas(None),
+    );
+    send(ctx, &[ix], &[cranker])
+}
+
+fn slash(ctx: &mut Ctx, cranker: &Keypair) -> Result<(), String> {
+    let reserve = reserve_stake_token(ctx);
+    slash_into(ctx, cranker, reserve)
+}
+
+fn freeze(ctx: &mut Ctx) {
+    let device = ctx.device.clone();
+    let a = voucher(ctx, 4, 10_000_000);
+    let mut b = voucher(ctx, 4, 20_000_000);
+    b.salt = [2u8; 8];
+    report_conflict(ctx, &a, &b, &device, &device).expect("conflict proof");
+    assert_eq!(vault_state(ctx).status, 1, "frozen");
+}
+
+/// The whole stake moves, including the part already requested for unstake.
+/// A pending request is not a claim against a loss that was proven first.
+#[test]
+fn slashing_moves_the_whole_stake_into_the_reserve() {
+    let mut ctx = setup();
+    stake(&mut ctx, 100 * ONE_SKR).expect("stake");
+    request_unstake(&mut ctx, 40 * ONE_SKR).expect("request");
+    freeze(&mut ctx);
+
+    let collateral = token_balance(&ctx, &ctx.vault_token);
+    let who = cranker(&mut ctx);
+    slash(&mut ctx, &who).expect("a frozen vault's stake can be slashed by anyone");
+
+    assert_eq!(
+        token_balance(&ctx, &reserve_stake_token(&ctx)),
+        100 * ONE_SKR,
+        "the reserve holds all of it"
+    );
+    assert_eq!(token_balance(&ctx, &ctx.vault_stake_token), 0);
+    assert_eq!(
+        token_balance(&ctx, &ctx.vault_token),
+        collateral,
+        "the USDC collateral stays for the merchants"
+    );
+}
+
+#[test]
+fn an_active_vault_cannot_be_slashed() {
+    let mut ctx = setup();
+    stake(&mut ctx, 100 * ONE_SKR).expect("stake");
+
+    let who = cranker(&mut ctx);
+    let res = slash(&mut ctx, &who);
+    assert!(res.is_err(), "no proof, no slash");
+    assert!(res.unwrap_err().contains("VaultNotFrozen"));
+    assert_eq!(token_balance(&ctx, &ctx.vault_stake_token), 100 * ONE_SKR);
+}
+
+#[test]
+fn a_slashed_vault_has_nothing_left_to_slash() {
+    let mut ctx = setup();
+    stake(&mut ctx, 100 * ONE_SKR).expect("stake");
+    freeze(&mut ctx);
+
+    let who = cranker(&mut ctx);
+    slash(&mut ctx, &who).expect("first slash");
+    let res = slash(&mut ctx, &who);
+    assert!(res.is_err());
+    assert!(res.unwrap_err().contains("NothingToSlash"));
+    assert_eq!(
+        token_balance(&ctx, &reserve_stake_token(&ctx)),
+        100 * ONE_SKR,
+        "counted once"
+    );
+}
+
+/// The caller picks when, never where. An account that is not the reserve is
+/// refused, and the same cranker, calling the same way, succeeds straight after
+/// with the real one — so the refusal is about the account, not the harness.
+#[test]
+fn the_reserve_is_not_the_callers_choice() {
+    let mut ctx = setup();
+    stake(&mut ctx, 100 * ONE_SKR).expect("stake");
+    freeze(&mut ctx);
+
+    let who = cranker(&mut ctx);
+    let own = ata(&who.pubkey(), &ctx.stake_mint);
+    assert!(slash_into(&mut ctx, &who, own).is_err());
+    assert_eq!(token_balance(&ctx, &ctx.vault_stake_token), 100 * ONE_SKR);
+
+    slash(&mut ctx, &who).expect("the reserve itself is accepted");
+    assert_eq!(
+        token_balance(&ctx, &reserve_stake_token(&ctx)),
+        100 * ONE_SKR
+    );
+}
+
+/// The property slashing most easily breaks. Merchants took vouchers under the
+/// staked limit before anyone knew about the fraud; if taking the stake also
+/// took the limit, their vouchers would bounce and the slash would create the
+/// very losses it exists to pay for.
+#[test]
+fn slashing_does_not_lower_the_limit_honest_merchants_were_given() {
+    let mut ctx = setup();
+    stake(&mut ctx, 100 * ONE_SKR).expect("stake");
+    freeze(&mut ctx);
+
+    let who = cranker(&mut ctx);
+    slash(&mut ctx, &who).expect("slash");
+    assert_eq!(
+        token_balance(&ctx, &ctx.vault_stake_token),
+        0,
+        "tokens gone"
+    );
+
+    // Still 1 + √1 = 2× the floor: the limit the stake bought, before the slash.
+    assert_limit(&mut ctx, 5, 2 * FLOOR_LIMIT);
+}

@@ -238,9 +238,9 @@ Order matters here; each step feeds the next.
    CPI inside the program. So there are two gates — `kora.toml` for what the node will
    sign, `policy.ts` for what Nelo will ask for — and funding a new account is off by
    default.
-   **Not built:** the transaction builder. It needs the Anchor client and the precompile
-   at instruction 0, and cannot be proven without a validator. Week 3, with the offline
-   queue that will feed it.
+   **Built:** the transaction builder, `packages/redeem`. It is pinned byte for byte to the
+   program's own Anchor builders through `tests/tx_vectors.rs`. It has not yet been
+   broadcast; that happens with the offline queue that will feed it, in week 3.
    **Done when:** a merchant with a zero SOL balance completes a sale.
 5. **Balance in local currency, held in dollars.** *(Android + Design)*
    **Done.** The till reads the merchant's USDC balance and shows it in their own
@@ -316,9 +316,14 @@ Order matters here; each step feeds the next.
    this build, which is the first time `redeem_voucher` has been exercised on a real
    validator with its new account struct.
    **Done when:** met. `anchor test` now runs in CI on every push.
-   **Still open:** slashing. The freeze blocks the exit, so stake cannot walk away from
-   a loss it backs — but nothing yet *moves* it to a reserve, because there is no
-   reserve account. That is the other half of "first-loss capital".
+   **Slashing: built.** `slash` is permissionless on a frozen vault. It moves the whole
+   stake, pending unstake included, into a reserve owned by the risk-config PDA. It
+   leaves the vault's stake figures alone, because they set the limit honest merchants'
+   vouchers are checked against. Zeroing them would bounce those vouchers and create the
+   losses the stake exists to cover. Five LiteSVM tests, one of which pins exactly that.
+   **Still open:** paying out of the reserve. The tokens are held by a PDA, so no key can
+   take them, and nothing in the program pays them out yet. Who is compensated, by how
+   much and on whose say-so is a decision to make before code is written for it.
 
 > **Gate — Wed 23 Sep.** A sale runs end to end, in local currency, on a phone, with a wallet
 > you did not write. **Model the reserve requirement this week** — the SKR premium is priced

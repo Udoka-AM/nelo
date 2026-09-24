@@ -147,6 +147,16 @@ Refuses: identical vouchers (`NotAConflict` — that is a replay, and freezing o
 
     Errors: `InsufficientStake`, `UnstakeNotRequested`, `UnstakeCooldownActive`.
   </Accordion>
+
+  <Accordion title="slash()" icon="gavel">
+    Permissionless, on a **frozen** vault only. Moves every token in the vault's stake account, including stake already requested for unstake, into the **reserve**: the stake mint's associated account under the risk-config PDA. The reserve address is derived, so the caller chooses when to slash but never where the tokens go. The first slash pays the reserve account's rent.
+
+    **The vault's `stake` and `pending_unstake` are left as they were.** They set the offline limit `redeem_voucher` checks. Zeroing them would drop it to the enrolled floor, and honest merchants' vouchers taken under the staked limit would bounce. On a frozen vault those fields mean "the stake that set the limit". The stake token account records what is actually held.
+
+    Nothing pays out of the reserve yet. That waits on a decision about who is compensated.
+
+    Errors: `VaultNotFrozen`, `NothingToSlash`. Emits `StakeSlashed { vault, amount, cranker }`.
+  </Accordion>
 </AccordionGroup>
 
 ## Constants
@@ -188,3 +198,4 @@ Refuses: identical vouchers (`NotAConflict` — that is a replay, and freezing o
 | `StakeMintMismatch` / `InsufficientStake` | Staking |
 | `UnstakeNotRequested` / `UnstakeCooldownActive` | Unstake cooldown |
 | `ZeroAmount` / `Overflow` | |
+| `VaultNotFrozen` / `NothingToSlash` | Slashing needs a proven conflict, and finds nothing twice |

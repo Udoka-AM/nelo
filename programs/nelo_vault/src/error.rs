@@ -75,4 +75,12 @@ pub enum NeloError {
 
     #[msg("Arithmetic overflow")]
     Overflow,
+
+    // --- slashing ---
+    // Appended rather than grouped above, so every existing error keeps its
+    // code and clients decoding them need no change.
+    #[msg("Only a vault frozen by a conflict proof can be slashed")]
+    VaultNotFrozen,
+    #[msg("This vault holds no stake to slash")]
+    NothingToSlash,
 }
