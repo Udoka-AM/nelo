@@ -14,14 +14,24 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.nelo.payer"
+      "package": "com.nelo.payer",
+      "allowBackup": false
     },
     "scheme": "nelopayer",
     "platforms": [
       "android"
     ],
     "plugins": [
-      "expo-dev-client"
+      "expo-dev-client",
+      "expo-secure-store",
+      "expo-sqlite",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Nelo uses the camera only to scan a merchant's payment code.",
+          "recordAudioAndroid": false
+        }
+      ]
     ],
     "extra": {
       "eas": {

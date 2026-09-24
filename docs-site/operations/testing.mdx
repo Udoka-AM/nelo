@@ -15,19 +15,19 @@ This page is kept honest rather than flattering. The distinction between *a test
 | `programs/nelo_vault` — LiteSVM | 45 | Solana toolchain |
 | `services/settle` | 39 | Node only |
 | `packages/voucher` | 37 | `pnpm install` |
-| `packages/redeem` | 32 | `pnpm install` |
+| `packages/redeem` | 37 | `pnpm install` |
 | `packages/accept` | 27 | Node only |
 | `services/relay` | 25 | Node only |
 | `programs/nelo_vault` — curve and precompile-layout unit tests | 19 | Rust only |
 | `packages/enrol` | 18 | `pnpm install` |
 | `packages/reserve` | 17 | Node only |
-| `packages/issue` | 16 | `pnpm install` |
+| `packages/issue` | 21 | `pnpm install` |
 | `packages/ledger` | 13 | Node only |
 | `packages/attest` | 12 | Node only |
-| `packages/till` | 9 | `pnpm install` |
+| `packages/till` | 10 | `pnpm install` |
 | `programs/nelo_vault` — golden vectors (voucher, redemption tx, error codes, account layouts) | 7 | Rust only |
 
-**491, all green, all on every push.** Everything but the LiteSVM suite runs with no phone and no validator — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
+**502, all green, all on every push.** Everything but the LiteSVM suite runs with no phone and no validator — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
 
 The LiteSVM tests were the long-standing gap. They went unexecuted for weeks because no machine that had the repo had the Solana toolchain — `release.anza.xyz` is unreachable from the development environment. The first run scored **39 of 40**, and [the one failure was worth more than the 39 passes](#things-that-went-wrong-and-were-caught).
 
@@ -37,7 +37,7 @@ The LiteSVM tests were the long-standing gap. They went unexecuted for weeks bec
 
 | Job | What | Cold | Warm |
 |---|---|---|---|
-| **TypeScript** | 420 tests, then four typechecks | ~21s | ~21s |
+| **TypeScript** | 431 tests, then four typechecks | ~21s | ~21s |
 | **Rust (host)** | `cargo fmt`, clippy, 19 unit tests, 7 golden-vector tests | not yet timed | ~34s |
 | **Anchor** | the 45 LiteSVM tests | ~14m | ~2m once the build cache is warm |
 
@@ -126,17 +126,22 @@ request rather than the detector.
 <Note>
 **The offline path, once a device is back.** Nothing below has run on a handset.
 
-1. **Rebuild the development client.** `expo-camera` is a new native module, so the dev build
-   on the phone cannot load this JS: `pnpm --filter @nelo/merchant build:dev`, then install
-   the new APK.
+1. **Rebuild both development clients.** `expo-camera` is a new native module in both apps,
+   and the payer app also gained Mobile Wallet Adapter, SQLite and SecureStore:
+   `pnpm --filter @nelo/merchant build:dev` and `pnpm --filter @nelo/payer build:dev`, then
+   install both APKs.
 2. **Fund the merchant wallet with a little devnet SOL.** Redemptions are signed and paid for
    by the merchant's own wallet over Mobile Wallet Adapter.
 3. **Open the till online once.** It syncs every vault for devnet USDC. The payer's vault must
    exist on chain before the till goes offline, or the scan says the payer is not on the list.
-4. **Airplane mode, then Charge → "Customer has no signal? Scan their code."** Needs the
-   payer's QR, and the payer app does not show one yet. That screen is the remaining piece of
-   the week-3 gate.
-5. **Reconnect and tap the orange bar.** The wallet asks to sign; a wallet that adds a
+4. **Set up the payer phone online first:** Connect wallet (it needs devnet SOL and devnet
+   USDC), enter an amount, **Open my offline wallet**. One wallet approval opens the vault
+   and locks the USDC. Then open the till online once more so it syncs the new vault.
+5. **Both phones in airplane mode.** Till: enter an amount, **Charge**. Payer: **Pay a
+   merchant**, scan the till's code, **Pay**. Till: **Customer has no signal? Scan their
+   code**, scan the payer's code, **Hand over the goods**. Scan the same payer code again: it
+   must be refused.
+6. **Reconnect and tap the orange bar.** The wallet asks to sign; a wallet that adds a
    priority fee is refused on purpose, with a message saying so.
 </Note>
 

@@ -11,7 +11,9 @@
     "@nelo/voucher": "workspace:*"
   },
   "devDependencies": {
-    "@noble/curves": "^1.6.0"
+    "@noble/curves": "^1.6.0",
+    "@nelo/issue": "workspace:*",
+    "@nelo/pay": "workspace:*"
   },
   "scripts": {
     "test": "node --test \"test/*.test.ts\""

@@ -358,8 +358,10 @@ that is not negotiable — half the marks.
    alphanumeric mode. Not raw bytes: scanners return strings, and a byte-mode payload
    that is not UTF-8 comes back altered, which the merchant would see as a bad signature.
    The test renders every golden voucher with the apps' own QR library and gets version 10
-   at M. **Merchant scan screen: written**, never run on a handset. **Payer QR screen: not
-   built.**
+   at M. **Merchant scan screen and payer screens: written**, never run on a handset. The
+   payer reads the till's ordinary Solana Pay code to learn merchant and amount, so the
+   offline sale is two scans, one each way. `packages/till/test/sale.test.ts` runs that whole
+   sale, both sides, through the same packages the apps use.
 2. **Cached enrolment and revocation lists**, synced at last connection. *(Android)*
    **Built:** [`packages/enrol`](../packages/enrol/src/cache.ts). It holds every vault for the
    till's mint, since a payer in a dead zone can only be checked against a key already held.
