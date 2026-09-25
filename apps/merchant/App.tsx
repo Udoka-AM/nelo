@@ -44,7 +44,7 @@ import { currentRate, type Quoted } from "./src/rate";
 import { connect } from "./src/wallet";
 import { remember, restore, type MerchantAccount } from "./src/account";
 import { PrivyProvider } from "@privy-io/expo";
-import { canOnboardWithPhone, privy, rpcUrl } from "./src/config";
+import { canOnboardWithPhone, privy, rpc } from "./src/config";
 import Onboarding from "./src/Onboarding";
 import ScanPayment from "./src/Scan";
 import CloseOfDay from "./src/CloseOfDay";
@@ -69,7 +69,7 @@ const USDC_DEVNET = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
 const CURRENCY = { code: "NGN", symbol: "₦", minorDigits: 2 };
 // Configurable; see src/config.ts for why the public endpoint is not enough
 // once detection polls for real.
-const RPC_URL = rpcUrl;
+const RPC_URL = rpc;
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "·", "0", "⌫"];
 

@@ -28,7 +28,7 @@ import {
   vaultAddress,
 } from "@nelo/redeem";
 import { decodeBase64 } from "@nelo/voucher";
-import { FLOOR_LIMIT, KEY_ALIAS, rpcUrl, USDC_DEVNET } from "./config";
+import { FLOOR_LIMIT, KEY_ALIAS, rpc, USDC_DEVNET } from "./config";
 import { accountExists, latestBlockhash, waitForAccount } from "./rpc";
 import { issuerStore } from "./storage";
 import { signAndSend } from "./wallet";
@@ -59,7 +59,7 @@ const unhex = (s: string) => Uint8Array.from({ length: s.length / 2 }, (_, i) =>
 /** The vault account and the risk config, as the issuer sees them. */
 async function readChain(vault: string) {
   const now = Math.floor(Date.now() / 1000);
-  const { snapshot } = await fetchSome(jsonRpc(rpcUrl), [vault], { now, mint: USDC_DEVNET });
+  const { snapshot } = await fetchSome(jsonRpc(rpc.url, rpc.fetch), [vault], { now, mint: USDC_DEVNET });
   const cache = applySnapshot(emptyCache(), snapshot);
   const found = lookup(cache, vault);
   if (!found.found) {

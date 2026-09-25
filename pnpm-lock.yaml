@@ -44,6 +44,9 @@ importers:
       '@nelo/redeem':
         specifier: workspace:*
         version: link:../../packages/redeem
+      '@nelo/rpc':
+        specifier: workspace:*
+        version: link:../../packages/rpc
       '@nelo/till':
         specifier: workspace:*
         version: link:../../packages/till
@@ -141,6 +144,9 @@ importers:
       '@nelo/redeem':
         specifier: workspace:*
         version: link:../../packages/redeem
+      '@nelo/rpc':
+        specifier: workspace:*
+        version: link:../../packages/rpc
       '@nelo/till':
         specifier: workspace:*
         version: link:../../packages/till
@@ -298,6 +304,8 @@ importers:
         specifier: workspace:*
         version: link:../voucher
 
+  packages/rpc: {}
+
   packages/till:
     dependencies:
       '@nelo/accept':
@@ -341,6 +349,9 @@ importers:
       '@nelo/redeem':
         specifier: workspace:*
         version: link:../../packages/redeem
+      '@nelo/rpc':
+        specifier: workspace:*
+        version: link:../../packages/rpc
       '@nelo/voucher':
         specifier: workspace:*
         version: link:../../packages/voucher

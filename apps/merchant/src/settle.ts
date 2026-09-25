@@ -34,7 +34,7 @@ import {
 } from "@nelo/queue";
 import { buildRedemption, checkSigned, TOKEN_PROGRAM_ID } from "@nelo/redeem";
 import { record } from "./daybook";
-import { relayToken, relayUrl, rpcUrl } from "./config";
+import { relayToken, relayUrl, rpc } from "./config";
 import { markBooked, markReported, unbooked, unreported, voucherStore } from "./offline";
 import { signTransactions } from "./wallet";
 import type { MerchantAccount } from "./account";
@@ -44,7 +44,7 @@ const relayer: Relayer = { url: relayUrl, ...(relayToken ? { token: relayToken }
 type Rpc = { result?: unknown; error?: { message?: string; data?: { err?: unknown } } };
 
 async function call(method: string, params: unknown[]): Promise<Rpc> {
-  const response = await fetch(rpcUrl, {
+  const response = await rpc.fetch(rpc.url, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
@@ -159,7 +159,7 @@ async function settleWithWallet(merchant: MerchantAccount, mint: string): Promis
   return { kind: "round", report };
 }
 
-const statuses = rpcStatuses(rpcUrl);
+const statuses = rpcStatuses(rpc.url, rpc.fetch);
 
 /**
  * Settled vouchers go into the day-book, once each. Keyed on the voucher's id,

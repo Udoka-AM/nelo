@@ -83,3 +83,17 @@ test("a balance the merchant can read", () => {
 test("a zero balance formats as zero, not as empty", () => {
   assert.equal(formatLocalAmount(tokenBaseUnitsToLocalMinor(0n, NGN), 2), "0.00");
 });
+
+test("an endpoint with its own fetch is used instead of the global one", async () => {
+  const { fetchTokenBalance } = await import("../src/index.ts");
+  const asked: string[] = [];
+  const endpoint = {
+    url: "https://primary.example",
+    fetch: (async (url: string) => {
+      asked.push(url);
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: { value: [] } }));
+    }) as unknown as typeof fetch,
+  };
+  assert.equal(await fetchTokenBalance(endpoint, "owner", "mint"), 0n);
+  assert.deepEqual(asked, ["https://primary.example"]);
+});

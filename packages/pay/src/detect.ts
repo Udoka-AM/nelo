@@ -13,7 +13,7 @@
  * and it is where the tests are.
  */
 import { encodeBase58 } from "@nelo/voucher";
-import { rpc } from "./rpc.ts";
+import { rpc, type RpcTarget } from "./rpc.ts";
 
 /** A reference is a marker, never a signer — 32 random bytes is all it needs. */
 export function referenceFromBytes(bytes: Uint8Array): string {
@@ -126,7 +126,7 @@ export function validatePayment(
  * should not wait out finality to hand over a loaf of bread.
  */
 export async function findReference(
-  rpcUrl: string,
+  rpcUrl: RpcTarget,
   reference: string,
 ): Promise<string | null> {
   const signatures = await rpc<{ signature: string; err: unknown }[]>(
@@ -140,7 +140,7 @@ export async function findReference(
 }
 
 export async function fetchTransaction(
-  rpcUrl: string,
+  rpcUrl: RpcTarget,
   signature: string,
 ): Promise<ParsedTransaction | null> {
   return rpc<ParsedTransaction | null>(rpcUrl, "getTransaction", [
@@ -188,7 +188,7 @@ export interface AwaitOptions {
  * "that was not enough", not left looking at a spinner.
  */
 export async function awaitPayment(
-  rpcUrl: string,
+  rpcUrl: RpcTarget,
   reference: string,
   expected: ExpectedPayment,
   options: AwaitOptions = {},

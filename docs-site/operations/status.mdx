@@ -41,7 +41,7 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | `programs/nelo_vault` — trust model | ✅ Proven on devnet |
 | `programs/nelo_vault` — Trust Stake | ✅ Proven — LiteSVM, then devnet |
 | `packages/voucher` | ✅ Proven, both sides, golden vectors (38 tests) |
-| `packages/pay` | ✅ Proven (54 tests) |
+| `packages/pay` | ✅ Proven (64 tests) |
 | `packages/ledger` | ✅ Proven (22 tests), including close of day with offline payments |
 | `packages/onboard` | ✅ Proven (60 tests) |
 | `packages/reserve` | ✅ Proven (17 tests) |
@@ -57,7 +57,8 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | `services/settle` — partner | 🟡 Declared stub |
 | `packages/attest` | ⚠️ Compiles (EAS build); never run on hardware |
 | `apps/merchant` | ⚠️ Typechecks; native side builds; never rendered |
-| `services/relay` | ✅ Submits offline vouchers and pays fees, idempotently; reports double spends and cranks slashing (51 tests); runs on the Mac behind a tunnel for the demo |
+| `services/relay` | ✅ Submits offline vouchers and pays fees, idempotently; reports double spends and cranks slashing (53 tests); runs on the Mac behind a tunnel for the demo |
+| `packages/rpc` | ✅ RPC failover for both apps and the relayer (10 tests); never exercised against a real outage |
 | Live price feed | ❌ Blocked on a product decision |
 | Onboarding — the flow's rules | ✅ Proven (29 of `@nelo/onboard`'s 60) |
 | Onboarding — the Privy calls | ⚠️ Typechecked against the SDK; needs an app ID and a device |

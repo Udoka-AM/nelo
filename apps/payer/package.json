@@ -10,6 +10,7 @@
     "@nelo/pay": "workspace:*",
     "@nelo/queue": "workspace:*",
     "@nelo/redeem": "workspace:*",
+    "@nelo/rpc": "workspace:*",
     "@nelo/till": "workspace:*",
     "@nelo/voucher": "workspace:*",
     "@noble/curves": "^1.6.0",

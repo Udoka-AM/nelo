@@ -2,8 +2,21 @@
  * Build-time settings for the payer app. Devnet throughout until real money
  * is in play.
  */
-export const rpcUrl =
-  process.env.EXPO_PUBLIC_SOLANA_RPC_URL?.trim() || "https://api.devnet.solana.com";
+import { endpointsFrom, failover } from "@nelo/rpc";
+
+/**
+ * Which RPC the phone talks to: the preferred endpoint, then
+ * `EXPO_PUBLIC_SOLANA_RPC_FALLBACK_URLS` (comma-separated), then devnet's
+ * public endpoint. A request moves on only when an endpoint did not answer;
+ * see `@nelo/rpc`.
+ */
+export const rpc = failover(
+  endpointsFrom(
+    process.env.EXPO_PUBLIC_SOLANA_RPC_URL,
+    process.env.EXPO_PUBLIC_SOLANA_RPC_FALLBACK_URLS,
+    "https://api.devnet.solana.com",
+  ),
+);
 
 /** Circle's devnet USDC: what the vault holds and every voucher pays in. */
 export const USDC_DEVNET = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";

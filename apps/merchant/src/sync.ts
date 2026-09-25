@@ -7,7 +7,7 @@
  * call again — the cache never lets an older reading overwrite a newer one.
  */
 import { applySnapshot, fetchAll, jsonRpc, type EnrolmentCache } from "@nelo/enrol";
-import { rpcUrl } from "./config";
+import { rpc } from "./config";
 import { loadCache, saveCache } from "./offline";
 
 export interface Synced {
@@ -18,7 +18,7 @@ export interface Synced {
 
 /** Throws when the network is unreachable; the cached list stays as it was. */
 export async function syncPayers(mint: string): Promise<Synced> {
-  const { snapshot, skipped } = await fetchAll(jsonRpc(rpcUrl), {
+  const { snapshot, skipped } = await fetchAll(jsonRpc(rpc.url, rpc.fetch), {
     mint,
     now: Math.floor(Date.now() / 1000),
   });

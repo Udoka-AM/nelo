@@ -20,7 +20,7 @@
  * there is no address derivation to get wrong, and it picks up any token
  * account the merchant holds for that mint rather than only the canonical one.
  */
-import { rpc } from "./rpc.ts";
+import { rpc, type RpcTarget } from "./rpc.ts";
 
 /** The slice of a `jsonParsed` token account this needs. */
 export interface ParsedTokenAccount {
@@ -77,7 +77,7 @@ export function sumTokenAccounts(
  * failure — it is what every merchant's first screen looks like.
  */
 export async function fetchTokenBalance(
-  rpcUrl: string,
+  rpcUrl: RpcTarget,
   owner: string,
   mint: string,
 ): Promise<bigint> {

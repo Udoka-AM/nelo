@@ -2,6 +2,7 @@
  * Run the relayer.
  *
  *   RELAY_RPC_URL           devnet RPC with a real quota (e.g. Helius)
+ *   RELAY_RPC_FALLBACK_URLS comma-separated, tried in order when that one does not answer
  *   RELAY_KEYPAIR           fee-payer keypair file (solana-keygen format)
  *   RELAY_TOKEN             bearer token the merchant app sends (optional)
  *   RELAY_LEDGER            where submissions are remembered (default ./relay-ledger.json)
@@ -13,6 +14,7 @@
  */
 import { loadFeePayer } from "./feePayer.ts";
 import { fileLedger, utcDay } from "./ledger.ts";
+import { endpointsFrom, failover } from "@nelo/rpc";
 import { createRelayRpc } from "./rpc.ts";
 import { buildRelay } from "./server.ts";
 
@@ -31,12 +33,17 @@ const now = () => Math.floor(Date.now() / 1000);
 const feePayer = loadFeePayer(required("RELAY_KEYPAIR"));
 const mint = process.env.RELAY_MINT?.trim() || USDC_DEVNET;
 const budgetSol = Number(process.env.RELAY_DAILY_BUDGET_SOL ?? "0.5");
+// No public endpoint is added as a last resort here: the relayer's cluster is
+// whatever these URLs say, and guessing one would be guessing a network.
+const endpoint = failover(endpointsFrom(required("RELAY_RPC_URL"), process.env.RELAY_RPC_FALLBACK_URLS), {
+  onFailover: (url, reason) => console.warn(`rpc ${new URL(url).host}: ${reason}, trying the next`),
+});
 
 const relay = buildRelay({
   now,
   ...(process.env.RELAY_TOKEN?.trim() ? { token: process.env.RELAY_TOKEN.trim() } : {}),
   deps: {
-    rpc: createRelayRpc(required("RELAY_RPC_URL")),
+    rpc: createRelayRpc(endpoint.url, endpoint.fetch),
     feePayer,
     ledger: fileLedger(process.env.RELAY_LEDGER?.trim() || "relay-ledger.json", utcDay(now())),
     config: {
@@ -64,5 +71,7 @@ setInterval(() => {
     .then((r) => r.slashed.forEach((s) => console.log(`slashed ${s.vault}: ${s.signature}`)))
     .catch((e) => console.error("sweep failed:", e instanceof Error ? e.message : e));
 }, 60_000);
-console.log(`nelo relay on http://${host}:${port} · fee payer ${feePayer.address} · mint ${mint}`);
+console.log(
+  `nelo relay on http://${host}:${port} · fee payer ${feePayer.address} · mint ${mint} · ${endpoint.urls.length} RPC endpoint(s)`,
+);
 if (!process.env.RELAY_TOKEN) console.warn("RELAY_TOKEN is not set: anyone who finds the URL can submit vouchers.");

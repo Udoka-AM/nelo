@@ -115,6 +115,6 @@ GET  /v1/health
 
 **Double spends.** Two vouchers at one sequence, from a till or seen by the relayer itself, are reported with `report_conflict`. A sweep every minute then cranks `slash` on each frozen vault that still holds stake.
 
-**No durable nonces**, since it signs each redemption fresh. Multi-RPC failover is not written. Running it: [the relayer runbook](/operations/relay).
+**No durable nonces**, since it signs each redemption fresh. **RPC failover** through `@nelo/rpc`: `RELAY_RPC_FALLBACK_URLS` are tried in order when `RELAY_RPC_URL` does not answer. Running it: [the relayer runbook](/operations/relay).
 
-**51 tests**, against a fake network.
+**53 tests**, against a fake network.

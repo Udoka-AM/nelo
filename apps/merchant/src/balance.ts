@@ -13,7 +13,7 @@
  * be the same trick as showing a made-up exchange rate — technically what they
  * asked for, quietly not what is true.
  */
-import { fetchTokenBalance, tokenBaseUnitsToLocalMinor, type Rate } from "@nelo/pay";
+import { fetchTokenBalance, tokenBaseUnitsToLocalMinor, type Rate, type RpcTarget } from "@nelo/pay";
 
 export interface Balance {
   /** What is actually held, in token base units. */
@@ -33,7 +33,7 @@ export interface Balance {
  * on screen rather than replacing it with a confident zero.
  */
 export async function currentBalance(
-  rpcUrl: string,
+  rpcUrl: RpcTarget,
   merchantAddress: string,
   mint: string,
   rate: Rate,

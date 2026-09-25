@@ -11,6 +11,7 @@
     "@nelo/queue": "workspace:*",
     "@nelo/rebate": "workspace:*",
     "@nelo/redeem": "workspace:*",
+    "@nelo/rpc": "workspace:*",
     "@nelo/till": "workspace:*",
     "@nelo/voucher": "workspace:*",
     "@privy-io/expo": "^0.74.1",

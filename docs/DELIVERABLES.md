@@ -402,7 +402,21 @@ that is not negotiable — half the marks.
    and sends each redemption, so the merchant needs no SOL and signs nothing, whether they
    signed up with a wallet or through Privy. It answers a repeated voucher with the same
    signature while that one can still land, which is what keeps a till's retry from reading
-   its own payment as fraud. Multi-RPC failover is still not written.
+   its own payment as fraud.
+   **Multi-RPC failover: built.** [`@nelo/rpc`](../packages/rpc/src/index.ts) is a drop-in
+   `fetch` over a list of endpoints, used by both apps and the relayer for every JSON-RPC
+   call. A request moves to the next endpoint only when the one it asked did not answer:
+   down, timed out, HTTP 429 or 5xx, or "node is behind". An answer, including a simulation
+   refusal, is believed. Asking another node the same question would hide the bug.
+   Resending `sendTransaction` is safe because it is the same signed bytes, so the same
+   transaction. An endpoint that failed rests for 30 s. The apps take
+   `EXPO_PUBLIC_SOLANA_RPC_FALLBACK_URLS` and end with devnet's public endpoint. The relayer
+   takes `RELAY_RPC_FALLBACK_URLS` and adds nothing, because guessing an endpoint would be
+   guessing a network. 10 tests, plus two through the relayer's own client. **A limit worth
+   knowing:** two reads in one decision can land on different nodes. A lagging node can say
+   a signature is unknown while another says its blockhash has expired. The queue and the
+   relayer already treat "not found" as inconclusive until their own attempts are accounted
+   for, so the cost is a wasted resend, not a lost or doubled payment.
 5. **Conflict handling.** On the first conflicting voucher the vault freezes permanently.
    *(Anchor)*
    **Built, end to end, never run on a cluster.** Two different vouchers at one sequence, from

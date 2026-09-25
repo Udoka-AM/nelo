@@ -82,7 +82,7 @@ sumTokenAccounts(accounts, mint)         // the pure part
 
 Reads via `getTokenAccountsByOwner`, so there is no ATA derivation to get wrong. The mint is re-checked on the way back — trusting a filter you did not verify is how someone ends up looking at a balance denominated in something else.
 
-**54 tests.**
+**64 tests.**
 
 ---
 
@@ -256,6 +256,26 @@ The objects are `@solana/kit`'s instruction shape, so they drop into a kit trans
 **Double spends too.** `checkConflict(a, b)` says whether two packets prove one: same vault, same sequence, different messages, same key, and both signatures valid. `reportConflictInstructions(a, b, reporter)` returns the two precompile instructions and `report_conflict`, in the order the program reads them. `slashInstruction` builds the permissionless crank that moves a frozen vault's stake to the reserve. All three are pinned to vectors the program generates.
 
 **41 tests.** Never broadcast to a cluster yet. That happens in the week-3 gate.
+
+---
+
+## `@nelo/rpc`
+
+RPC failover. One endpoint is one point of failure for every till, every payer and the relayer, and a rate limit looks, from a till, exactly like a customer who has not paid.
+
+```ts
+const rpc = failover(endpointsFrom(primary, "https://b,https://c", lastResort));
+jsonRpc(rpc.url, rpc.fetch)          // anything that takes a fetch
+fetchTokenBalance(rpc, owner, mint)  // @nelo/pay takes the endpoint itself
+```
+
+**It moves on only when an endpoint did not answer:** a network error, a timeout (8 s), HTTP 429 or 5xx, or a JSON-RPC error about the node (`-32005`, or a rate limit). Everything else is an answer and is returned as it is. A simulation failure asked of a second node gets the same answer and hides the bug.
+
+**Resending a transaction is safe.** It carries the same signed bytes, so it is the same transaction, and the chain runs it at most once.
+
+An endpoint that failed rests for 30 s so it is not asked first on every request. If all are resting, all are still tried. Error messages name hosts, never URLs, so an API key in a query string is never logged.
+
+**10 tests.**
 
 ---
 

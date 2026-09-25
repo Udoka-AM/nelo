@@ -1,9 +1,9 @@
-import { rpcUrl } from "./config";
+import { rpc as endpoint } from "./config";
 
 type Body<T> = { result?: T; error?: { message?: string } };
 
 export async function rpc<T>(method: string, params: unknown[]): Promise<T> {
-  const response = await fetch(rpcUrl, {
+  const response = await endpoint.fetch(endpoint.url, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),

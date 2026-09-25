@@ -24,7 +24,7 @@ import {
   type RoundReport,
 } from "@nelo/queue";
 import { receiveCode, scan, voucherDb, type Scan } from "@nelo/till";
-import { relayToken, relayUrl, rpcUrl, USDC_DEVNET } from "./config";
+import { relayToken, relayUrl, rpc, USDC_DEVNET } from "./config";
 
 const db = voucherDb(() => SQLite.openDatabaseAsync("nelo-receive.db"));
 
@@ -67,7 +67,7 @@ export async function waiting(): Promise<{ count: number; amount: bigint }> {
 
 /** Refresh the payer list. Throws offline; the list on the phone stays. */
 export async function syncPayers(): Promise<void> {
-  const { snapshot } = await fetchAll(jsonRpc(rpcUrl), { mint: USDC_DEVNET, now: Math.floor(Date.now() / 1000) });
+  const { snapshot } = await fetchAll(jsonRpc(rpc.url, rpc.fetch), { mint: USDC_DEVNET, now: Math.floor(Date.now() / 1000) });
   await db.saveCache(applySnapshot(await db.loadCache(), snapshot));
 }
 
@@ -80,7 +80,7 @@ export async function settleReceived(): Promise<Settled> {
   const report = await settleOnce(db.queue, {
     now: () => Date.now(),
     prepare: relayPrepare(relayer),
-    statuses: rpcStatuses(rpcUrl),
+    statuses: rpcStatuses(rpc.url, rpc.fetch),
   });
   let conflictsReported = 0;
   if (!report.offline) {

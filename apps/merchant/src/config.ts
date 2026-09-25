@@ -18,6 +18,7 @@
  * on its own. A missing app ID that took the terminal down with it would make
  * the till un-runnable for the sake of an optional route into it.
  */
+import { endpointsFrom, failover } from "@nelo/rpc";
 const appId = process.env.EXPO_PUBLIC_PRIVY_APP_ID?.trim();
 const clientId = process.env.EXPO_PUBLIC_PRIVY_CLIENT_ID?.trim();
 
@@ -50,12 +51,18 @@ export const canOnboardWithPhone = privy !== null;
  * fail — and it fails as 429s, which look exactly like a customer who has not
  * paid yet.
  *
- * So it is configurable, with the public endpoint as the default: a build with
- * no RPC configured still runs, and anyone doing a real demo can point it at
- * something with a quota.
+ * So it is configurable, with fallbacks: the preferred endpoint first, then
+ * `EXPO_PUBLIC_SOLANA_RPC_FALLBACK_URLS` (comma-separated), then the public
+ * endpoint as a last resort. A request moves on only when an endpoint did not
+ * answer; see `@nelo/rpc`. Devnet throughout, so the last resort is devnet's.
  */
-export const rpcUrl =
-  process.env.EXPO_PUBLIC_SOLANA_RPC_URL?.trim() || "https://api.devnet.solana.com";
+export const rpc = failover(
+  endpointsFrom(
+    process.env.EXPO_PUBLIC_SOLANA_RPC_URL,
+    process.env.EXPO_PUBLIC_SOLANA_RPC_FALLBACK_URLS,
+    "https://api.devnet.solana.com",
+  ),
+);
 
 /**
  * Nelo's relayer: it submits the till's offline vouchers and pays the fees, so

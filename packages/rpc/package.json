@@ -1,0 +1,13 @@
+{
+  "name": "@nelo/rpc",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "description": "RPC failover: a fetch that tries the next Solana RPC endpoint when one is down, slow or rate-limited, and never when one has answered.",
+  "scripts": {
+    "test": "node --test \"test/*.test.ts\""
+  },
+  "files": [
+    "src"
+  ]
+}

@@ -164,7 +164,7 @@ export {
   sumTokenAccounts,
   type ParsedTokenAccount,
 } from "./balance.ts";
-export { rpc } from "./rpc.ts";
+export { rpc, type RpcTarget } from "./rpc.ts";
 export {
   confidenceBps,
   DEFAULT_GUARDS,
