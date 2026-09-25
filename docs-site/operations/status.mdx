@@ -24,7 +24,7 @@ Three states are kept apart, because conflating them is how a demo ends up claim
   <Card title="The ordinary sale" icon="receipt">
     **Written, and typechecked.** Till, MWA wallet, Solana Pay, payment validation, day-book, balance, SPL collateral, onboarding.
 
-    Caveat: **the merchant app has still never rendered.** A dev-client build compiles the native side but does not embed the JS.
+    Caveat: **the merchant app has never run on a handset.** A dev-client build compiles the native side but does not embed the JS. Its screens have been rendered in a browser, with the native modules stubbed, for the design pass.
   </Card>
   <Card title="Trust Stake" icon="coins">
     **Proven, on devnet.** 17 curve tests off chain, ~19 on chain in LiteSVM, and `RiskConfig` now live on a real validator with `redeem_voucher` exercised against its new account struct.
@@ -41,11 +41,11 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | `programs/nelo_vault` — trust model | ✅ Proven on devnet |
 | `programs/nelo_vault` — Trust Stake | ✅ Proven — LiteSVM, then devnet |
 | `packages/voucher` | ✅ Proven, both sides, golden vectors (38 tests) |
-| `packages/pay` | ✅ Proven (64 tests) |
+| `packages/pay` | ✅ Proven (65 tests), including money formatting for both apps |
 | `packages/ledger` | ✅ Proven (22 tests), including close of day with offline payments |
 | `packages/onboard` | ✅ Proven (60 tests) |
 | `packages/reserve` | ✅ Proven (17 tests) |
-| `packages/accept` | ✅ Proven (26 tests) — offline accept/refuse |
+| `packages/accept` | ✅ Proven (27 tests) — offline accept/refuse |
 | `packages/queue` | ✅ Proven (63 tests) against a fake network; wired into the merchant app, never run on a handset |
 | `packages/enrol` | ✅ Payer list and revocation list, pinned to the program's account layouts (18 tests) |
 | `packages/issue` | ✅ Payer-side issuing, never signs one sequence twice (21 tests) |
@@ -57,7 +57,8 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | `services/settle` — paj.cash cash-out | ⚠️ Client, partner, cash-out records and HTTP built and tested against a fake paj.cash (36 tests); never called paj.cash: waiting on the staging key and their answers |
 | `packages/cashout` | ✅ The phone's side of a cash-out, resumable at every step (6 tests) |
 | `packages/attest` | ⚠️ Compiles (EAS build); never run on hardware |
-| `apps/merchant` | ⚠️ Typechecks; native side builds; never rendered |
+| `apps/merchant` | ⚠️ Typechecks; native side builds; screens rendered in a browser with native modules stubbed, never on a handset |
+| `packages/ui` | ✅ Design system for both apps: tokens, type scale, components; contrast checked under test (4 tests) |
 | `services/relay` | ✅ Submits offline vouchers and pays fees, idempotently; reports double spends and cranks slashing; pays the fee on merchants' cash-out transfers (62 tests); runs on the Mac behind a tunnel for the demo |
 | `packages/rpc` | ✅ RPC failover for both apps and the relayer (10 tests); never exercised against a real outage |
 | Live price feed | ❌ Blocked on a product decision |

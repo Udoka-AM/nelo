@@ -16,14 +16,32 @@
  * sequence counter, and saving before signing. This file is screens.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import {
+  Button,
+  Card,
+  color,
+  Field,
+  Header,
+  Hero,
+  Label,
+  Muted,
+  Notice,
+  radius,
+  Screen,
+  Small,
+  space,
+  Spinner,
+  TextButton,
+  Title,
+} from "@nelo/ui";
 import { StatusBar } from "expo-status-bar";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import QRCode from "react-native-qrcode-svg";
 import * as Crypto from "expo-crypto";
 import * as attest from "@nelo/attest";
 import { pay, readMerchantCode, resume, spendable, type IssuerState } from "@nelo/issue";
-import { formatTokenAmount } from "@nelo/pay";
+import { formatDollars } from "@nelo/pay";
 import { toQr } from "@nelo/voucher";
 import { describeRisk, type Scan } from "@nelo/till";
 import Probe from "./src/Probe";
@@ -126,10 +144,10 @@ export default function App() {
 
   if (screen.name === "loading") {
     return (
-      <View style={[styles.screen, styles.centre]}>
+      <Screen center>
         <StatusBar style="light" />
-        <ActivityIndicator color="#4fb98f" />
-      </View>
+        <Spinner />
+      </Screen>
     );
   }
 
@@ -138,70 +156,63 @@ export default function App() {
   if (screen.name === "welcome") {
     const deposit0 = parseUsdc(amountText);
     return (
-      <View style={styles.screen}>
+      <Screen center>
         <StatusBar style="light" />
-        <View style={styles.body}>
-          <Text style={styles.title}>Pay without signal</Text>
-          <Text style={styles.text}>
-            Lock some USDC in your offline wallet. This phone's secure chip signs each payment, so
-            merchants can accept it even when neither of you has a connection.
-          </Text>
-          {!attest.isStrongBoxAvailable() ? (
-            <Text style={styles.warn}>
-              This phone has no separate secure chip (StrongBox). Payments will still be signed in its
-              protected hardware, but it is the weaker kind. Fine for testing.
-            </Text>
-          ) : null}
-          {screen.owner === null ? (
-            <Pressable
-              style={styles.primary}
+        <Title>Pay without signal</Title>
+        <Muted>
+          Put some dollars aside on this phone. Its secure chip signs each payment, so a shop can accept it even when
+          neither of you has a connection.
+        </Muted>
+        {!attest.isStrongBoxAvailable() ? (
+          <Notice tone="caution">
+            This phone has no separate secure chip (StrongBox). Payments are still signed in its protected hardware,
+            but it is the weaker kind. Fine for testing.
+          </Notice>
+        ) : null}
+        {screen.owner === null ? (
+          <Button
+            label={busy ?? "Connect wallet"}
+            busy={busy !== null}
+            onPress={() =>
+              run("Waiting for your wallet…", async () => {
+                const owner = await connect();
+                if (owner) setScreen({ name: "welcome", owner });
+              })
+            }
+          />
+        ) : (
+          <>
+            <Small>Wallet {short(screen.owner)}</Small>
+            <Field
+              label="Dollars to set aside (USDC)"
+              value={amountText}
+              onChangeText={setAmountText}
+              keyboardType="decimal-pad"
+              placeholder="e.g. 50"
+              hint="Your wallet asks you to approve it, and pays a small network fee in SOL."
+            />
+            <Button
+              label={busy ?? "Set it aside"}
+              busy={busy !== null}
+              disabled={deposit0 === null}
               onPress={() =>
-                run("Waiting for your wallet…", async () => {
-                  const owner = await connect();
-                  if (owner) setScreen({ name: "welcome", owner });
+                run("Setting up…", async () => {
+                  const r = await enrol(screen.owner!, deposit0!);
+                  if (!r.ok) {
+                    setNote(r.reason);
+                    return;
+                  }
+                  setAmountText("");
+                  await reload();
+                  setScreen({ name: "home" });
                 })
               }
-            >
-              <Text style={styles.primaryText}>{busy ?? "Connect wallet"}</Text>
-            </Pressable>
-          ) : (
-            <>
-              <Text style={styles.label}>Wallet {short(screen.owner)}</Text>
-              <Text style={styles.label}>USDC to lock for offline payments</Text>
-              <TextInput
-                style={styles.input}
-                value={amountText}
-                onChangeText={setAmountText}
-                keyboardType="decimal-pad"
-                placeholder="e.g. 50"
-                placeholderTextColor="#5f646b"
-              />
-              <Pressable
-                style={[styles.primary, (deposit0 === null || busy !== null) && styles.disabled]}
-                disabled={deposit0 === null || busy !== null}
-                onPress={() =>
-                  run("Setting up…", async () => {
-                    const r = await enrol(screen.owner!, deposit0!);
-                    if (!r.ok) {
-                      setNote(r.reason);
-                      return;
-                    }
-                    setAmountText("");
-                    await reload();
-                    setScreen({ name: "home" });
-                  })
-                }
-              >
-                <Text style={styles.primaryText}>{busy ?? "Open my offline wallet"}</Text>
-              </Pressable>
-            </>
-          )}
-          {note ? <Text style={styles.warn}>{note}</Text> : null}
-          <Pressable style={styles.secondary} onPress={() => setScreen({ name: "probe" })}>
-            <Text style={styles.secondaryText}>Device check</Text>
-          </Pressable>
-        </View>
-      </View>
+            />
+          </>
+        )}
+        {note ? <Notice tone="danger">{note}</Notice> : null}
+        <TextButton label="Device check" onPress={() => setScreen({ name: "probe" })} />
+      </Screen>
     );
   }
 
@@ -210,57 +221,42 @@ export default function App() {
   if (screen.name === "receive") {
     const amount = parseUsdc(amountText);
     return (
-      <View style={styles.screen}>
+      <Screen>
         <StatusBar style="light" />
-        <View style={styles.body}>
-          <Text style={styles.title}>Receive</Text>
-          <Text style={styles.text}>From another Nelo user, with no signal on either phone.</Text>
-          <Text style={styles.label}>USDC to ask for</Text>
-          <TextInput
-            style={styles.input}
-            value={amountText}
-            onChangeText={setAmountText}
-            keyboardType="decimal-pad"
-            placeholder="e.g. 7.50"
-            placeholderTextColor="#5f646b"
-          />
-          <Pressable
-            style={[styles.primary, (amount === null || amount === 0n) && styles.disabled]}
-            disabled={amount === null || amount === 0n}
-            onPress={() => {
-              setAmountText("");
-              setScreen({ name: "request", amount: amount! });
-            }}
-          >
-            <Text style={styles.primaryText}>Show my code</Text>
-          </Pressable>
-          <Pressable style={styles.secondary} onPress={() => setScreen({ name: "home" })}>
-            <Text style={styles.secondaryText}>Cancel</Text>
-          </Pressable>
-        </View>
-      </View>
+        <Header title="Receive" actions={[{ label: "Cancel", onPress: () => setScreen({ name: "home" }) }]} />
+        <Muted>From another Nelo user, with no signal on either phone.</Muted>
+        <Field
+          label="How much, in dollars"
+          value={amountText}
+          onChangeText={setAmountText}
+          keyboardType="decimal-pad"
+          placeholder="e.g. 7.50"
+        />
+        <Button
+          label={amount ? `Ask for ${formatDollars(amount)}` : "Show my code"}
+          disabled={amount === null || amount === 0n}
+          onPress={() => {
+            setAmountText("");
+            setScreen({ name: "request", amount: amount! });
+          }}
+        />
+      </Screen>
     );
   }
 
   if (screen.name === "request" && profile) {
     return (
-      <View style={styles.screen}>
+      <Screen center>
         <StatusBar style="light" />
-        <View style={styles.body}>
-          <Text style={styles.label}>Ask them to scan this with Nelo</Text>
-          <Text style={styles.big}>{formatTokenAmount(screen.amount)} USDC</Text>
-          <View style={styles.qrFrame}>
-            <QRCode value={requestCode(profile.owner, screen.amount)} size={260} backgroundColor="#ffffff" color="#101113" />
-          </View>
-          <Text style={styles.text}>Then scan the code their phone shows you.</Text>
-          <Pressable style={styles.primary} onPress={() => setScreen({ name: "receive-scan", amount: screen.amount })}>
-            <Text style={styles.primaryText}>Scan their payment</Text>
-          </Pressable>
-          <Pressable style={styles.secondary} onPress={() => setScreen({ name: "home" })}>
-            <Text style={styles.secondaryText}>Cancel</Text>
-          </Pressable>
+        <Label center>Ask them to scan this with Nelo</Label>
+        <Hero center>{formatDollars(screen.amount)}</Hero>
+        <View style={styles.qrFrame}>
+          <QRCode value={requestCode(profile.owner, screen.amount)} size={240} backgroundColor={color.qrBackground} color={color.qrForeground} />
         </View>
-      </View>
+        <Muted center>Then scan the code their phone shows you.</Muted>
+        <Button label="Scan their payment" onPress={() => setScreen({ name: "receive-scan", amount: screen.amount })} />
+        <TextButton label="Cancel" onPress={() => setScreen({ name: "home" })} />
+      </Screen>
     );
   }
 
@@ -287,75 +283,73 @@ export default function App() {
       r.kind === "take"
         ? null
         : r.kind === "short"
-          ? `It pays ${formatTokenAmount(r.paid)} USDC, less than the ${formatTokenAmount(r.charged)} you asked for.`
+          ? `It pays ${formatDollars(r.paid)}, less than the ${formatDollars(r.charged)} you asked for.`
           : r.kind === "unknown-vault"
             ? "This payer is not on your list yet. Sync when you have signal, then try again."
             : r.kind === "not-synced"
               ? "Sync once with signal before receiving offline: your phone needs the list of payers to check against."
               : r.reason;
     return (
-      <View style={styles.screen}>
+      <Screen center>
         <StatusBar style="light" />
-        <View style={styles.body}>
-          {r.kind === "take" ? (
-            <>
-              <Text style={styles.label}>Their payment checks out</Text>
-              <Text style={styles.big}>{formatTokenAmount(r.amount)} USDC</Text>
-              {r.risks.map((risk) => (
-                <Text key={risk.kind} style={risk.kind === "sequence-unconfirmed" ? styles.textSmall : styles.warn}>
+        {r.kind === "take" ? (
+          <>
+            <Label center>Their payment checks out</Label>
+            <Hero center>{formatDollars(r.amount)}</Hero>
+            {r.risks.map((risk) =>
+              risk.kind === "sequence-unconfirmed" ? (
+                <Small key={risk.kind} center>
                   {describeRisk(risk)}
-                </Text>
-              ))}
-              <Pressable
-                style={[styles.primary, busy !== null && styles.disabled]}
-                disabled={busy !== null}
-                onPress={() =>
-                  run("Saving…", async () => {
-                    const kept = await keep(r.packet);
-                    if (kept.kind === "conflict") {
-                      setNote("Their phone signed two different payments with the same number. Do not accept it.");
-                      setScreen({ name: "home" });
-                      return;
-                    }
-                    setIncoming(await waiting());
-                    setScreen({ name: "received", amount: r.amount });
-                  })
-                }
-              >
-                <Text style={styles.primaryText}>{busy ?? "Accept"}</Text>
-              </Pressable>
-            </>
-          ) : (
-            <>
-              <Text style={styles.title}>Not accepted</Text>
-              <Text style={styles.text}>{why}</Text>
-              <Pressable style={styles.primary} onPress={() => setScreen({ name: "receive-scan", amount: screen.amount })}>
-                <Text style={styles.primaryText}>Scan again</Text>
-              </Pressable>
-            </>
-          )}
-          <Pressable style={styles.secondary} onPress={() => setScreen({ name: "home" })}>
-            <Text style={styles.secondaryText}>Cancel</Text>
-          </Pressable>
-        </View>
-      </View>
+                </Small>
+              ) : (
+                <Notice key={risk.kind} tone="caution">
+                  {describeRisk(risk)}
+                </Notice>
+              ),
+            )}
+            <Button
+              label={busy ?? "Accept"}
+              busy={busy !== null}
+              onPress={() =>
+                run("Saving…", async () => {
+                  const kept = await keep(r.packet);
+                  if (kept.kind === "conflict") {
+                    setNote("Their phone signed two different payments with the same number. Do not accept it.");
+                    setScreen({ name: "home" });
+                    return;
+                  }
+                  setIncoming(await waiting());
+                  setScreen({ name: "received", amount: r.amount });
+                })
+              }
+            />
+          </>
+        ) : (
+          <>
+            <Title center tone="danger">
+              Not accepted
+            </Title>
+            <Notice tone="danger">{why}</Notice>
+            <Button label="Scan again" onPress={() => setScreen({ name: "receive-scan", amount: screen.amount })} />
+          </>
+        )}
+        <TextButton label="Cancel" onPress={() => setScreen({ name: "home" })} />
+      </Screen>
     );
   }
 
   if (screen.name === "received") {
     return (
-      <View style={styles.screen}>
+      <Screen center>
         <StatusBar style="light" />
-        <View style={styles.body}>
-          <Text style={styles.good}>✓</Text>
-          <Text style={styles.title}>Received</Text>
-          <Text style={styles.big}>{formatTokenAmount(screen.amount)} USDC</Text>
-          <Text style={styles.text}>It arrives in your wallet when this phone next syncs with signal.</Text>
-          <Pressable style={styles.primary} onPress={() => setScreen({ name: "home" })}>
-            <Text style={styles.primaryText}>Done</Text>
-          </Pressable>
-        </View>
-      </View>
+        <Text style={styles.mark}>✓</Text>
+        <Title center tone="positive">
+          Received
+        </Title>
+        <Hero center>{formatDollars(screen.amount)}</Hero>
+        <Muted center>It arrives in your wallet when this phone next syncs with signal.</Muted>
+        <Button label="Done" onPress={() => setScreen({ name: "home" })} />
+      </Screen>
     );
   }
 
@@ -379,174 +373,155 @@ export default function App() {
 
   if (screen.name === "confirm") {
     return (
-      <View style={styles.screen}>
+      <Screen center>
         <StatusBar style="light" />
-        <View style={styles.body}>
-          <Text style={styles.label}>Pay {screen.label ?? "merchant"} {short(screen.merchant)}</Text>
-          <Text style={styles.big}>{formatTokenAmount(screen.amount)} USDC</Text>
-          <Text style={styles.text}>You have {formatTokenAmount(spendable(state))} USDC available offline.</Text>
-          <Pressable
-            style={[styles.primary, busy !== null && styles.disabled]}
-            disabled={busy !== null}
-            onPress={() =>
-              run("Signing…", async () => {
-                const r = await pay(
-                  issuerStore,
-                  sign,
-                  { merchant: screen.merchant, amount: screen.amount, now: Math.floor(Date.now() / 1000) },
-                  randomBytes,
-                );
-                await reload();
-                if (!r.ok) {
-                  setNote(r.reason);
-                  setScreen({ name: "home" });
-                  return;
-                }
-                setScreen({ name: "voucher", packet: r.packet, amount: screen.amount });
-              })
-            }
-          >
-            <Text style={styles.primaryText}>{busy ?? "Pay"}</Text>
-          </Pressable>
-          <Pressable style={styles.secondary} onPress={() => setScreen({ name: "home" })}>
-            <Text style={styles.secondaryText}>Cancel</Text>
-          </Pressable>
-        </View>
-      </View>
+        <Label center>
+          Pay {screen.label ?? "this shop"} · {short(screen.merchant)}
+        </Label>
+        <Hero center>{formatDollars(screen.amount)}</Hero>
+        <Muted center>You have {formatDollars(spendable(state))} available offline.</Muted>
+        <Button
+          label={busy ?? `Pay ${formatDollars(screen.amount)}`}
+          busy={busy !== null}
+          onPress={() =>
+            run("Signing…", async () => {
+              const r = await pay(
+                issuerStore,
+                sign,
+                { merchant: screen.merchant, amount: screen.amount, now: Math.floor(Date.now() / 1000) },
+                randomBytes,
+              );
+              await reload();
+              if (!r.ok) {
+                setNote(r.reason);
+                setScreen({ name: "home" });
+                return;
+              }
+              setScreen({ name: "voucher", packet: r.packet, amount: screen.amount });
+            })
+          }
+        />
+        <TextButton label="Cancel" onPress={() => setScreen({ name: "home" })} />
+      </Screen>
     );
   }
 
   if (screen.name === "voucher") {
     return (
-      <View style={styles.screen}>
+      <Screen center>
         <StatusBar style="light" />
-        <View style={styles.body}>
-          <Text style={styles.label}>Show this to whoever you are paying</Text>
-          <Text style={styles.big}>{formatTokenAmount(screen.amount)} USDC</Text>
-          <View style={styles.qrFrame}>
-            <QRCode value={toQr(screen.packet)} size={300} ecl="M" backgroundColor="#ffffff" color="#101113" />
-          </View>
-          <Text style={styles.text}>No signal needed. They are paid when their phone next connects.</Text>
-          <Pressable style={styles.primary} onPress={() => setScreen({ name: "home" })}>
-            <Text style={styles.primaryText}>Done</Text>
-          </Pressable>
+        <Label center>Show this to whoever you are paying</Label>
+        <Hero center>{formatDollars(screen.amount)}</Hero>
+        <View style={styles.qrFrame} accessible accessibilityLabel={`Payment code for ${formatDollars(screen.amount)}`}>
+          <QRCode value={toQr(screen.packet)} size={280} ecl="M" backgroundColor={color.qrBackground} color={color.qrForeground} />
         </View>
-      </View>
+        <Muted center>No signal needed. They are paid when their phone next connects.</Muted>
+        <Button label="Done" onPress={() => setScreen({ name: "home" })} />
+      </Screen>
     );
   }
 
   if (screen.name === "deposit") {
     const amount = parseUsdc(amountText);
     return (
-      <View style={styles.screen}>
+      <Screen>
         <StatusBar style="light" />
-        <View style={styles.body}>
-          <Text style={styles.title}>Add money</Text>
-          <Text style={styles.label}>USDC to lock</Text>
-          <TextInput
-            style={styles.input}
-            value={amountText}
-            onChangeText={setAmountText}
-            keyboardType="decimal-pad"
-            placeholder="e.g. 20"
-            placeholderTextColor="#5f646b"
-          />
-          <Pressable
-            style={[styles.primary, (amount === null || amount === 0n || busy !== null) && styles.disabled]}
-            disabled={amount === null || amount === 0n || busy !== null}
-            onPress={() =>
-              run("Waiting for your wallet…", async () => {
-                await deposit(profile!.owner, amount!);
-                setAmountText("");
-                setNote("Sent. Sync in a moment to see it.");
-                setScreen({ name: "home" });
-              })
-            }
-          >
-            <Text style={styles.primaryText}>{busy ?? "Lock it"}</Text>
-          </Pressable>
-          <Pressable style={styles.secondary} onPress={() => setScreen({ name: "home" })}>
-            <Text style={styles.secondaryText}>Cancel</Text>
-          </Pressable>
-        </View>
-      </View>
+        <Header title="Add money" actions={[{ label: "Cancel", onPress: () => setScreen({ name: "home" }) }]} />
+        <Field
+          label="Dollars to set aside (USDC)"
+          value={amountText}
+          onChangeText={setAmountText}
+          keyboardType="decimal-pad"
+          placeholder="e.g. 20"
+          hint="From your wallet, which asks you to approve it."
+        />
+        <Button
+          label={busy ?? (amount ? `Set aside ${formatDollars(amount)}` : "Set it aside")}
+          busy={busy !== null}
+          disabled={amount === null || amount === 0n}
+          onPress={() =>
+            run("Waiting for your wallet…", async () => {
+              await deposit(profile!.owner, amount!);
+              setAmountText("");
+              setNote("Sent. Sync in a moment to see it.");
+              setScreen({ name: "home" });
+            })
+          }
+        />
+      </Screen>
     );
   }
 
   // Home.
   const interrupted = state.pending !== null;
-  const synced = new Date(state.chain.syncedAt * 1000);
   return (
-    <View style={styles.screen}>
+    <Screen>
       <StatusBar style="light" />
-      <ScrollView contentContainerStyle={styles.body}>
-        <Text style={styles.label}>AVAILABLE OFFLINE</Text>
-        <Text style={styles.big}>{formatTokenAmount(spendable(state))} USDC</Text>
-        <Text style={styles.text}>
-          Locked {formatTokenAmount(state.chain.balance)} · up to {formatTokenAmount(state.chain.limit)} per payment
-        </Text>
-        <Text style={styles.textSmall}>
-          {state.outstanding.length} {state.outstanding.length === 1 ? "payment" : "payments"} waiting to settle ·
-          synced {synced.toLocaleString()}
-        </Text>
-        {incoming.count ? (
-          <Text style={styles.textSmall}>
-            {formatTokenAmount(incoming.amount)} USDC received, arriving in your wallet when you sync
-          </Text>
-        ) : null}
-        {state.chain.status === 1 ? (
-          <Text style={styles.warn}>This vault is frozen after a conflicting payment. It cannot pay offline.</Text>
-        ) : null}
+      <Card>
+        <Label>Available offline</Label>
+        <Hero>{formatDollars(spendable(state))}</Hero>
+        <Small>
+          {formatDollars(state.chain.balance)} set aside · up to {formatDollars(state.chain.limit)} per payment
+        </Small>
+      </Card>
+      {state.chain.status === 1 ? (
+        <Notice tone="danger">This vault is frozen after a conflicting payment. It cannot pay offline.</Notice>
+      ) : null}
+      {state.outstanding.length ? (
+        <Notice tone="caution">
+          {state.outstanding.length} {state.outstanding.length === 1 ? "payment" : "payments"} waiting to settle
+        </Notice>
+      ) : null}
+      {incoming.count ? (
+        <Notice tone="positive">{formatDollars(incoming.amount)} received, arriving in your wallet when you sync</Notice>
+      ) : null}
 
-        {interrupted ? (
-          <Pressable
-            style={styles.primary}
-            onPress={() =>
-              run("Signing…", async () => {
-                const r = await resume(issuerStore, sign);
-                await reload();
-                if (!r.ok) {
-                  setNote(r.reason);
-                  return;
-                }
-                setScreen({ name: "voucher", packet: r.packet, amount: state.pending!.amount });
-              })
-            }
-          >
-            <Text style={styles.primaryText}>{busy ?? "Finish the interrupted payment"}</Text>
-          </Pressable>
-        ) : (
-          <Pressable style={styles.primary} onPress={() => setScreen({ name: "scan" })}>
-            <Text style={styles.primaryText}>Pay</Text>
-          </Pressable>
-        )}
-        <Pressable style={styles.secondaryWide} onPress={() => setScreen({ name: "receive" })}>
-          <Text style={styles.secondaryText}>Receive from someone</Text>
-        </Pressable>
-
-        <View style={styles.row}>
-          <Pressable
-            style={styles.rowButton}
-            onPress={() =>
-              run("Syncing…", syncAll)
-            }
-          >
-            <Text style={styles.secondaryText}>{busy === "Syncing…" ? busy : "Sync"}</Text>
-          </Pressable>
-          <Pressable style={styles.rowButton} onPress={() => setScreen({ name: "deposit" })}>
-            <Text style={styles.secondaryText}>Add money</Text>
-          </Pressable>
-          <Pressable style={styles.rowButton} onPress={() => setScreen({ name: "probe" })}>
-            <Text style={styles.secondaryText}>Device check</Text>
-          </Pressable>
-        </View>
-        {note ? <Text style={styles.warn}>{note}</Text> : null}
-        {profile && !profile.strongBoxBacked ? (
-          <Text style={styles.textSmall}>Key held in protected hardware, not a separate secure chip.</Text>
-        ) : null}
-      </ScrollView>
-    </View>
+      {interrupted ? (
+        <Button
+          label={busy ?? "Finish the interrupted payment"}
+          busy={busy !== null}
+          onPress={() =>
+            run("Signing…", async () => {
+              const r = await resume(issuerStore, sign);
+              await reload();
+              if (!r.ok) {
+                setNote(r.reason);
+                return;
+              }
+              setScreen({ name: "voucher", packet: r.packet, amount: state.pending!.amount });
+            })
+          }
+        />
+      ) : (
+        <Button label="Pay" onPress={() => setScreen({ name: "scan" })} />
+      )}
+      <Button kind="secondary" label="Receive from someone" onPress={() => setScreen({ name: "receive" })} />
+      <View style={styles.row}>
+        <Button
+          kind="secondary"
+          style={styles.rowButton}
+          label={busy === "Syncing…" ? busy : "Sync"}
+          busy={busy === "Syncing…"}
+          onPress={() => run("Syncing…", syncAll)}
+        />
+        <Button kind="secondary" style={styles.rowButton} label="Add money" onPress={() => setScreen({ name: "deposit" })} />
+      </View>
+      {note ? <Notice tone="caution">{note}</Notice> : null}
+      <Small center>Synced {ago(state.chain.syncedAt)}</Small>
+      {profile && !profile.strongBoxBacked ? (
+        <Small center>Key held in protected hardware, not a separate secure chip.</Small>
+      ) : null}
+      <TextButton label="Device check" onPress={() => setScreen({ name: "probe" })} />
+    </Screen>
   );
+}
+
+/** "just now", "5 minutes ago", "3 hours ago", "2 days ago". */
+function ago(unixSeconds: number): string {
+  const s = Math.max(0, Math.floor(Date.now() / 1000) - unixSeconds);
+  if (s < 60) return "just now";
+  const [n, unit] = s < 3600 ? [Math.floor(s / 60), "minute"] : s < 86_400 ? [Math.floor(s / 3600), "hour"] : [Math.floor(s / 86_400), "day"];
+  return `${n} ${unit}${n === 1 ? "" : "s"} ago`;
 }
 
 function MerchantScanner({
@@ -560,82 +535,39 @@ function MerchantScanner({
 }) {
   const [permission, requestPermission] = useCameraPermissions();
   const locked = useRef(false);
-  if (!permission) return <View style={styles.screen} />;
+  if (!permission) return <Screen center><Spinner /></Screen>;
   return (
-    <View style={styles.screen}>
+    <Screen center>
       <StatusBar style="light" />
-      <View style={styles.body}>
-        <Text style={styles.label}>{label}</Text>
-        {permission.granted ? (
-          <View style={styles.cameraFrame}>
-            <CameraView
-              style={StyleSheet.absoluteFill}
-              facing="back"
-              barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-              onBarcodeScanned={({ data }) => {
-                if (locked.current) return;
-                locked.current = true;
-                onScanned(data);
-              }}
-            />
-          </View>
-        ) : (
-          <Pressable style={styles.primary} onPress={requestPermission}>
-            <Text style={styles.primaryText}>Allow camera</Text>
-          </Pressable>
-        )}
-        <Pressable style={styles.secondary} onPress={onCancel}>
-          <Text style={styles.secondaryText}>Cancel</Text>
-        </Pressable>
-      </View>
-    </View>
+      <Label center>{label}</Label>
+      {permission.granted ? (
+        <View style={styles.cameraFrame} accessibilityLabel="Camera">
+          <CameraView
+            style={StyleSheet.absoluteFill}
+            facing="back"
+            barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+            onBarcodeScanned={({ data }) => {
+              if (locked.current) return;
+              locked.current = true;
+              onScanned(data);
+            }}
+          />
+        </View>
+      ) : (
+        <>
+          <Muted center>Nelo uses the camera only to read payment codes.</Muted>
+          <Button label="Allow camera" onPress={() => void requestPermission()} />
+        </>
+      )}
+      <TextButton label="Cancel" onPress={onCancel} />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#101113", paddingTop: 64, paddingHorizontal: 20 },
-  centre: { alignItems: "center", justifyContent: "center" },
-  body: { flexGrow: 1, justifyContent: "center", alignItems: "center", gap: 16, paddingBottom: 40 },
-  title: { color: "#e8e9ea", fontSize: 28, fontWeight: "700", textAlign: "center" },
-  big: { color: "#e8e9ea", fontSize: 38, fontWeight: "700", letterSpacing: -1 },
-  label: { color: "#8d9299", fontSize: 13, letterSpacing: 1, textAlign: "center" },
-  text: { color: "#8d9299", fontSize: 15.5, lineHeight: 23, textAlign: "center" },
-  textSmall: { color: "#5f646b", fontSize: 13, textAlign: "center" },
-  warn: { color: "#d4855e", fontSize: 14.5, lineHeight: 21, textAlign: "center" },
-  input: {
-    alignSelf: "stretch",
-    color: "#e8e9ea",
-    fontSize: 22,
-    borderWidth: 1,
-    borderColor: "#282b2f",
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    textAlign: "center",
-  },
-  primary: {
-    backgroundColor: "#1a6b4c",
-    borderRadius: 14,
-    paddingVertical: 18,
-    alignItems: "center",
-    alignSelf: "stretch",
-    marginTop: 8,
-  },
-  disabled: { backgroundColor: "#1d1f22" },
-  primaryText: { color: "#ffffff", fontSize: 17, fontWeight: "700" },
-  secondary: { paddingVertical: 14, paddingHorizontal: 40 },
-  secondaryText: { color: "#8d9299", fontSize: 15.5 },
-  secondaryWide: {
-    alignSelf: "stretch",
-    alignItems: "center",
-    paddingVertical: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#282b2f",
-  },
-  good: { color: "#4fb98f", fontSize: 64 },
-  row: { flexDirection: "row", gap: 8, alignSelf: "stretch", justifyContent: "space-between" },
-  rowButton: { flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 12, backgroundColor: "#17191b" },
-  qrFrame: { backgroundColor: "#ffffff", padding: 16, borderRadius: 16 },
-  cameraFrame: { width: 280, height: 280, borderRadius: 18, overflow: "hidden", backgroundColor: "#000" },
+  mark: { color: color.positive, fontSize: 64, textAlign: "center" },
+  qrFrame: { backgroundColor: color.qrBackground, padding: space.lg, borderRadius: radius.lg, alignSelf: "center" },
+  cameraFrame: { width: 280, height: 280, borderRadius: radius.lg, overflow: "hidden", backgroundColor: "#000", alignSelf: "center" },
+  row: { flexDirection: "row", gap: space.sm },
+  rowButton: { flex: 1, alignSelf: "auto" },
 });

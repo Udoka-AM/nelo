@@ -12,6 +12,7 @@
  *
  * The payer's own screens are in App.tsx; this one is reached from there.
  */
+import { color, TextButton } from "@nelo/ui";
 import { useEffect, useState } from "react";
 import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -195,9 +196,9 @@ export default function Probe({ onClose }: { onClose?: () => void }) {
       <StatusBar style="light" />
       <ScrollView contentContainerStyle={styles.body}>
         {onClose ? (
-          <Text style={styles.eyebrow} onPress={onClose} accessibilityRole="button">
-            ← BACK
-          </Text>
+          <View style={{ alignSelf: "flex-start", marginLeft: -8 }}>
+            <TextButton label="‹ Back" onPress={onClose} accessibilityLabel="Go back" />
+          </View>
         ) : null}
         <Text style={styles.eyebrow}>NELO · PAYER · DEV BUILD</Text>
         <Text style={styles.title}>Device checks</Text>
@@ -233,23 +234,23 @@ export default function Probe({ onClose }: { onClose?: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#101113" },
+  screen: { flex: 1, backgroundColor: color.bg },
   body: { padding: 24, paddingTop: 72 },
-  eyebrow: { color: "#8d9299", fontSize: 11, letterSpacing: 2, marginBottom: 10 },
-  title: { color: "#e8e9ea", fontSize: 30, fontWeight: "700", letterSpacing: -0.5 },
-  summary: { color: "#4fb98f", fontSize: 15, marginTop: 6, marginBottom: 28 },
-  row: { flexDirection: "row", gap: 14, paddingVertical: 14, borderTopWidth: 1, borderTopColor: "#282b2f" },
+  eyebrow: { color: color.textMuted, fontSize: 13, letterSpacing: 2, marginBottom: 10 },
+  title: { color: color.text, fontSize: 30, fontWeight: "700", letterSpacing: -0.5 },
+  summary: { color: color.positive, fontSize: 15, marginTop: 6, marginBottom: 28 },
+  row: { flexDirection: "row", gap: 14, paddingVertical: 14, borderTopWidth: 1, borderTopColor: color.border },
   mark: { fontSize: 17, width: 18 },
-  ok: { color: "#4fb98f" },
-  pending: { color: "#d4855e" },
+  ok: { color: color.positive },
+  pending: { color: color.danger },
   rowText: { flex: 1 },
-  record: { marginTop: 28, borderTopWidth: 1, borderTopColor: "#282b2f", paddingTop: 18 },
+  record: { marginTop: 28, borderTopWidth: 1, borderTopColor: color.border, paddingTop: 18 },
   recordLine: {
-    color: "#e8e9ea",
+    color: color.text,
     fontFamily: Platform.OS === "android" ? "monospace" : undefined,
     fontSize: 13,
     marginBottom: 8,
   },
-  name: { color: "#e8e9ea", fontSize: 15.5, fontWeight: "600" },
-  detail: { color: "#8d9299", fontSize: 13.5, marginTop: 3, lineHeight: 19 },
+  name: { color: color.text, fontSize: 15.5, fontWeight: "600" },
+  detail: { color: color.textMuted, fontSize: 13.5, marginTop: 3, lineHeight: 19 },
 });

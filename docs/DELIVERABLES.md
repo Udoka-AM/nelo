@@ -485,6 +485,24 @@ that is not negotiable — half the marks.
    again or to anyone else is refused. Receiving needs an enrolled vault today; the money it
    brings lands in the wallet, and becomes spendable offline with an ordinary deposit.
 8. **Full design pass across every screen.** *(Design)*
+   **Done in code, never seen on a handset.** Both apps now draw from one design system,
+   [`@nelo/ui`](../packages/ui/src/index.ts): colour tokens with every text/background pair
+   they are used in checked for WCAG AA contrast under test, one type scale with nothing
+   under 13, 48dp touch targets, and a small set of components (screen, header, button,
+   card, notice, row, field, spinner). Before it there were 25 colours and 28 font sizes, and
+   four of the greys failed contrast. Every screen of the till and the payer app was moved
+   onto it. What the audit found and this fixed:
+   - **The keypad charged ₦25 for 2-5-0-0.** It typed kobo. It now types whole naira, with a
+     `00` key.
+   - **Money was hard to read.** No thousands grouping, and dollars shown as `42.500000 USDC`.
+     [`formatMoney`](../packages/pay/src/index.ts) groups and drops zero kobo;
+     `formatDollars` shows `$42.50`, rounds down, and says "under $0.01" for dust.
+   - **Disabled buttons looked enabled**, and several controls were about 22dp tall.
+   - **The payer app had no accessibility roles**; the merchant saw raw vault ids where a
+     short mismatch code does.
+   Checked by rendering every screen in react-native-web with the native modules stubbed,
+   which shows layout and nothing about a real phone: font rendering, the keyboard, the
+   camera and the safe area are all still unseen.
 9. **The SKR election UI, with the disclosure.** Cash or SKR, and one plain sentence saying
    that electing SKR means accepting price risk on a volatile asset. *(Design)*
    **Built, never run on a handset.** The day-book opens *Your rebate*: cash first and marked
