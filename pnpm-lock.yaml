@@ -401,6 +401,39 @@ importers:
         specifier: ^5.0.0
         version: 5.12.3
 
+  tools/rehearse:
+    dependencies:
+      '@nelo/enrol':
+        specifier: workspace:*
+        version: link:../../packages/enrol
+      '@nelo/issue':
+        specifier: workspace:*
+        version: link:../../packages/issue
+      '@nelo/pay':
+        specifier: workspace:*
+        version: link:../../packages/pay
+      '@nelo/queue':
+        specifier: workspace:*
+        version: link:../../packages/queue
+      '@nelo/redeem':
+        specifier: workspace:*
+        version: link:../../packages/redeem
+      '@nelo/relay':
+        specifier: workspace:*
+        version: link:../../services/relay
+      '@nelo/till':
+        specifier: workspace:*
+        version: link:../../packages/till
+      '@nelo/voucher':
+        specifier: workspace:*
+        version: link:../../packages/voucher
+      '@noble/curves':
+        specifier: ^1.6.0
+        version: 1.9.7
+      '@noble/hashes':
+        specifier: ^1.8.0
+        version: 1.8.0
+
 packages:
 
   '@0no-co/graphql.web@1.3.4':

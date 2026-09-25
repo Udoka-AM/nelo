@@ -1,0 +1,22 @@
+{
+  "name": "@nelo/rehearse",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The week-3 gate, rehearsed on devnet or a local validator with the apps' and relayer's own code.",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning --env-file-if-exists=$HOME/.config/nelo/relay.env src/main.ts"
+  },
+  "dependencies": {
+    "@nelo/enrol": "workspace:*",
+    "@nelo/issue": "workspace:*",
+    "@nelo/pay": "workspace:*",
+    "@nelo/queue": "workspace:*",
+    "@nelo/redeem": "workspace:*",
+    "@nelo/relay": "workspace:*",
+    "@nelo/till": "workspace:*",
+    "@nelo/voucher": "workspace:*",
+    "@noble/curves": "^1.6.0",
+    "@noble/hashes": "^1.8.0"
+  }
+}

@@ -238,6 +238,33 @@ So the test got an error, `is_err()` was satisfied, and the property it names â€
 That is the argument for asserting on the *reason* rather than the fact of a refusal, and it is why every check added to CI was negative-tested before being trusted.
 </Note>
 
+## The gate rehearsal
+
+The week-3 gate, *two phones in airplane mode, a sale completes, both reconnect, it settles, and the replayed voucher is refused*, run against a real validator with the product's own code rather than a test's. The payer's vault is opened with `@nelo/redeem`'s builders, the voucher issued by `@nelo/issue`, the tills sync with `@nelo/enrol`, decide with `@nelo/till` and keep what they take in its SQLite store, and they settle with `@nelo/queue` through the relayer from `services/relay`, over HTTP. While the phones are offline, `fetch` is switched off in the process, so anything that reached for the network would fail the run.
+
+```bash
+pnpm rehearse                                      # RPC from ~/.config/nelo/relay.env
+pnpm rehearse --rpc http://127.0.0.1:8899          # a local validator
+pnpm rehearse --keypair ~/.config/solana/id.json   # who pays for the run
+```
+
+It checks, in order:
+
+1. **Offline sale.** The payer's phone reads till A's code and signs; till A checks it with no network and takes it. The same code shown again is refused.
+2. **Settle.** Till A reconnects and settles through the relayer. The merchant is paid exactly the sale, holds no SOL, and the vault pays out exactly that.
+3. **Replay.** Asked again, the relayer answers with the transaction that already landed and sends nothing. Sent straight to the program, bypassing the relayer, it is refused by the replay window (`SequenceTooOld` once the window's base has moved past it, `SequenceAlreadyRedeemed` inside it).
+4. **Double spend.** A tampered phone signs a second voucher at the same sequence for till B. Till B takes it offline, as it must. On reconnect it is not paid, the relayer reports the conflict, and the vault freezes on chain.
+5. **Slash.** The relayer's sweep moves the vault's whole stake into the reserve.
+6. **After the freeze.** The payer's phone will not sign once it has synced. A voucher signed before the freeze is still taken by a till, with the frozen-vault warning shown, and the chain pays it from the locked collateral, as the program intends.
+
+Each run makes fresh wallets and its own 6-decimal test mint, costs about 0.15 SOL on devnet, and sends what is left back to the funder. It refuses to run against mainnet.
+
+**Where it has run: a local `solana-test-validator` (Agave 4.2.2) with the program built from this commit, twice, both passing. Not yet on devnet**: the development environment cannot reach it. Two things are stood in for: the secure element (a software P-256 key) and the two phones (one process).
+
+<Note>
+**Slashing on devnet depends on who controls the stake mint.** The risk config is created once per cluster, and its stake mint is whatever the first run gave it. On a fresh validator the rehearsal creates both and makes the funder the mint authority. On devnet it reads the stake mint's authority and, unless it is the funder, stakes nothing and reports the slash step as skipped rather than passed. If the devnet risk config was created by the week-1 `devnet.rs` run, its stake mint and its update authority were a throwaway key from that run, and neither can be used again.
+</Note>
+
 ## The devnet gate
 
 The week-1 trust model has been run end to end on devnet **against the Trust Stake build**: vault funded, `RiskConfig` initialised, voucher redeemed with the device signature verified by the secp256r1 precompile **on a real validator**, double-spend refused, signature-over-other-bytes refused.

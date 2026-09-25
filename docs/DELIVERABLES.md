@@ -522,6 +522,15 @@ that is not negotiable — half the marks.
 > **Gate — Wed 30 Sep.** Two phones in airplane mode, a sale completes, both reconnect, it
 > settles, and the replayed voucher is refused. Feature freeze here. Week 4 is not for
 > building.
+>
+> **Rehearsed, on a local validator.** [`pnpm rehearse`](../tools/rehearse/src/main.ts) runs
+> the gate with the apps' and relayer's own code against a real validator: offline sale,
+> settle through the relayer, replay refused by the relayer and by the program, then a double
+> spend at a second till caught on reconnect, the vault frozen, the stake slashed, and a
+> pre-freeze voucher still paid. Passed twice on `solana-test-validator` with this commit's
+> program. **Not yet run on devnet** (unreachable from the development environment), and
+> with a software key and one process standing in for the secure element and the phones. The
+> gate itself still needs the two handsets.
 
 ---
 

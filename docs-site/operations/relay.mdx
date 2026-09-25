@@ -42,6 +42,12 @@ A refusal on budget or the per-vault cap tells the till to retry later; any othe
     ```
     If the airdrop is rate-limited, use faucet.solana.com with that address. This key pays fees and nothing else: it has no authority over the program or anyone's funds. Keep it out of the repo like every other keypair.
   </Step>
+  <Step title="Rehearse the gate on devnet">
+    ```bash
+    cd ~/nelo && pnpm rehearse
+    ```
+    Before the phones, prove the whole path on devnet: an offline sale, settling through a relayer, the replay refused, a double spend frozen and slashed. It uses the RPC in `relay.env` and pays from `~/.config/solana/id.json` if that exists, otherwise from the fee-payer key; pass `--keypair <file>` to choose. It needs about 0.2 SOL, runs its own relayer with its own throwaway fee payer, and sends what is left back. It ends with `GATE REHEARSAL PASSED` or names the step that failed. See [the gate rehearsal](/operations/testing#the-gate-rehearsal).
+  </Step>
   <Step title="Start it, and put a tunnel in front of it">
     ```bash
     cd ~/nelo/services/relay && pnpm start          # reads ~/.config/nelo/relay.env
