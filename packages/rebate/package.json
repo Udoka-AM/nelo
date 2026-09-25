@@ -1,0 +1,13 @@
+{
+  "name": "@nelo/rebate",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "description": "The merchant's rebate election: cash or SKR, one month at a time, with the disclosure SKR requires.",
+  "scripts": {
+    "test": "node --test \"test/*.test.ts\""
+  },
+  "files": [
+    "src"
+  ]
+}

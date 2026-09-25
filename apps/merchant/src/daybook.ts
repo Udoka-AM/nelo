@@ -31,6 +31,10 @@ async function handle(): Promise<SQLite.SQLiteDatabase> {
       overpaid         INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS sales_at ON sales (at DESC);
+    CREATE TABLE IF NOT EXISTS settings (
+      key   TEXT PRIMARY KEY NOT NULL,
+      value TEXT NOT NULL
+    );
   `);
   return db;
 }
@@ -87,4 +91,20 @@ export async function recent(limit = 500): Promise<Sale[]> {
     limit,
   );
   return rows.map(toSale);
+}
+
+/** A small setting that belongs with the merchant's books, such as the rebate election. */
+export async function loadSetting(key: string): Promise<string | null> {
+  const database = await handle();
+  const row = await database.getFirstAsync<{ value: string }>(`SELECT value FROM settings WHERE key = ?`, key);
+  return row?.value ?? null;
+}
+
+export async function saveSetting(key: string, value: string): Promise<void> {
+  const database = await handle();
+  await database.runAsync(
+    `INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+    key,
+    value,
+  );
 }

@@ -38,6 +38,9 @@ importers:
       '@nelo/queue':
         specifier: workspace:*
         version: link:../../packages/queue
+      '@nelo/rebate':
+        specifier: workspace:*
+        version: link:../../packages/rebate
       '@nelo/redeem':
         specifier: workspace:*
         version: link:../../packages/redeem
@@ -271,6 +274,8 @@ importers:
       '@nelo/voucher':
         specifier: workspace:*
         version: link:../voucher
+
+  packages/rebate: {}
 
   packages/redeem:
     dependencies:

@@ -9,6 +9,7 @@
     "@nelo/onboard": "workspace:*",
     "@nelo/pay": "workspace:*",
     "@nelo/queue": "workspace:*",
+    "@nelo/rebate": "workspace:*",
     "@nelo/redeem": "workspace:*",
     "@nelo/till": "workspace:*",
     "@nelo/voucher": "workspace:*",
@@ -43,5 +44,5 @@
     "build:dev": "eas build -p android --profile development"
   },
   "private": true,
-  "description": "Expo app — the merchant terminal. Local-currency amount entry, Solana Pay, day-book, and onboarding behind an embedded wallet."
+  "description": "Expo app \u2014 the merchant terminal. Local-currency amount entry, Solana Pay, day-book, and onboarding behind an embedded wallet."
 }

@@ -447,6 +447,19 @@ that is not negotiable — half the marks.
 8. **Full design pass across every screen.** *(Design)*
 9. **The SKR election UI, with the disclosure.** Cash or SKR, and one plain sentence saying
    that electing SKR means accepting price risk on a volatile asset. *(Design)*
+   **Built, never run on a handset.** The day-book opens *Your rebate*: cash first and marked
+   default, SKR beside it with its premium and what it does for the limit, and this month's
+   rebate so far both ways. Choosing SKR shows the sentence ("SKR is a volatile token: if its
+   price falls, the rebate you take in SKR can end up worth less than the cash you gave up
+   for it.") and cannot be saved until it is accepted. The rules are
+   [`@nelo/rebate`](../packages/rebate/src/index.ts), 9 tests: SKR needs the notice accepted
+   *as it currently reads* (changing the words bumps a version), a choice applies from next
+   month so nobody picks the winner in hindsight, and the rebate rounds down.
+   **Two things this does not settle.** The premium shown is BUILD.md's 1.5× placeholder,
+   labelled on screen as an example, not a promise; `@nelo/reserve`'s `premiumCeiling` says
+   capital relief alone justifies far less, so the number is a decision. And nothing pays a
+   rebate out yet, in either form: the election is stored on the phone, and reaches
+   `services/settle` once it has an HTTP surface. The screen says rebates are not paid out yet.
 
 > **Gate — Wed 30 Sep.** Two phones in airplane mode, a sale completes, both reconnect, it
 > settles, and the replayed voucher is refused. Feature freeze here. Week 4 is not for

@@ -259,6 +259,26 @@ The objects are `@solana/kit`'s instruction shape, so they drop into a kit trans
 
 ---
 
+## `@nelo/rebate`
+
+The merchant's monthly choice of how their rebate is paid: cash, the default, or SKR at a premium, already staked.
+
+```ts
+elect(elections, "skr", { now, tzOffsetMinutes, acknowledged: DISCLOSURE.version })
+choiceFor(elections, "2026-10")   // "cash" | "skr"
+quote(settledVolume)              // { cash, skrValue, premium }
+```
+
+**SKR needs the disclosure accepted, as it reads now.** `DISCLOSURE` is one plain sentence about price risk, with a version. An acknowledgement is of a particular wording, so changing it makes every merchant accept again before choosing SKR.
+
+**A choice applies from next month.** Choosing mid-month, after seeing SKR's price, would let a merchant pick the winner in hindsight at the platform's cost.
+
+**The premium is labelled until it is priced.** `ILLUSTRATIVE_PREMIUM` is BUILD.md's 1.5× placeholder and says so. `@nelo/reserve`'s `premiumCeiling` is where the real number has to come from.
+
+**9 tests.**
+
+---
+
 ## `@nelo/queue`
 
 The merchant's offline queue: vouchers taken and not yet paid, and what to do about each one when the network comes back.

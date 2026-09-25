@@ -48,6 +48,7 @@ import { canOnboardWithPhone, privy, rpcUrl } from "./src/config";
 import Onboarding from "./src/Onboarding";
 import ScanPayment from "./src/Scan";
 import CloseOfDay from "./src/CloseOfDay";
+import Rebate from "./src/Rebate";
 import { syncPayers } from "./src/sync";
 import { settleVouchers } from "./src/settle";
 import { voucherStore } from "./src/offline";
@@ -86,6 +87,7 @@ function Till() {
   const [balance, setBalance] = useState<Balance | null>(null);
   const [showDaybook, setShowDaybook] = useState(false);
   const [showClose, setShowClose] = useState(false);
+  const [showRebate, setShowRebate] = useState(false);
   /** The customer has no signal, so the till scans their code instead. */
   const [scanning, setScanning] = useState(false);
   /** Offline payments taken and not yet settled. */
@@ -370,6 +372,15 @@ function Till() {
     );
   }
 
+  if (showRebate) {
+    return (
+      <>
+        <StatusBar style="light" />
+        <Rebate sales={sales} tz={tz} onDone={() => setShowRebate(false)} />
+      </>
+    );
+  }
+
   if (showClose) {
     return (
       <>
@@ -396,6 +407,10 @@ function Till() {
           </View>
         </View>
         <ScrollView contentContainerStyle={styles.bookBody}>
+          <Pressable style={styles.rebateRow} onPress={() => setShowRebate(true)} accessibilityRole="button">
+            <Text style={styles.rebateLabel}>Your rebate: cash or SKR</Text>
+            <Text style={styles.secondaryText}>›</Text>
+          </Pressable>
           {days.length === 0 ? (
             <Text style={styles.empty}>No sales yet. Takings appear here as they settle.</Text>
           ) : (
@@ -764,6 +779,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 18,
   },
+  rebateRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: "#17191b",
+    marginBottom: 22,
+  },
+  rebateLabel: { color: "#e8e9ea", fontSize: 15.5 },
   bookActions: { flexDirection: "row", gap: 18 },
   bookTitle: { color: "#e8e9ea", fontSize: 26, fontWeight: "700", letterSpacing: -0.6 },
   bookBody: { paddingBottom: 40 },

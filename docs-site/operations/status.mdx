@@ -50,6 +50,7 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | `packages/enrol` | ✅ Payer list and revocation list, pinned to the program's account layouts (18 tests) |
 | `packages/issue` | ✅ Payer-side issuing, never signs one sequence twice (21 tests) |
 | `apps/payer` | ⚠️ Enrol, deposit, pay offline, and receive from another customer: typechecks and bundles, never run on a handset |
+| `packages/rebate` | ✅ The cash-or-SKR election and its disclosure (9 tests); ❌ no rebate is paid out yet |
 | `packages/till` | ✅ The till's scan decision and voucher store, shared by the till and customer-to-customer receiving (17 tests) |
 | `packages/redeem` | ✅ Matches the program's own builders byte for byte, for redemption, conflict reports and slashing (41 tests); ⚠️ never broadcast to a cluster |
 | `services/settle` — ledger | ✅ Proven (39 tests) |
