@@ -30,7 +30,7 @@ Three states are kept apart, because conflating them is how a demo ends up claim
     **Proven, on devnet.** 17 curve tests off chain, ~19 on chain in LiteSVM, and `RiskConfig` now live on a real validator with `redeem_voucher` exercised against its new account struct.
   </Card>
   <Card title="Settlement" icon="book">
-    **Ledger proven** (39 tests) — double-entry, idempotent, reversible, reconcilable. Partner is a **declared stub**.
+    **Ledger proven**: double-entry, idempotent, reversible, reconcilable. **Cash-out through paj.cash built** against their API reference; never called paj.cash yet.
   </Card>
 </CardGroup>
 
@@ -52,12 +52,13 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | `apps/payer` | ⚠️ Enrol, deposit, pay offline, and receive from another customer: typechecks and bundles, never run on a handset |
 | `packages/rebate` | ✅ The cash-or-SKR election and its disclosure (9 tests); ❌ no rebate is paid out yet |
 | `packages/till` | ✅ The till's scan decision and voucher store, shared by the till and customer-to-customer receiving (17 tests) |
-| `packages/redeem` | ✅ Matches the program's own builders byte for byte, for redemption, conflict reports and slashing (41 tests); ⚠️ never broadcast to a cluster |
+| `packages/redeem` | ✅ Matches the program's own builders byte for byte, for redemption, conflict reports and slashing, and the SPL crates for the cash-out transfer (45 tests); ⚠️ never broadcast to a cluster |
 | `services/settle` — ledger | ✅ Proven (39 tests) |
-| `services/settle` — partner | 🟡 Declared stub |
+| `services/settle` — paj.cash cash-out | ⚠️ Client, partner, cash-out records and HTTP built and tested against a fake paj.cash (36 tests); never called paj.cash: waiting on the staging key and their answers |
+| `packages/cashout` | ✅ The phone's side of a cash-out, resumable at every step (6 tests) |
 | `packages/attest` | ⚠️ Compiles (EAS build); never run on hardware |
 | `apps/merchant` | ⚠️ Typechecks; native side builds; never rendered |
-| `services/relay` | ✅ Submits offline vouchers and pays fees, idempotently; reports double spends and cranks slashing (53 tests); runs on the Mac behind a tunnel for the demo |
+| `services/relay` | ✅ Submits offline vouchers and pays fees, idempotently; reports double spends and cranks slashing; pays the fee on merchants' cash-out transfers (62 tests); runs on the Mac behind a tunnel for the demo |
 | `packages/rpc` | ✅ RPC failover for both apps and the relayer (10 tests); never exercised against a real outage |
 | Live price feed | ❌ Blocked on a product decision |
 | Onboarding — the flow's rules | ✅ Proven (29 of `@nelo/onboard`'s 60) |
@@ -80,8 +81,8 @@ Three states are kept apart, because conflating them is how a demo ends up claim
   <Step title="Get a Privy app ID">
     Onboarding's done-when is *setup completed without ever seeing a key*, and it cannot be demonstrated without one. The flow's rules are tested; the SDK calls are typechecked and unexecuted. A build with no app ID runs and simply does not offer the phone route.
   </Step>
-  <Step title="Settle the payout partner">
-    No licensed partner has been signed. The ledger is real and the stub is honest, so the fork is cheap — but the real leg cannot be built against an API nobody has access to.
+  <Step title="Get paj.cash's staging key and answers">
+    The cash-out is built against paj.cash's published API. It needs their staging key to run for real, and their answers on whose account runs the session, whether staging takes devnet USDC, and their failure states.
   </Step>
 </Steps>
 
@@ -118,8 +119,7 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 Named rather than discovered, because a named stub reads as confidence and a discovered one reads as spin:
 
 - **Paying out of the reserve.** `slash` moves a frozen vault's whole stake into the reserve, an account owned by the risk-config PDA, so no key can move it. Nothing pays out of it yet. Deciding who is compensated, by how much and on whose say-so is a commercial and legal decision, and the program should not invent the answer.
-- **The payout partner adapter.** The interface exists; the implementation waits on sandbox access.
-- **An HTTP surface on `settle`.** It is a library the relay and the app will call, not a server.
+- **Cash-outs in the double-entry journal.** The journal was modelled on Nelo holding merchants' money. Cash-outs are non-custodial, so only Nelo's fee belongs in it, and that posting is not written.
 - **Embedded-wallet recovery.** `needs-recovery` is detected and reported; `useRecoverEmbeddedWallet` is not wired, so the retry on that screen will not clear it. It arises when a wallet has to be reconstructed on a new device, which is exactly the case a merchant who changes phones hits — so it is a gap with a date on it, not a permanent omission.
 - **Moving a vault to a new phone.** The program has no instruction to enrol a new device key on an existing vault, so a payer who loses the phone's key needs a new wallet.
 - **The payer chooses their own floor limit.** `initialize_vault` accepts any `floor_limit` up to the platform hard cap, which makes staking pointless for anyone who asks for the cap. The payer app does not expose the knob and asks for $50, but the program should bound it.

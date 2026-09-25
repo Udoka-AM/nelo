@@ -14,6 +14,8 @@
  * worse than one that admits it.
  */
 import { fetchHermesQuote, quoteToRate, type Rate } from "@nelo/pay";
+import { settleService } from "@nelo/cashout";
+import { settleToken, settleUrl } from "./config";
 
 const HERMES_URL = "https://hermes.pyth.network";
 /** Set once a key exists; until then the configured rate is used. */
@@ -50,10 +52,31 @@ export const CONFIGURED: Record<string, Rate> = {
   PHP: { localPerUsd: 5_812_345n, scale: 5, minorPerMajor: 100n },
 };
 
+/** "1525.37" → 152_537n at scale 2. Refuses anything that is not a plain positive decimal. */
+export function decimalRate(text: string, minorPerMajor: bigint): Rate | null {
+  const m = /^(\d+)(?:\.(\d{1,12}))?$/.exec(text);
+  if (!m) return null;
+  const fraction = m[2] ?? "";
+  const localPerUsd = BigInt(m[1]! + fraction);
+  return localPerUsd > 0n ? { localPerUsd, scale: fraction.length, minorPerMajor } : null;
+}
+
 export async function currentRate(currency: string): Promise<Quoted> {
   const feedId = FEEDS[currency];
   const fallback = CONFIGURED[currency];
   if (!fallback) throw new Error(`no rate configured for ${currency}`);
+
+  // paj.cash's off-ramp rate, through Nelo's settlement service: the rate the
+  // merchant is actually paid out at, which is the number a till should show.
+  if (settleUrl && currency === "NGN") {
+    try {
+      const r = await settleService({ url: settleUrl, ...(settleToken ? { token: settleToken } : {}) }).rate();
+      const rate = r.currency === currency ? decimalRate(r.rate, fallback.minorPerMajor) : null;
+      if (rate) return { rate, live: true, ...(r.fidelity === "sandbox" ? { note: "paj.cash sandbox rate" } : {}) };
+    } catch {
+      // Fall through to the price feed or the configured rate, labelled as such.
+    }
+  }
 
   if (!feedId) {
     return { rate: fallback, live: false, note: `No ${currency} price feed — rate is fixed` };

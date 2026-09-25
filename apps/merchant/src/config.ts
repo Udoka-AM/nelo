@@ -74,3 +74,12 @@ export const rpc = failover(
  */
 export const relayUrl = process.env.EXPO_PUBLIC_NELO_RELAY_URL?.trim().replace(/\/+$/, "") || null;
 export const relayToken = process.env.EXPO_PUBLIC_NELO_RELAY_TOKEN?.trim() || null;
+
+/**
+ * Nelo's settlement service: cash-outs to a bank through paj.cash, and
+ * paj.cash's naira rate. See services/settle. Like the relayer's, the token is
+ * not a secret from anyone holding the APK; paj.cash's own key never leaves
+ * the server.
+ */
+export const settleUrl = process.env.EXPO_PUBLIC_NELO_SETTLE_URL?.trim().replace(/\/+$/, "") || null;
+export const settleToken = process.env.EXPO_PUBLIC_NELO_SETTLE_TOKEN?.trim() || null;

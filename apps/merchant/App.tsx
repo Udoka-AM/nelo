@@ -41,7 +41,7 @@ import {
 import { currentBalance, type Balance } from "./src/balance";
 import { record, recent } from "./src/daybook";
 import { currentRate, type Quoted } from "./src/rate";
-import { connect } from "./src/wallet";
+import { connect, signTransactions } from "./src/wallet";
 import { remember, restore, type MerchantAccount } from "./src/account";
 import { PrivyProvider } from "@privy-io/expo";
 import { canOnboardWithPhone, privy, rpc } from "./src/config";
@@ -49,6 +49,7 @@ import Onboarding from "./src/Onboarding";
 import ScanPayment from "./src/Scan";
 import CloseOfDay from "./src/CloseOfDay";
 import Rebate from "./src/Rebate";
+import CashOut, { PrivyCashOut } from "./src/CashOut";
 import { syncPayers } from "./src/sync";
 import { settleVouchers } from "./src/settle";
 import { voucherStore } from "./src/offline";
@@ -88,6 +89,7 @@ function Till() {
   const [showDaybook, setShowDaybook] = useState(false);
   const [showClose, setShowClose] = useState(false);
   const [showRebate, setShowRebate] = useState(false);
+  const [cashingOut, setCashingOut] = useState(false);
   /** The customer has no signal, so the till scans their code instead. */
   const [scanning, setScanning] = useState(false);
   /** Offline payments taken and not yet settled. */
@@ -372,6 +374,35 @@ function Till() {
     );
   }
 
+  if (cashingOut && merchant) {
+    const common = {
+      owner: merchant.address,
+      payout: merchant.payout,
+      balanceBaseUnits: balance?.baseUnits ?? null,
+      rate: quoted?.rate ?? null,
+      currency: CURRENCY,
+      onPayoutSaved: (payout: string) => {
+        const updated = { ...merchant, payout };
+        setMerchant(updated);
+        void remember(updated).catch(() => {});
+      },
+      onDone: () => {
+        setCashingOut(false);
+        void refreshBalance();
+      },
+    };
+    return (
+      <>
+        <StatusBar style="light" />
+        {merchant.kind === "embedded" && privy ? (
+          <PrivyCashOut {...common} />
+        ) : (
+          <CashOut {...common} sign={async (wire) => (await signTransactions([wire]))[0]!} />
+        )}
+      </>
+    );
+  }
+
   if (showRebate) {
     return (
       <>
@@ -567,9 +598,14 @@ function Till() {
   return (
     <View style={styles.screen}>
       <StatusBar style="light" />
-      <View style={styles.balanceBar}>
+      <Pressable
+        style={styles.balanceBar}
+        onPress={() => setCashingOut(true)}
+        accessibilityRole="button"
+        accessibilityLabel="Cash out to your bank"
+      >
         <View>
-          <Text style={styles.balanceLabel}>BALANCE</Text>
+          <Text style={styles.balanceLabel}>BALANCE · CASH OUT ›</Text>
           <Text style={styles.balanceValue}>
             {CURRENCY.symbol}
             {balance ? formatLocalAmount(balance.localMinor, CURRENCY.minorDigits) : "—"}
@@ -585,7 +621,7 @@ function Till() {
             {balance && !balance.liveRate ? "at a fixed rate" : "held in dollars"}
           </Text>
         </View>
-      </View>
+      </Pressable>
 
       <Pressable
         style={styles.todayBar}

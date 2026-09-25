@@ -4,6 +4,7 @@
   "main": "index.ts",
   "dependencies": {
     "@nelo/accept": "workspace:*",
+    "@nelo/cashout": "workspace:*",
     "@nelo/enrol": "workspace:*",
     "@nelo/ledger": "workspace:*",
     "@nelo/onboard": "workspace:*",

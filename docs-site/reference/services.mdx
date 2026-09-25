@@ -1,6 +1,6 @@
 ---
 title: "Services"
-description: "The double-entry ledger behind the payout leg, and the relayer that settles offline vouchers."
+description: "The double-entry ledger, cash-outs through paj.cash, and the relayer that settles offline vouchers."
 ---
 
 ## `@nelo/settle`
@@ -97,7 +97,29 @@ No disbursement partner has been signed. The only implementation is `DeclaredStu
 
 Swapping in a licensed partner is a constructor change. That is deliberate: it pre-takes the project's declared fork — *"either stub the settlement leg and say so on camera, or pivot the demo"* — so the decision costs a line rather than a week.
 
-**39 tests.**
+### Cash-outs through paj.cash
+
+`PajPartner` implements the same interface against paj.cash's API, with `fidelity: "sandbox"` on staging and `"live"` on production. It is built against their published reference and tested against a fake of it; it has not yet called paj.cash.
+
+paj.cash is paid by a transfer: an order gives a deposit address, and the bank is paid once the USDC arrives. The merchant's wallet sends it, and the relayer pays the fee.
+
+```
+GET  /v1/rate                           paj.cash's off-ramp rate, as exact integers
+GET  /v1/banks                          banks paj.cash pays
+GET  /v1/banks/:code/accounts/:account  whose account this is
+POST /v1/cashouts          { id, merchant, destination, amount }
+GET  /v1/cashouts/:id      where it stands, asked of paj.cash
+POST /v1/cashouts/:id/funded { signature }
+POST /v1/paj/webhook/:secret
+```
+
+- **One cash-out id, one order, one transfer.** paj.cash takes no idempotency key, so the record is written before it is asked, and again with the deposit address before the app is told where to send.
+- **paj.cash's numbers are decimals.** They are read through their text, exact both ways, and refused rather than rounded when a JSON number cannot carry them.
+- **The webhook is a prompt, not a source.** Nothing documents a signature on it, so its body is never believed: it names an order, and the service asks paj.cash's API about it. Its path carries a secret.
+- **State only moves forward.** A lagging "INIT" does not undo "funded", and "paid" is final.
+- **The session is an operator's.** `pnpm paj:login` exchanges a one-time code for a session token, stored owner-only outside the repository.
+
+**75 tests**, 36 of them for cash-outs.
 
 ---
 
@@ -115,6 +137,8 @@ GET  /v1/health
 
 **Double spends.** Two vouchers at one sequence, from a till or seen by the relayer itself, are reported with `report_conflict`. A sweep every minute then cranks `slash` on each frozen vault that still holds stake.
 
+**Cash-out transfers.** `POST /v1/cashout/prepare` builds the merchant's transfer to a paj.cash deposit address with the relayer as fee payer; `POST /v1/cashout/submit` co-signs it only if it is exactly that message with the merchant's valid signature. It never parses a transaction someone else wrote. Bounded by mint, a daily count per merchant, the shared budget, and rent for a deposit account only when `RELAY_SPONSOR_DEPOSIT_ACCOUNTS=true`.
+
 **No durable nonces**, since it signs each redemption fresh. **RPC failover** through `@nelo/rpc`: `RELAY_RPC_FALLBACK_URLS` are tried in order when `RELAY_RPC_URL` does not answer. Running it: [the relayer runbook](/operations/relay).
 
-**53 tests**, against a fake network.
+**62 tests**, against a fake network.

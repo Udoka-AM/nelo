@@ -72,6 +72,42 @@ The till records the signature only after the relayer answers. A till that crash
 
 The submission is written to the ledger before the transaction is sent, and requests are handled one at a time. `services/relay/test/` pins both, with a control test that shows the duplicate send happening without them.
 
+## Cash-outs through paj.cash
+
+The settlement service (`services/settle`) opens payout orders with paj.cash, and the relayer pays the fee on the merchant's transfer to the order's deposit address. It runs on the same Mac, behind its own tunnel.
+
+<Steps>
+  <Step title="Log in to paj.cash">
+    ```bash
+    cd ~/nelo/services/settle
+    export PAJ_API_KEY='…'          # Nelo's paj.cash business key: server-side only
+    pnpm paj:login                  # paj.cash sends a code; type it in
+    ```
+    The session token is saved owner-only to `~/.config/nelo/paj-session.json`. When it expires, cash-outs pause with a message saying so; run this again.
+  </Step>
+  <Step title="Start it, and put a tunnel in front of it">
+    ```bash
+    cloudflared tunnel --url http://127.0.0.1:8788     # note the https address
+    export SETTLE_PUBLIC_URL=https://….trycloudflare.com
+    export SETTLE_WEBHOOK_SECRET=$(openssl rand -hex 16)
+    export SETTLE_TOKEN=$(openssl rand -hex 24)
+    echo "SETTLE_TOKEN=$SETTLE_TOKEN"
+    pnpm start
+    ```
+    `PAJ_ENV` defaults to staging. `SETTLE_MINT` defaults to devnet USDC; if paj.cash staging wants another mint, set it here.
+  </Step>
+  <Step title="Point the merchant app at it">
+    In `apps/merchant/.env`:
+    ```
+    EXPO_PUBLIC_NELO_SETTLE_URL=https://….trycloudflare.com
+    EXPO_PUBLIC_NELO_SETTLE_TOKEN=<the SETTLE_TOKEN from above>
+    ```
+    The till then shows paj.cash's naira rate, and the balance opens Cash out.
+  </Step>
+</Steps>
+
+The relayer allows 5 cash-out transfers per merchant a day (`RELAY_CASHOUTS_PER_DAY`). If paj.cash's deposit addresses turn out to have no USDC token account, set `RELAY_SPONSOR_DEPOSIT_ACCOUNTS=true` to have the relayer open one, at about 0.002 SOL each.
+
 ## Double spends
 
 Two different vouchers from one vault with the same sequence number are proof that the payer spent the same money twice. The relayer acts on that proof in two steps:

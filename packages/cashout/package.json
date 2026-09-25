@@ -1,0 +1,19 @@
+{
+  "name": "@nelo/cashout",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "description": "A merchant cashing out to their bank: the settlement service opens the order, the relayer pays the fee, the merchant's wallet signs. Resumable at every step.",
+  "dependencies": {
+    "@nelo/redeem": "workspace:*",
+    "@nelo/voucher": "workspace:*",
+    "@noble/curves": "^1.6.0",
+    "@solana/kit": "^7.1.1"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.ts\""
+  },
+  "files": [
+    "src"
+  ]
+}

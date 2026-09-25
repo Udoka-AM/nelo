@@ -23,6 +23,9 @@ importers:
       '@nelo/accept':
         specifier: workspace:*
         version: link:../../packages/accept
+      '@nelo/cashout':
+        specifier: workspace:*
+        version: link:../../packages/cashout
       '@nelo/enrol':
         specifier: workspace:*
         version: link:../../packages/enrol
@@ -229,6 +232,21 @@ importers:
       react-native:
         specifier: '*'
         version: 0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3)
+
+  packages/cashout:
+    dependencies:
+      '@nelo/redeem':
+        specifier: workspace:*
+        version: link:../redeem
+      '@nelo/voucher':
+        specifier: workspace:*
+        version: link:../voucher
+      '@noble/curves':
+        specifier: ^1.6.0
+        version: 1.9.7
+      '@solana/kit':
+        specifier: ^7.1.1
+        version: 7.1.1(typescript@6.0.3)
 
   packages/enrol:
     dependencies:

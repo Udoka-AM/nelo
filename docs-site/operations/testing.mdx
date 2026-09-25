@@ -27,7 +27,7 @@ This page is kept honest rather than flattering. The distinction between *a test
 | `packages/till` | 10 | `pnpm install` |
 | `programs/nelo_vault` — golden vectors (voucher, redemption tx, error codes, account layouts) | 7 | Rust only |
 
-**511 TypeScript tests, plus the Rust and LiteSVM suites below, all green, all on every push.** Everything but the LiteSVM suite runs with no phone and no validator — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
+**566 TypeScript tests, plus the Rust and LiteSVM suites below, all green, all on every push.** Everything but the LiteSVM suite runs with no phone and no validator — which is the whole reason the arithmetic was pulled out of the app and the program in the first place.
 
 The LiteSVM tests were the long-standing gap. They went unexecuted for weeks because no machine that had the repo had the Solana toolchain — `release.anza.xyz` is unreachable from the development environment. The first run scored **39 of 40**, and [the one failure was worth more than the 39 passes](#things-that-went-wrong-and-were-caught).
 
@@ -37,7 +37,7 @@ The LiteSVM tests were the long-standing gap. They went unexecuted for weeks bec
 
 | Job | What | Cold | Warm |
 |---|---|---|---|
-| **TypeScript** | 511 tests, then four typechecks | ~21s | ~21s |
+| **TypeScript** | 566 tests, then four typechecks | ~21s | ~21s |
 | **Rust (host)** | `cargo fmt`, clippy, 19 unit tests, 7 golden-vector tests | not yet timed | ~34s |
 | **Anchor** | the 45 LiteSVM tests | ~14m | ~2m once the build cache is warm |
 

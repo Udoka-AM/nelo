@@ -286,9 +286,33 @@ Order matters here; each step feeds the next.
    idempotency under replay, the rounding (fee plus net always adds back to the sale;
    the spread is a difference, never a percentage, so rounding cannot invent a minor
    unit), the reversal, and reconciliation drift in both directions.
-   **Not done:** the partner adapter itself, which is what the sandbox access is for,
-   and there is no HTTP surface yet — the service is a library the relay and the app
-   will call.
+   **The partner is paj.cash, and the cash-out is built** against their published API
+   reference, tested against a fake of it. Nothing has called paj.cash yet: the staging
+   key and several answers from their team are still to come, and this environment
+   cannot reach their API. paj.cash is paid by a transfer, not from funds it holds: an
+   order gives a deposit address, and the bank is paid once the USDC arrives. Nelo never
+   holds the merchant's money, so a cash-out is:
+   1. the settlement service opens the order (`services/settle`, `PajPartner`);
+   2. the relayer builds the transfer with itself as fee payer (`/v1/cashout/prepare`);
+   3. the merchant's wallet signs it, and the relayer co-signs and sends it
+      (`/v1/cashout/submit`), so cashing out needs no SOL;
+   4. the settlement service is told the signature and asks paj.cash where the payout
+      stands.
+
+   One cash-out id is one order and one transfer. The record is on disk before paj.cash
+   is asked, and every step answers a repeat with the same result, so the phone resumes
+   after a crash without sending the USDC twice. paj.cash's webhook is only a prompt to
+   ask its API; nothing documents a signature on it. The till's naira rate now comes from
+   paj.cash's off-ramp rate, the rate the merchant is actually paid at. The merchant app
+   opens Cash out from the balance, with the account holder's name shown before anything
+   moves. A Privy merchant signs through Privy's message signing, checked against their
+   key before use. 36 settlement tests, 9 relayer, 4 builder and 6 client-flow tests.
+   **Open until paj.cash answers:** whose account runs the session (Nelo's, or each
+   merchant's with their own KYC); how long a session lasts; whether staging takes devnet
+   USDC; whether a deposit address has a token account; and the full list of failure
+   states. The Nelo-business model is assumed. The double-entry journal is not yet posted
+   to by cash-outs: it was modelled on Nelo holding the money, and with non-custodial
+   cash-outs only Nelo's fee belongs in it.
 9. **Trust Stake: staking and the floor-limit curve.** `offline_limit = min(base × (1 +
    k·√stake) × reputation, hard_cap)`. *(Anchor)*
    **Written.** `programs/nelo_vault/src/curve.rs` holds the curve — integer-only,
