@@ -18,15 +18,29 @@
  * done-when true: setup completed without ever seeing a key.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+  Button,
+  Card,
+  color,
+  Figure,
+  Header,
+  Heading,
+  Hero,
+  Label,
+  Muted,
+  Notice,
+  radius,
+  Row,
+  Screen,
+  Small,
+  space,
+  Spinner,
+  TextButton,
+  Title,
+  touch,
+  type,
+} from "@nelo/ui";
 import { StatusBar } from "expo-status-bar";
 import QRCode from "react-native-qrcode-svg";
 import * as Crypto from "expo-crypto";
@@ -58,7 +72,9 @@ import {
   encodeTransferRequest,
   referenceFromBytes,
   type PaymentOutcome,
+  formatDollars,
   formatLocalAmount,
+  formatMoney,
   formatTokenAmount,
   localToTokenBaseUnits,
 } from "@nelo/pay";
@@ -72,7 +88,9 @@ const CURRENCY = { code: "NGN", symbol: "₦", minorDigits: 2 };
 // once detection polls for real.
 const RPC_URL = rpc;
 
-const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "·", "0", "⌫"];
+const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0", "⌫"];
+/** Minor units per naira. */
+const MINOR = 10n ** BigInt(CURRENCY.minorDigits);
 
 function Till() {
   // Held as minor units so no float ever touches a price.
@@ -294,30 +312,31 @@ function Till() {
   }
 
   function press(key: string) {
-    if (key === "⌫") {
-      setMinor((m) => m / 10n);
-    } else if (key === "·") {
-      // Minor units are implicit — typing is right-to-left, as on a till.
-    } else {
-      setMinor((m) => {
-        const next = m * 10n + BigInt(key);
-        return next > 10n ** 12n ? m : next; // stop at a sane ceiling
-      });
-    }
+    // Whole naira, typed left to right, the way a price is said. A stall does
+    // not price in kobo, and the old decimal key did nothing: 2-5-0-0 charged
+    // ₦25.00. "00" is there because most prices end in it.
+    setMinor((m) => {
+      const whole = m / MINOR;
+      const next = key === "⌫" ? whole / 10n : key === "00" ? whole * 100n : whole * 10n + BigInt(key);
+      return next > 10n ** 10n ? m : next * MINOR;
+    });
   }
+
+  const money = (m: bigint) => formatMoney(m, CURRENCY);
+  const dollarsFor = (m: bigint) => (quoted ? formatDollars(localToTokenBaseUnits(m, quoted.rate)) : "");
 
   if (restoring) {
     return (
-      <View style={[styles.screen, styles.centre]}>
+      <Screen center scroll={false}>
         <StatusBar style="light" />
-        <ActivityIndicator color="#4fb98f" />
-      </View>
+        <Spinner />
+      </Screen>
     );
   }
 
   if (!merchant && signingUp) {
     return (
-      <View style={styles.screen}>
+      <View style={styles.bare}>
         <StatusBar style="light" />
         <Onboarding
           onComplete={(account) => {
@@ -336,41 +355,29 @@ function Till() {
 
   if (!merchant) {
     return (
-      <View style={styles.screen}>
+      <Screen center>
         <StatusBar style="light" />
-        <View style={styles.onboard}>
-          <Text style={styles.onboardTitle}>Take payments on this phone</Text>
-          <Text style={styles.onboardBody}>
-            Connect the wallet you already use. Nelo never holds your key — it only needs
-            somewhere to send your money.
-          </Text>
-          <Pressable
-            style={[styles.primary, styles.onboardButton, connecting && styles.primaryDisabled]}
+        <Title>Take payments on this phone</Title>
+        <Muted>
+          Connect the wallet you already use. Nelo never holds your key — it only needs somewhere to send your money.
+        </Muted>
+        <Button
+          label={connecting ? "Waiting for your wallet…" : "Connect wallet"}
+          busy={connecting}
+          onPress={() => void onConnect()}
+        />
+        {/* Offered only when this build has a Privy app ID. Without one the
+            button could only ever fail, and the failure would land on the
+            merchant as though they had mistyped something. */}
+        {canOnboardWithPhone ? (
+          <Button
+            kind="secondary"
+            label="No wallet? Set one up with your phone number"
             disabled={connecting}
-            onPress={onConnect}
-            accessibilityRole="button"
-          >
-            <Text style={styles.primaryText}>
-              {connecting ? "Waiting for your wallet…" : "Connect wallet"}
-            </Text>
-          </Pressable>
-          {/* Offered only when this build has a Privy app ID. Without one the
-              button could only ever fail, and the failure would land on the
-              merchant as though they had mistyped something. */}
-          {canOnboardWithPhone ? (
-            <Pressable
-              style={styles.secondary}
-              disabled={connecting}
-              onPress={() => setSigningUp(true)}
-              accessibilityRole="button"
-            >
-              <Text style={styles.secondaryCentred}>
-                I don't have a wallet — set one up with my phone number
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
-      </View>
+            onPress={() => setSigningUp(true)}
+          />
+        ) : null}
+      </Screen>
     );
   }
 
@@ -424,94 +431,60 @@ function Till() {
   if (showDaybook) {
     const days = groupByDay(sales, tz);
     return (
-      <View style={styles.screen}>
+      <Screen>
         <StatusBar style="light" />
-        <View style={styles.bookHeader}>
-          <Text style={styles.bookTitle}>Day-book</Text>
-          <View style={styles.bookActions}>
-            <Pressable onPress={() => setShowClose(true)} accessibilityRole="button">
-              <Text style={styles.secondaryText}>Close the day</Text>
-            </Pressable>
-            <Pressable onPress={() => setShowDaybook(false)} accessibilityRole="button">
-              <Text style={styles.secondaryText}>Done</Text>
-            </Pressable>
-          </View>
-        </View>
-        <ScrollView contentContainerStyle={styles.bookBody}>
-          <Pressable style={styles.rebateRow} onPress={() => setShowRebate(true)} accessibilityRole="button">
-            <Text style={styles.rebateLabel}>Your rebate: cash or SKR</Text>
-            <Text style={styles.secondaryText}>›</Text>
-          </Pressable>
-          {days.length === 0 ? (
-            <Text style={styles.empty}>No sales yet. Takings appear here as they settle.</Text>
-          ) : (
-            days.map(({ day, sales: daySales, totals }) => (
-              <View key={day} style={styles.daySection}>
-                <View style={styles.dayHeader}>
-                  <Text style={styles.dayName}>{dayLabel(day, Date.now(), tz)}</Text>
-                  <Text style={styles.dayTotal}>
-                    {CURRENCY.symbol}
-                    {formatLocalAmount(totals.localMinor, CURRENCY.minorDigits)}
-                  </Text>
+        <Header title="Day-book" actions={[{ label: "Done", onPress: () => setShowDaybook(false) }]} />
+        <NavCard title="Close the day" sub="What was sold, what arrived, what is still coming" onPress={() => setShowClose(true)} />
+        <NavCard title="Your rebate" sub="Cash or SKR, from next month" onPress={() => setShowRebate(true)} />
+        {days.length === 0 ? (
+          <Muted>No sales yet. Takings appear here as they arrive.</Muted>
+        ) : (
+          days.map(({ day, sales: daySales, totals }) => (
+            <View key={day} style={styles.day}>
+              <Row
+                label={dayLabel(day, Date.now(), tz)}
+                sub={`${totals.count} ${totals.count === 1 ? "sale" : "sales"}${totals.overpaidCount > 0 ? ` · ${totals.overpaidCount} overpaid` : ""}`}
+                value={money(totals.localMinor)}
+                tone="positive"
+                strong
+              />
+              {daySales.map((sale) => (
+                <View key={sale.reference} style={styles.sale} accessible accessibilityLabel={`${formatTime(sale.at, tz)}, ${money(sale.localMinor)}`}>
+                  <Small>{formatTime(sale.at, tz)}</Small>
+                  <Figure>{money(sale.localMinor)}</Figure>
                 </View>
-                <Text style={styles.dayCount}>
-                  {totals.count} {totals.count === 1 ? "sale" : "sales"}
-                  {totals.overpaidCount > 0 ? ` · ${totals.overpaidCount} overpaid` : ""}
-                </Text>
-                {daySales.map((sale) => (
-                  <View key={sale.reference} style={styles.saleRow}>
-                    <Text style={styles.saleTime}>{formatTime(sale.at, tz)}</Text>
-                    <Text style={styles.saleAmount}>
-                      {CURRENCY.symbol}
-                      {formatLocalAmount(sale.localMinor, CURRENCY.minorDigits)}
-                    </Text>
-                    <Text style={styles.saleToken}>
-                      {formatTokenAmount(sale.amountBaseUnits)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ))
-          )}
-        </ScrollView>
-      </View>
+              ))}
+            </View>
+          ))
+        )}
+      </Screen>
     );
   }
 
   if (charging && outcome?.status === "paid") {
     return (
-      <View style={styles.screen}>
+      <Screen center>
         <StatusBar style="light" />
-        <View style={styles.chargeBody}>
-          <Text style={styles.paidMark}>✓</Text>
-          <Text style={styles.paidTitle}>Paid</Text>
-          <Text style={styles.chargeAmount}>
-            {CURRENCY.symbol}
-            {formatLocalAmount(minor, CURRENCY.minorDigits)}
-          </Text>
-          {outcome.overpaid ? (
-            <Text style={styles.chargeSub}>
-              Customer paid more than asked — {formatTokenAmount(outcome.amountBaseUnits)} USDC
-            </Text>
-          ) : null}
-          <Pressable
-            style={[styles.primary, styles.onboardButton]}
-            onPress={() => {
-              setMinor(0n);
-              endCharge();
-            }}
-            accessibilityRole="button"
-          >
-            <Text style={styles.primaryText}>New sale</Text>
-          </Pressable>
-        </View>
-      </View>
+        <Text style={styles.mark} accessibilityLabel="Paid">✓</Text>
+        <Title tone="positive" center>Paid</Title>
+        <Hero center>{money(minor)}</Hero>
+        {outcome.overpaid ? (
+          <Notice tone="caution">The customer paid more than asked: {formatDollars(outcome.amountBaseUnits)} arrived.</Notice>
+        ) : null}
+        <Button
+          label="New sale"
+          onPress={() => {
+            setMinor(0n);
+            endCharge();
+          }}
+        />
+      </Screen>
     );
   }
 
   if (charging && scanning && merchant && quoted) {
     return (
-      <View style={styles.screen}>
+      <View style={styles.bare}>
         <StatusBar style="light" />
         <ScanPayment
           merchant={merchant.address}
@@ -533,144 +506,101 @@ function Till() {
 
   if (charging && url) {
     return (
-      <View style={styles.screen}>
+      <Screen center>
         <StatusBar style="light" />
-        <View style={styles.chargeBody}>
-          <Text style={styles.chargeLabel}>Show this to your customer</Text>
-          <Text style={styles.chargeAmount}>
-            {CURRENCY.symbol}
-            {formatLocalAmount(minor, CURRENCY.minorDigits)}
-          </Text>
-          <View style={styles.qrFrame}>
-            <QRCode value={url} size={240} backgroundColor="#ffffff" color="#101113" />
-          </View>
-          <Text style={styles.chargeSub}>{tokenAmount} USDC · any Solana wallet</Text>
-          <View style={styles.statusRow}>
-            {outcome === null ? (
+        <Label center>Show this to your customer</Label>
+        <Hero center>{money(minor)}</Hero>
+        <View style={styles.qrFrame} accessible accessibilityLabel={`Payment code for ${money(minor)}`}>
+          <QRCode value={url} size={232} backgroundColor={color.qrBackground} color={color.qrForeground} />
+        </View>
+        <Small center>{dollarsFor(minor)} · any Solana wallet can pay</Small>
+        <View style={styles.status} accessibilityLiveRegion="polite">
+          {outcome === null ? (
+            pollTrouble ? (
+              <Notice tone="danger">Cannot reach the network. A payment may not show here yet.</Notice>
+            ) : (
               <>
-                <ActivityIndicator color="#8d9299" size="small" />
-                <Text style={pollTrouble ? styles.statusBad : styles.statusWaiting}>
-                  {pollTrouble
-                    ? "Cannot reach the network — a payment may not show here"
-                    : "Waiting for payment…"}
-                </Text>
+                <ActivityIndicator color={color.textMuted} size="small" />
+                <Muted>Waiting for payment…</Muted>
               </>
-            ) : outcome.status === "invalid" ? (
-              <Text style={styles.statusBad}>{outcome.reason}</Text>
-            ) : outcome.status === "timeout" ? (
-              <Text style={styles.statusBad}>No payment yet — the code is still valid</Text>
-            ) : null}
-          </View>
-          {/* The other way to be paid: the customer's phone has no signal, so
-              it shows a code and this till reads it. */}
-          <Pressable style={styles.offlineButton} onPress={() => setScanning(true)} accessibilityRole="button">
-            <Text style={styles.offlineButtonText}>Customer has no signal? Scan their code</Text>
-          </Pressable>
-          <Pressable style={styles.secondary} onPress={endCharge} accessibilityRole="button">
-            <Text style={styles.secondaryText}>Cancel</Text>
-          </Pressable>
-
-          {/* Development builds only. Two debugging sessions have now turned on
-              "what was actually in that QR" and "which key is the terminal
-              watching", and both were unanswerable from the outside — the URL
-              lives in a QR nobody can read back, and the reference is a random
-              key that exists only in memory. A merchant never sees this; it is
-              gated on __DEV__. Long-press to copy, or look the reference up on
-              an explorer: if no transaction names it, the customer's wallet
-              never attached it. */}
-          {__DEV__ ? (
-            <View style={styles.debug}>
-              <Text style={styles.debugLabel}>REFERENCE</Text>
-              <Text style={styles.debugText} selectable>
-                {reference}
-              </Text>
-              <Text style={styles.debugLabel}>REQUEST</Text>
-              <Text style={styles.debugText} selectable>
-                {url}
-              </Text>
-            </View>
+            )
+          ) : outcome.status === "invalid" ? (
+            <Notice tone="danger">{outcome.reason}</Notice>
+          ) : outcome.status === "timeout" ? (
+            <Notice tone="caution">No payment yet. The code is still valid.</Notice>
           ) : null}
         </View>
-      </View>
+        {/* The other way to be paid: the customer's phone has no signal, so
+            it shows a code and this till reads it. */}
+        <Button kind="secondary" label="No signal? Scan the customer's code" onPress={() => setScanning(true)} />
+        <TextButton label="Cancel" onPress={endCharge} />
+
+        {/* Development builds only. Two debugging sessions have now turned on
+            "what was actually in that QR" and "which key is the terminal
+            watching", and both were unanswerable from the outside — the URL
+            lives in a QR nobody can read back, and the reference is a random
+            key that exists only in memory. A merchant never sees this; it is
+            gated on __DEV__. Long-press to copy, or look the reference up on
+            an explorer: if no transaction names it, the customer's wallet
+            never attached it. */}
+        {__DEV__ ? (
+          <View style={styles.debug}>
+            <Label>Reference</Label>
+            <Small selectable>{reference}</Small>
+            <Label>Request</Label>
+            <Small selectable>{url}</Small>
+          </View>
+        ) : null}
+      </Screen>
     );
   }
 
+  const canCharge = minor > 0n && !!quoted;
   return (
-    <View style={styles.screen}>
+    <Screen scroll={false}>
       <StatusBar style="light" />
-      <Pressable
-        style={styles.balanceBar}
-        onPress={() => setCashingOut(true)}
-        accessibilityRole="button"
-        accessibilityLabel="Cash out to your bank"
-      >
-        <View>
-          <Text style={styles.balanceLabel}>BALANCE · CASH OUT ›</Text>
-          <Text style={styles.balanceValue}>
-            {CURRENCY.symbol}
-            {balance ? formatLocalAmount(balance.localMinor, CURRENCY.minorDigits) : "—"}
-          </Text>
+      <Card>
+        <View style={styles.balanceTop}>
+          <Label>Balance</Label>
+          <TextButton label="Cash out ›" tone="positive" onPress={() => setCashingOut(true)} accessibilityLabel="Cash out to your bank" />
         </View>
-        <View style={styles.balanceAside}>
-          {/* Held in dollars, shown in naira. The merchant is told both: the
-              familiar number is the point, and so is what is underneath it. */}
-          <Text style={styles.balanceHeld}>
-            {balance ? `${formatTokenAmount(balance.baseUnits)} USDC` : "…"}
-          </Text>
-          <Text style={styles.balanceNote}>
-            {balance && !balance.liveRate ? "at a fixed rate" : "held in dollars"}
-          </Text>
-        </View>
-      </Pressable>
+        {/* Held in dollars, shown in naira. The merchant is told both: the
+            familiar number is the point, and so is what is underneath it. */}
+        <Hero>{balance ? money(balance.localMinor) : "—"}</Hero>
+        <Small>
+          {balance ? `${formatDollars(balance.baseUnits)} held in US dollars` : "Checking…"}
+          {balance && !balance.liveRate ? " · at a fixed rate" : ""}
+        </Small>
+      </Card>
 
-      <Pressable
-        style={styles.todayBar}
-        onPress={() => setShowDaybook(true)}
-        accessibilityRole="button"
-        accessibilityLabel="Open the day-book"
-      >
-        <Text style={styles.todayLabel}>Today</Text>
-        <Text style={styles.todayValue}>
-          {CURRENCY.symbol}
-          {formatLocalAmount(today.localMinor, CURRENCY.minorDigits)}
-          <Text style={styles.todayCount}>
-            {"  "}
-            {today.count} {today.count === 1 ? "sale" : "sales"}
-          </Text>
-        </Text>
-      </Pressable>
+      <Card onPress={() => setShowDaybook(true)} accessibilityLabel={`Today, ${money(today.localMinor)}, ${today.count} sales. Open the day-book`}>
+        <View style={styles.today}>
+          <Muted>Today</Muted>
+          <View style={styles.todayRight}>
+            <Figure>{money(today.localMinor)}</Figure>
+            <Small>
+              {today.count} {today.count === 1 ? "sale" : "sales"} ›
+            </Small>
+          </View>
+        </View>
+      </Card>
 
       {owed > 0 || settleNote ? (
-        <Pressable
-          style={styles.owedBar}
-          onPress={onSettle}
-          disabled={settling || owed === 0}
-          accessibilityRole="button"
-          accessibilityLabel="Settle offline payments"
+        <Notice
+          tone={owed > 0 ? "caution" : "positive"}
+          {...(owed > 0 ? { action: { label: settling ? "Settling…" : "Settle now", onPress: () => void onSettle(), accessibilityLabel: "Settle offline payments" } } : {})}
         >
-          <Text style={styles.owedText}>
-            {settling
-              ? "Settling…"
-              : owed > 0
-                ? `${owed} offline ${owed === 1 ? "payment" : "payments"} to settle · Settle now`
-                : "All offline payments settled"}
-          </Text>
-          {settleNote ? <Text style={styles.owedNote}>{settleNote}</Text> : null}
-        </Pressable>
+          {owed > 0 ? `${owed} offline ${owed === 1 ? "payment" : "payments"} to settle` : "All offline payments settled"}
+          {settleNote ? `\n${settleNote}` : ""}
+        </Notice>
       ) : null}
 
       <View style={styles.amountBox}>
-        <Text style={styles.currency}>{CURRENCY.code}</Text>
-        <Text style={styles.amount} numberOfLines={1} adjustsFontSizeToFit>
-          {CURRENCY.symbol}
-          {formatLocalAmount(minor, CURRENCY.minorDigits)}
+        <Text style={styles.amount} numberOfLines={1} adjustsFontSizeToFit accessibilityLabel={`Amount ${money(minor)}`}>
+          {money(minor)}
         </Text>
-        <Text style={styles.converted}>
-          {minor === 0n ? "Enter an amount" : `${tokenAmount} USDC`}
-        </Text>
-        {quoted && !quoted.live ? (
-          <Text style={styles.rateWarning}>{quoted.note ?? "Rate is fixed, not live"}</Text>
-        ) : null}
+        {minor === 0n ? <Muted>Type the price</Muted> : <Small>{dollarsFor(minor)}</Small>}
+        {quoted && !quoted.live ? <Small tone="caution">{quoted.note ?? "Rate is fixed, not live"}</Small> : null}
       </View>
 
       <View style={styles.keypad}>
@@ -680,22 +610,30 @@ function Till() {
             style={({ pressed }) => [styles.key, pressed && styles.keyPressed]}
             onPress={() => press(key)}
             accessibilityRole="button"
-            accessibilityLabel={key === "⌫" ? "Delete" : key}
+            accessibilityLabel={key === "⌫" ? "Delete" : key === "00" ? "Double zero" : key}
           >
             <Text style={styles.keyText}>{key}</Text>
           </Pressable>
         ))}
       </View>
 
-      <Pressable
-        style={[styles.primary, (minor === 0n || !quoted) && styles.primaryDisabled]}
-        disabled={minor === 0n || !quoted}
-        onPress={startCharge}
-        accessibilityRole="button"
-      >
-        <Text style={styles.primaryText}>Charge</Text>
-      </Pressable>
-    </View>
+      <Button label={canCharge ? `Charge ${money(minor)}` : "Charge"} disabled={!canCharge} onPress={startCharge} />
+    </Screen>
+  );
+}
+
+/** A row that opens another screen. */
+function NavCard({ title, sub, onPress }: { title: string; sub: string; onPress: () => void }) {
+  return (
+    <Card onPress={onPress} accessibilityLabel={`${title}. ${sub}`}>
+      <View style={styles.nav}>
+        <View style={{ flexShrink: 1 }}>
+          <Heading>{title}</Heading>
+          <Small>{sub}</Small>
+        </View>
+        <Muted>›</Muted>
+      </View>
+    </Card>
   );
 }
 
@@ -722,145 +660,21 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#101113", paddingTop: 64, paddingHorizontal: 20 },
-  centre: { alignItems: "center", justifyContent: "center" },
-  onboard: { flex: 1, justifyContent: "center", gap: 16 },
-  onboardTitle: { color: "#e8e9ea", fontSize: 30, fontWeight: "700", letterSpacing: -0.8 },
-  onboardBody: { color: "#8d9299", fontSize: 16.5, lineHeight: 25 },
-  onboardButton: { marginTop: 16, marginBottom: 0 },
-  amountBox: { flex: 1, justifyContent: "center", alignItems: "center" },
-  currency: { color: "#8d9299", fontSize: 12, letterSpacing: 2, marginBottom: 8 },
-  amount: { color: "#e8e9ea", fontSize: 56, fontWeight: "700", letterSpacing: -1.5 },
-  converted: { color: "#4fb98f", fontSize: 16, marginTop: 10 },
-  rateWarning: { color: "#d4855e", fontSize: 12.5, marginTop: 8, textAlign: "center" },
-  keypad: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
-  key: {
-    width: "31%",
-    aspectRatio: 1.7,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
-    borderRadius: 14,
-    backgroundColor: "#17191b",
-  },
-  keyPressed: { backgroundColor: "#22262a" },
-  keyText: { color: "#e8e9ea", fontSize: 26, fontWeight: "500" },
-  primary: {
-    backgroundColor: "#1a6b4c",
-    borderRadius: 14,
-    paddingVertical: 18,
-    alignItems: "center",
-    marginBottom: 34,
-  },
-  primaryDisabled: { backgroundColor: "#1d1f22" },
-  primaryText: { color: "#ffffff", fontSize: 17, fontWeight: "700" },
-  chargeBody: { flex: 1, alignItems: "center", justifyContent: "center", gap: 20 },
-  chargeLabel: { color: "#8d9299", fontSize: 13, letterSpacing: 1 },
-  chargeAmount: { color: "#e8e9ea", fontSize: 40, fontWeight: "700", letterSpacing: -1 },
-  qrFrame: { backgroundColor: "#ffffff", padding: 18, borderRadius: 16 },
-  chargeSub: { color: "#8d9299", fontSize: 14 },
-  secondary: { marginTop: 12, paddingVertical: 14, paddingHorizontal: 40 },
-  secondaryText: { color: "#8d9299", fontSize: 16 },
-  secondaryCentred: { color: "#8d9299", fontSize: 15.5, textAlign: "center", lineHeight: 22 },
-  debug: {
-    marginTop: 22,
-    borderTopWidth: 1,
-    borderTopColor: "#282b2f",
-    paddingTop: 12,
-    width: "100%",
-  },
-  debugLabel: { color: "#5f646b", fontSize: 9.5, letterSpacing: 1.6, marginBottom: 3 },
-  debugText: { color: "#8d9299", fontSize: 10.5, marginBottom: 10 },
-  statusRow: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 24 },
-  statusWaiting: { color: "#8d9299", fontSize: 14.5 },
-  statusBad: { color: "#d4855e", fontSize: 14.5, textAlign: "center" },
-  paidMark: { color: "#4fb98f", fontSize: 64 },
-  paidTitle: { color: "#4fb98f", fontSize: 22, fontWeight: "700", letterSpacing: 1 },
-  balanceBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: "#17191b",
-    marginBottom: 8,
-  },
-  balanceLabel: { color: "#8d9299", fontSize: 11, letterSpacing: 2 },
-  balanceValue: {
-    color: "#e8e9ea",
-    fontSize: 27,
-    fontWeight: "700",
-    letterSpacing: -0.6,
-    marginTop: 3,
-  },
-  balanceAside: { alignItems: "flex-end" },
-  balanceHeld: { color: "#4fb98f", fontSize: 14 },
-  balanceNote: { color: "#8d9299", fontSize: 11.5, marginTop: 3 },
-  todayBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: "#17191b",
-  },
-  todayLabel: { color: "#8d9299", fontSize: 13, letterSpacing: 1 },
-  todayValue: { color: "#e8e9ea", fontSize: 16, fontWeight: "700" },
-  todayCount: { color: "#8d9299", fontSize: 13, fontWeight: "400" },
-  bookHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 18,
-  },
-  rebateRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: "#17191b",
-    marginBottom: 22,
-  },
-  rebateLabel: { color: "#e8e9ea", fontSize: 15.5 },
-  bookActions: { flexDirection: "row", gap: 18 },
-  bookTitle: { color: "#e8e9ea", fontSize: 26, fontWeight: "700", letterSpacing: -0.6 },
-  bookBody: { paddingBottom: 40 },
-  empty: { color: "#8d9299", fontSize: 15.5, lineHeight: 24, marginTop: 28 },
-  daySection: { marginBottom: 26 },
-  dayHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
-  dayName: { color: "#e8e9ea", fontSize: 17, fontWeight: "700" },
-  dayTotal: { color: "#4fb98f", fontSize: 17, fontWeight: "700" },
-  dayCount: { color: "#8d9299", fontSize: 13, marginTop: 2, marginBottom: 8 },
-  saleRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    paddingVertical: 11,
-    borderTopWidth: 1,
-    borderTopColor: "#282b2f",
-    gap: 12,
-  },
-  saleTime: { color: "#8d9299", fontSize: 13.5, width: 46 },
-  saleAmount: { color: "#e8e9ea", fontSize: 15.5, flex: 1 },
-  saleToken: { color: "#8d9299", fontSize: 13 },
-  offlineButton: {
-    borderWidth: 1,
-    borderColor: "#282b2f",
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-  },
-  offlineButtonText: { color: "#4fb98f", fontSize: 15 },
-  owedBar: {
-    marginTop: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: "#1f1a14",
-  },
-  owedText: { color: "#d4a15e", fontSize: 14.5, fontWeight: "600" },
-  owedNote: { color: "#8d9299", fontSize: 13, marginTop: 4 },
+  bare: { flex: 1, backgroundColor: color.bg },
+  mark: { color: color.positive, fontSize: 64, textAlign: "center" },
+  qrFrame: { backgroundColor: color.qrBackground, padding: space.lg, borderRadius: radius.lg, alignSelf: "center" },
+  status: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.sm, minHeight: touch },
+  debug: { marginTop: space.lg, borderTopWidth: 1, borderTopColor: color.border, paddingTop: space.md, gap: space.xs, alignSelf: "stretch" },
+  balanceTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: -space.sm, marginBottom: -space.sm },
+  today: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  todayRight: { alignItems: "flex-end" },
+  amountBox: { flex: 1, justifyContent: "center", alignItems: "center", gap: space.sm },
+  amount: { color: color.text, fontSize: type.display, fontWeight: "700", letterSpacing: -1.5, fontVariant: ["tabular-nums"] },
+  keypad: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: space.sm },
+  key: { width: "31.5%", height: 56, alignItems: "center", justifyContent: "center", borderRadius: radius.md, backgroundColor: color.surface },
+  keyPressed: { backgroundColor: color.surfaceHigh },
+  keyText: { color: color.text, fontSize: type.title, fontWeight: "500" },
+  day: { gap: 0 },
+  sale: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", minHeight: touch, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: color.border },
+  nav: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: space.md },
 });

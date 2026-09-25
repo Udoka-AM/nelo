@@ -11,21 +11,32 @@
  * handful of institution codes, not the published register. See BANKS.
  */
 import { useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+  Body,
+  Button,
+  Card,
+  color,
+  Field,
+  Heading,
+  Label,
+  Muted,
+  Notice,
+  radius,
+  Screen,
+  space,
+  Spinner,
+  TextButton,
+  Title,
+  touch,
+  type,
+} from "@nelo/ui";
 import {
   MARKETS,
   describeDestination,
   formatPhone,
   type Market,
-  type Notice,
+  type Notice as OnboardNotice,
 } from "@nelo/onboard";
 import { useOnboarding } from "./privy";
 import type { MerchantAccount } from "./account";
@@ -78,40 +89,39 @@ export default function Onboarding({ onComplete, onUseWallet }: Props) {
 
   if (!ready) {
     return (
-      <View style={[styles.body, styles.centre]}>
-        <ActivityIndicator color="#4fb98f" />
-      </View>
+      <Screen center>
+        <Spinner />
+      </Screen>
     );
   }
 
   const busy = state.busy;
+  const back = <TextButton label="‹ Back" onPress={() => dispatch({ type: "back" })} disabled={busy} accessibilityLabel="Go back" />;
 
   // ------------------------------------------------------------- market ---
 
   if (state.step === "market") {
     return (
-      <View style={styles.body}>
-        <Text style={styles.title}>Where do you trade?</Text>
-        <Text style={styles.blurb}>
-          This sets how your phone number and your bank account are read. It cannot be
-          worked out from the number itself — the same digits are a real number in more
-          than one country.
-        </Text>
+      <Screen center>
+        <Title>Where do you trade?</Title>
+        <Muted>
+          This sets how your phone number and your bank account are read. It cannot be worked out from the number
+          itself — the same digits are a real number in more than one country.
+        </Muted>
         {(Object.keys(MARKETS) as Market[]).map((market) => (
-          <Pressable
+          <Card
             key={market}
-            style={styles.choice}
             onPress={() => dispatch({ type: "choose-market", market })}
-            accessibilityRole="button"
+            accessibilityLabel={`${MARKET_NAMES[market]}, plus ${MARKETS[market].callingCode}`}
           >
-            <Text style={styles.choiceText}>{MARKET_NAMES[market]}</Text>
-            <Text style={styles.choiceAside}>+{MARKETS[market].callingCode}</Text>
-          </Pressable>
+            <View style={styles.choice}>
+              <Heading>{MARKET_NAMES[market]}</Heading>
+              <Muted>+{MARKETS[market].callingCode}</Muted>
+            </View>
+          </Card>
         ))}
-        <Pressable style={styles.link} onPress={onUseWallet} accessibilityRole="button">
-          <Text style={styles.linkText}>I already have a wallet</Text>
-        </Pressable>
-      </View>
+        <TextButton label="I already have a wallet" onPress={onUseWallet} />
+      </Screen>
     );
   }
 
@@ -120,31 +130,30 @@ export default function Onboarding({ onComplete, onUseWallet }: Props) {
   if (state.step === "phone") {
     const rules = state.market ? MARKETS[state.market] : null;
     return (
-      <View style={styles.body}>
-        <Back onPress={() => dispatch({ type: "back" })} disabled={busy} />
-        <Text style={styles.title}>Your phone number</Text>
-        <Text style={styles.blurb}>
-          We text you a code to confirm it. This is also how you get back in if you
-          change phones — there is no password and nothing to write down.
-        </Text>
-        <TextInput
-          style={styles.input}
+      <Screen center>
+        <View style={styles.back}>{back}</View>
+        <Title>Your phone number</Title>
+        <Muted>
+          We text you a code to confirm it. This is also how you get back in if you change phones — there is no
+          password and nothing to write down.
+        </Muted>
+        <Field
+          label="Phone number"
           value={typed}
           onChangeText={setTyped}
           placeholder={rules?.example ?? ""}
-          placeholderTextColor="#5b6066"
           keyboardType="phone-pad"
           autoFocus
           editable={!busy}
-          accessibilityLabel="Phone number"
         />
         <Message notice={state.notice} />
-        <Primary
+        <Button
           label={busy ? "Sending a code…" : "Send me a code"}
-          disabled={busy || typed.trim() === ""}
+          busy={busy}
+          disabled={typed.trim() === ""}
           onPress={() => dispatch({ type: "submit-phone", input: typed })}
         />
-      </View>
+      </Screen>
     );
   }
 
@@ -152,39 +161,30 @@ export default function Onboarding({ onComplete, onUseWallet }: Props) {
 
   if (state.step === "code") {
     return (
-      <View style={styles.body}>
-        <Back onPress={() => dispatch({ type: "back" })} disabled={busy} />
-        <Text style={styles.title}>Type the code</Text>
-        <Text style={styles.blurb}>
-          Sent to {state.e164 ? formatPhone(state.e164) : "your phone"}.
-        </Text>
-        <TextInput
-          style={[styles.input, styles.codeInput]}
+      <Screen center>
+        <View style={styles.back}>{back}</View>
+        <Title>Type the code</Title>
+        <Muted>Sent to {state.e164 ? formatPhone(state.e164) : "your phone"}.</Muted>
+        <Field
+          label="The code we texted you"
           value={code}
           onChangeText={setCode}
           placeholder="000000"
-          placeholderTextColor="#5b6066"
           keyboardType="number-pad"
           maxLength={8}
           autoFocus
           editable={!busy}
-          accessibilityLabel="The code we texted you"
+          style={styles.codeInput}
         />
         <Message notice={state.notice} />
-        <Primary
+        <Button
           label={busy ? "Checking…" : "Confirm"}
-          disabled={busy || code.trim() === ""}
+          busy={busy}
+          disabled={code.trim() === ""}
           onPress={() => dispatch({ type: "submit-code", input: code })}
         />
-        <Pressable
-          style={styles.link}
-          disabled={busy}
-          onPress={() => dispatch({ type: "resend" })}
-          accessibilityRole="button"
-        >
-          <Text style={styles.linkText}>Send it again</Text>
-        </Pressable>
-      </View>
+        <TextButton label="Send it again" disabled={busy} onPress={() => dispatch({ type: "resend" })} />
+      </Screen>
     );
   }
 
@@ -192,23 +192,16 @@ export default function Onboarding({ onComplete, onUseWallet }: Props) {
 
   if (state.step === "wallet") {
     return (
-      <View style={[styles.body, styles.centre]}>
+      <Screen center>
         {state.notice ? (
           <>
             <Message notice={state.notice} />
-            <Primary
-              label="Try again"
-              disabled={busy}
-              onPress={() => dispatch({ type: "retry-wallet" })}
-            />
+            <Button label="Try again" disabled={busy} onPress={() => dispatch({ type: "retry-wallet" })} />
           </>
         ) : (
-          <>
-            <ActivityIndicator color="#4fb98f" />
-            <Text style={styles.blurb}>Setting up your account…</Text>
-          </>
+          <Spinner label="Setting up your account…" />
         )}
-      </View>
+      </Screen>
     );
   }
 
@@ -217,20 +210,18 @@ export default function Onboarding({ onComplete, onUseWallet }: Props) {
   if (state.step === "payout") {
     const market = state.market;
     return (
-      <ScrollView contentContainerStyle={styles.body}>
-        <Text style={styles.title}>Where should your money go?</Text>
-        <Text style={styles.blurb}>
-          Takings sit in your account until you cash out. This is the account they are
-          paid into.
-        </Text>
+      <Screen>
+        <Title>Where should your money go?</Title>
+        <Muted>Takings sit in your account until you cash out. This is the account they are paid into.</Muted>
 
-        <View style={styles.tabs}>
+        <View style={styles.tabs} accessibilityRole="tablist">
           {(["bank", "mobile_money"] as const).map((method) => (
             <Pressable
               key={method}
               style={[styles.tab, payoutMethod === method && styles.tabOn]}
               onPress={() => setPayoutMethod(method)}
-              accessibilityRole="button"
+              accessibilityRole="tab"
+              accessibilityState={{ selected: payoutMethod === method }}
             >
               <Text style={payoutMethod === method ? styles.tabTextOn : styles.tabText}>
                 {method === "bank" ? "Bank account" : "Mobile money"}
@@ -241,81 +232,70 @@ export default function Onboarding({ onComplete, onUseWallet }: Props) {
 
         {payoutMethod === "bank" ? (
           <>
-            <View style={styles.bankList}>
-              {(market ? BANKS[market] : []).map((bank) => (
-                <Pressable
-                  key={bank.code}
-                  style={[styles.bank, institution === bank.code && styles.bankOn]}
-                  onPress={() => setInstitution(bank.code)}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.bankText}>{bank.name}</Text>
-                </Pressable>
-              ))}
-            </View>
-            <TextInput
-              style={styles.input}
+            <Label>Bank</Label>
+            {(market ? BANKS[market] : []).map((bank) => (
+              <Card
+                key={bank.code}
+                selected={institution === bank.code}
+                onPress={() => setInstitution(bank.code)}
+                accessibilityLabel={bank.name}
+              >
+                <Body>{bank.name}</Body>
+              </Card>
+            ))}
+            <Field
+              label="Account number"
               value={account}
               onChangeText={setAccount}
-              placeholder="Account number"
-              placeholderTextColor="#5b6066"
+              placeholder="10 digits"
               keyboardType="number-pad"
               editable={!busy}
-              accessibilityLabel="Account number"
             />
             <Message notice={state.notice} />
-            <Primary
+            <Button
               label="Save"
-              disabled={busy || institution === null || account.trim() === ""}
-              onPress={() =>
-                dispatch({
-                  type: "submit-bank",
-                  institution: institution ?? "",
-                  account,
-                })
-              }
+              busy={busy}
+              disabled={institution === null || account.trim() === ""}
+              onPress={() => dispatch({ type: "submit-bank", institution: institution ?? "", account })}
             />
           </>
         ) : (
           <>
-            <TextInput
-              style={styles.input}
+            <Field
+              label="Mobile money number"
               value={momo}
               onChangeText={setMomo}
               placeholder={market ? MARKETS[market].example : ""}
-              placeholderTextColor="#5b6066"
               keyboardType="phone-pad"
               editable={!busy}
-              accessibilityLabel="Mobile money number"
             />
             <Message notice={state.notice} />
-            <Primary
+            <Button
               label="Save"
-              disabled={busy || momo.trim() === ""}
+              busy={busy}
+              disabled={momo.trim() === ""}
               onPress={() => dispatch({ type: "submit-mobile-money", phone: momo })}
             />
           </>
         )}
-      </ScrollView>
+      </Screen>
     );
   }
 
   // --------------------------------------------------------------- done ---
 
   return (
-    <View style={[styles.body, styles.centre]}>
+    <Screen center>
       <Text style={styles.tick}>✓</Text>
-      <Text style={styles.title}>Ready to take payments</Text>
-      {state.destination ? (
-        <Text style={styles.blurb}>Paid out to {describeDestination(state.destination)}</Text>
-      ) : null}
+      <Title center>Ready to take payments</Title>
+      {state.destination ? <Muted center>Paid out to {describeDestination(state.destination)}</Muted> : null}
       {/* A check-digit mismatch is shown, never blocking: see nubanCheckDigit. */}
       {state.warnings.map((warning) => (
-        <Text key={warning} style={styles.warn}>
+        <Notice key={warning} tone="caution">
           {warning}
-        </Text>
+        </Notice>
       ))}
-      <Primary
+      <Button
         label="Start"
         disabled={state.address === null}
         onPress={() => {
@@ -328,46 +308,11 @@ export default function Onboarding({ onComplete, onUseWallet }: Props) {
           });
         }}
       />
-    </View>
+    </Screen>
   );
 }
 
 // ------------------------------------------------------------------ bits ---
-
-function Primary({
-  label,
-  disabled,
-  onPress,
-}: {
-  label: string;
-  disabled: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      style={[styles.primary, disabled && styles.primaryOff]}
-      disabled={disabled}
-      onPress={onPress}
-      accessibilityRole="button"
-    >
-      <Text style={styles.primaryText}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function Back({ onPress, disabled }: { onPress: () => void; disabled: boolean }) {
-  return (
-    <Pressable
-      style={styles.back}
-      disabled={disabled}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel="Go back"
-    >
-      <Text style={styles.linkText}>‹ Back</Text>
-    </Pressable>
-  );
-}
 
 /**
  * The audience split, on screen.
@@ -377,79 +322,27 @@ function Back({ onPress, disabled }: { onPress: () => void; disabled: boolean })
  * problem instead of implying they mistyped something — otherwise they retype
  * a perfectly good number until they give up.
  */
-function Message({ notice }: { notice: Notice | null }) {
+function Message({ notice }: { notice: OnboardNotice | null }) {
   if (!notice) return null;
-  if (notice.audience === "merchant") {
-    return <Text style={styles.warn}>{notice.message}</Text>;
-  }
-  return (
-    <View style={styles.setupBox}>
-      <Text style={styles.setupLabel}>SETUP PROBLEM</Text>
-      <Text style={styles.setupText}>{notice.message}</Text>
-    </View>
-  );
+  if (notice.audience === "merchant") return <Notice tone="danger">{notice.message}</Notice>;
+  return <Notice tone="caution">{`Setup problem, not something you typed: ${notice.message}`}</Notice>;
 }
 
 const styles = StyleSheet.create({
-  body: { flexGrow: 1, justifyContent: "center", gap: 14, paddingBottom: 30 },
-  centre: { alignItems: "center" },
-  title: { color: "#e8e9ea", fontSize: 28, fontWeight: "700", letterSpacing: -0.7 },
-  blurb: { color: "#8d9299", fontSize: 16, lineHeight: 24, textAlign: "center" },
-  input: {
-    backgroundColor: "#17191b",
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    color: "#e8e9ea",
-    fontSize: 20,
-  },
-  codeInput: { letterSpacing: 8, textAlign: "center", fontSize: 26 },
-  choice: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#17191b",
-    borderRadius: 12,
-    paddingVertical: 18,
-    paddingHorizontal: 16,
-  },
-  choiceText: { color: "#e8e9ea", fontSize: 17, fontWeight: "600" },
-  choiceAside: { color: "#8d9299", fontSize: 15 },
-  primary: {
-    backgroundColor: "#1a6b4c",
-    borderRadius: 14,
-    paddingVertical: 18,
-    alignItems: "center",
-    alignSelf: "stretch",
-  },
-  primaryOff: { backgroundColor: "#1d1f22" },
-  primaryText: { color: "#ffffff", fontSize: 17, fontWeight: "700" },
-  link: { alignItems: "center", paddingVertical: 12 },
-  linkText: { color: "#8d9299", fontSize: 15.5 },
-  back: { alignSelf: "flex-start", paddingVertical: 6 },
-  warn: { color: "#d4855e", fontSize: 14.5, lineHeight: 21, textAlign: "center" },
-  setupBox: {
-    backgroundColor: "#241c17",
-    borderRadius: 12,
-    padding: 14,
-    gap: 6,
-  },
-  setupLabel: { color: "#d4855e", fontSize: 10.5, letterSpacing: 2, fontWeight: "700" },
-  setupText: { color: "#c8a68f", fontSize: 14, lineHeight: 21 },
-  tabs: { flexDirection: "row", gap: 8 },
+  back: { alignSelf: "flex-start", marginLeft: -space.sm },
+  choice: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  codeInput: { letterSpacing: 8, textAlign: "center", fontSize: type.title },
+  tabs: { flexDirection: "row", gap: space.sm },
   tab: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: "#17191b",
+    justifyContent: "center",
+    minHeight: touch,
+    borderRadius: radius.sm,
+    backgroundColor: color.surface,
   },
-  tabOn: { backgroundColor: "#1a6b4c" },
-  tabText: { color: "#8d9299", fontSize: 14.5 },
-  tabTextOn: { color: "#ffffff", fontSize: 14.5, fontWeight: "700" },
-  bankList: { gap: 6 },
-  bank: { backgroundColor: "#17191b", borderRadius: 10, paddingVertical: 13, paddingHorizontal: 14 },
-  bankOn: { backgroundColor: "#224034" },
-  bankText: { color: "#e8e9ea", fontSize: 15.5 },
-  tick: { color: "#4fb98f", fontSize: 56 },
+  tabOn: { backgroundColor: color.primary },
+  tabText: { color: color.textMuted, fontSize: type.small + 1 },
+  tabTextOn: { color: color.onPrimary, fontSize: type.small + 1, fontWeight: "700" },
+  tick: { color: color.positive, fontSize: 56, textAlign: "center" },
 });

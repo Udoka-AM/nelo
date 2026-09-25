@@ -11,11 +11,12 @@
  * glance at a code decides for them.
  */
 import { useCallback, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { Button, color, Hero, Label, Muted, Notice, radius, Screen, Small, Spinner, TextButton, Title } from "@nelo/ui";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { enqueue } from "@nelo/queue";
 import { describeRisk, scan, type Scan } from "@nelo/till";
-import { formatLocalAmount, formatTokenAmount } from "@nelo/pay";
+import { formatDollars, formatMoney } from "@nelo/pay";
 import { addConflict, addVoucher, loadCache, voucherStore } from "./offline";
 
 export interface ScanProps {
@@ -93,31 +94,28 @@ export default function ScanPayment(props: ScanProps) {
     }
   }
 
-  const price = `${props.currency.symbol}${formatLocalAmount(props.chargedLocalMinor, props.currency.minorDigits)}`;
+  const price = formatMoney(props.chargedLocalMinor, props.currency);
+  const cancel = <TextButton label="Cancel" onPress={() => props.onDone(false)} />;
 
-  if (!permission) return <View style={styles.body} />;
+  if (!permission) return <Screen center><Spinner /></Screen>;
 
   if (!permission.granted) {
     return (
-      <View style={styles.body}>
-        <Text style={styles.title}>The camera reads the customer's code</Text>
-        <Text style={styles.text}>Nelo uses it only to scan payment codes, and nothing is recorded.</Text>
-        <Pressable style={styles.primary} onPress={requestPermission} accessibilityRole="button">
-          <Text style={styles.primaryText}>Allow camera</Text>
-        </Pressable>
-        <Pressable style={styles.secondary} onPress={() => props.onDone(false)} accessibilityRole="button">
-          <Text style={styles.secondaryText}>Cancel</Text>
-        </Pressable>
-      </View>
+      <Screen center>
+        <Title center>The camera reads the customer's code</Title>
+        <Muted center>Nelo uses it only to scan payment codes, and nothing is recorded.</Muted>
+        <Button label="Allow camera" onPress={() => void requestPermission()} />
+        {cancel}
+      </Screen>
     );
   }
 
   if (stage.step === "scanning" || stage.step === "checking") {
     return (
-      <View style={styles.body}>
-        <Text style={styles.label}>Scan the customer's payment code</Text>
-        <Text style={styles.price}>{price}</Text>
-        <View style={styles.cameraFrame}>
+      <Screen center>
+        <Label center>Scan the customer's payment code</Label>
+        <Hero center>{price}</Hero>
+        <View style={styles.cameraFrame} accessibilityLabel="Camera">
           <CameraView
             style={StyleSheet.absoluteFill}
             facing="back"
@@ -125,74 +123,65 @@ export default function ScanPayment(props: ScanProps) {
             onBarcodeScanned={stage.step === "scanning" ? ({ data }) => void onScanned(data) : undefined}
           />
         </View>
-        <Text style={styles.text}>{stage.step === "checking" ? "Checking…" : "Works with no signal."}</Text>
-        <Pressable style={styles.secondary} onPress={() => props.onDone(false)} accessibilityRole="button">
-          <Text style={styles.secondaryText}>Cancel</Text>
-        </Pressable>
-      </View>
+        {stage.step === "checking" ? <Spinner label="Checking…" /> : <Muted center>Works with no signal.</Muted>}
+        {cancel}
+      </Screen>
     );
   }
 
   if (stage.step === "queued") {
     return (
-      <View style={styles.body}>
-        <Text style={styles.good}>✓</Text>
-        <Text style={styles.title}>Payment taken</Text>
-        <Text style={styles.price}>{price}</Text>
-        <Text style={styles.text}>
-          {formatTokenAmount(stage.amount)} USDC arrives when this phone next has signal and you settle.
-        </Text>
-        <Pressable style={styles.primary} onPress={() => props.onDone(true)} accessibilityRole="button">
-          <Text style={styles.primaryText}>New sale</Text>
-        </Pressable>
-      </View>
+      <Screen center>
+        <Text style={styles.mark} accessibilityLabel="Taken">✓</Text>
+        <Title center tone="positive">Payment taken</Title>
+        <Hero center>{price}</Hero>
+        <Muted center>{formatDollars(stage.amount)} arrives when this phone next has signal and you settle.</Muted>
+        <Button label="New sale" onPress={() => props.onDone(true)} />
+      </Screen>
     );
   }
 
   if (stage.step === "problem") {
     return (
-      <View style={styles.body}>
-        <Text style={styles.title}>Not taken</Text>
-        <Text style={styles.text}>{stage.message}</Text>
-        <Pressable style={styles.primary} onPress={again} accessibilityRole="button">
-          <Text style={styles.primaryText}>Scan again</Text>
-        </Pressable>
-        <Pressable style={styles.secondary} onPress={() => props.onDone(false)} accessibilityRole="button">
-          <Text style={styles.secondaryText}>Cancel</Text>
-        </Pressable>
-      </View>
+      <Screen center>
+        <Title center tone="danger">Not taken</Title>
+        <Notice tone="danger">{stage.message}</Notice>
+        <Button label="Scan again" onPress={again} />
+        {cancel}
+      </Screen>
     );
   }
 
   const r = stage.result;
   if (r.kind === "take") {
     return (
-      <View style={styles.body}>
-        <Text style={styles.label}>Customer's payment checks out</Text>
-        <Text style={styles.price}>{price}</Text>
-        <Text style={styles.text}>
-          {formatTokenAmount(r.amount)} USDC{r.overpaid ? " — more than you charged" : ""}
-        </Text>
-        <View style={styles.risks}>
-          {r.risks.map((risk) => (
-            <Text key={risk.kind} style={risk.kind === "sequence-unconfirmed" ? styles.riskQuiet : styles.risk}>
+      <Screen center>
+        <Label center>The customer's payment checks out</Label>
+        <Hero center>{price}</Hero>
+        <Muted center>
+          {formatDollars(r.amount)}
+          {r.overpaid ? ", more than you charged" : ""}
+        </Muted>
+        {r.risks.map((risk) =>
+          risk.kind === "sequence-unconfirmed" ? (
+            <Small key={risk.kind} center>
               {describeRisk(risk)}
-            </Text>
-          ))}
-        </View>
-        <Pressable style={styles.primary} onPress={() => void take(r.packet, r.amount)} accessibilityRole="button">
-          <Text style={styles.primaryText}>Hand over the goods</Text>
-        </Pressable>
-        <Pressable style={styles.secondary} onPress={again} accessibilityRole="button">
-          <Text style={styles.secondaryText}>Don't take it</Text>
-        </Pressable>
-      </View>
+            </Small>
+          ) : (
+            <Notice key={risk.kind} tone="caution">
+              {describeRisk(risk)}
+            </Notice>
+          ),
+        )}
+        <Button label="Hand over the goods" onPress={() => void take(r.packet, r.amount)} />
+        <Button kind="secondary" label="Don't take it" onPress={again} />
+      </Screen>
     );
   }
 
   const message =
     r.kind === "short"
-      ? `This code pays ${formatTokenAmount(r.paid)} USDC, less than the ${formatTokenAmount(r.charged)} charged.`
+      ? `This code pays ${formatDollars(r.paid)}, less than the ${formatDollars(r.charged)} charged.`
       : r.kind === "unknown-vault"
         ? "This customer is not on your payer list yet. Sync when you have signal, or take another way to pay."
         : r.kind === "not-synced"
@@ -200,39 +189,16 @@ export default function ScanPayment(props: ScanProps) {
           : r.reason;
 
   return (
-    <View style={styles.body}>
-      <Text style={styles.title}>Not taken</Text>
-      <Text style={styles.text}>{message}</Text>
-      <Pressable style={styles.primary} onPress={again} accessibilityRole="button">
-        <Text style={styles.primaryText}>Scan again</Text>
-      </Pressable>
-      <Pressable style={styles.secondary} onPress={() => props.onDone(false)} accessibilityRole="button">
-        <Text style={styles.secondaryText}>Cancel</Text>
-      </Pressable>
-    </View>
+    <Screen center>
+      <Title center tone="danger">Not taken</Title>
+      <Notice tone="danger">{message}</Notice>
+      <Button label="Scan again" onPress={again} />
+      {cancel}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
-  label: { color: "#8d9299", fontSize: 13, letterSpacing: 1 },
-  title: { color: "#e8e9ea", fontSize: 24, fontWeight: "700", textAlign: "center" },
-  price: { color: "#e8e9ea", fontSize: 36, fontWeight: "700", letterSpacing: -1 },
-  text: { color: "#8d9299", fontSize: 15.5, lineHeight: 23, textAlign: "center", paddingHorizontal: 8 },
-  good: { color: "#4fb98f", fontSize: 64 },
-  cameraFrame: { width: 280, height: 280, borderRadius: 18, overflow: "hidden", backgroundColor: "#000" },
-  risks: { gap: 8, alignSelf: "stretch" },
-  risk: { color: "#d4855e", fontSize: 14.5, lineHeight: 21, textAlign: "center" },
-  riskQuiet: { color: "#8d9299", fontSize: 14, lineHeight: 21, textAlign: "center" },
-  primary: {
-    backgroundColor: "#1a6b4c",
-    borderRadius: 14,
-    paddingVertical: 18,
-    alignItems: "center",
-    alignSelf: "stretch",
-    marginTop: 8,
-  },
-  primaryText: { color: "#ffffff", fontSize: 17, fontWeight: "700" },
-  secondary: { paddingVertical: 14, paddingHorizontal: 40 },
-  secondaryText: { color: "#8d9299", fontSize: 16 },
+  mark: { color: color.positive, fontSize: 64, textAlign: "center" },
+  cameraFrame: { width: 280, height: 280, borderRadius: radius.lg, overflow: "hidden", backgroundColor: "#000", alignSelf: "center" },
 });

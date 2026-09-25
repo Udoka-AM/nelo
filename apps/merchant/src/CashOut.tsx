@@ -12,7 +12,8 @@
  * than starting a second one.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { Body, Button, Card, color, Field, Header, Hero, Label, Muted, Notice, Screen, Small, Spinner, TextButton, Title, type } from "@nelo/ui";
 import * as Crypto from "expo-crypto";
 import {
   cashOut,
@@ -22,7 +23,7 @@ import {
   type CashoutRecord,
   type TransactionSigner,
 } from "@nelo/cashout";
-import { formatLocalAmount, formatTokenAmount, localToTokenBaseUnits, type Rate } from "@nelo/pay";
+import { formatDollars, formatMoney, localToTokenBaseUnits, tokenBaseUnitsToLocalMinor, type Rate } from "@nelo/pay";
 import { relayToken, relayUrl, settleToken, settleUrl } from "./config";
 import { loadSetting, saveSetting } from "./daybook";
 import { usePrivySigner } from "./privySigner";
@@ -197,12 +198,14 @@ export default function CashOut(props: CashOutProps) {
     await run(p);
   }
 
-  const money = (minor: bigint) => `${props.currency.symbol}${formatLocalAmount(minor, props.currency.minorDigits)}`;
+  const money = (minor: bigint) => formatMoney(minor, props.currency);
+  const balanceLocal =
+    props.balanceBaseUnits !== null && props.rate ? tokenBaseUnitsToLocalMinor(props.balanceBaseUnits, props.rate) : null;
 
   if (!configured) {
     return (
       <Shell onDone={props.onDone}>
-        <Text style={styles.text}>Cash-out is not set up in this build. Your money is safe in your account.</Text>
+        <Muted>Cash-out is not set up in this build. Your money is safe in your account.</Muted>
       </Shell>
     );
   }
@@ -210,8 +213,7 @@ export default function CashOut(props: CashOutProps) {
   if (stage.step === "working") {
     return (
       <Shell onDone={props.onDone}>
-        <ActivityIndicator color="#4fb98f" />
-        <Text style={styles.text}>{stage.label}</Text>
+        <Spinner label={stage.label} />
       </Shell>
     );
   }
@@ -219,16 +221,12 @@ export default function CashOut(props: CashOutProps) {
   if (stage.step === "problem") {
     return (
       <Shell onDone={props.onDone}>
-        <Text style={styles.title}>Not sent</Text>
-        <Text style={styles.text}>{stage.message}</Text>
+        <Title>Not sent</Title>
+        <Muted>{stage.message}</Muted>
         {stage.canRetry && pending ? (
-          <Pressable style={styles.primary} onPress={() => void run(pending)} accessibilityRole="button">
-            <Text style={styles.primaryText}>Try again</Text>
-          </Pressable>
+          <Button label="Try again" onPress={() => void run(pending)} />
         ) : (
-          <Pressable style={styles.primary} onPress={() => setStage({ step: "form" })} accessibilityRole="button">
-            <Text style={styles.primaryText}>Back</Text>
-          </Pressable>
+          <Button label="Back" kind="secondary" onPress={() => setStage({ step: "form" })} />
         )}
       </Shell>
     );
@@ -246,12 +244,12 @@ export default function CashOut(props: CashOutProps) {
     const bankMinor = c.localMinor ? BigInt(c.localMinor) : stage.localMinor;
     return (
       <Shell onDone={props.onDone}>
-        {c.state === "paid" ? <Text style={styles.good}>✓</Text> : null}
-        <Text style={styles.title}>{words[c.state] ?? c.state}</Text>
-        <Text style={styles.big}>{money(bankMinor)}</Text>
-        <Text style={styles.text}>to {stage.to}</Text>
-        <Text style={styles.small}>{c.detail}</Text>
-        {!FINAL.has(c.state) ? <ActivityIndicator color="#8d9299" /> : null}
+        {c.state === "paid" ? <Text style={styles.mark}>✓</Text> : null}
+        <Title tone={c.state === "paid" ? "positive" : c.state === "failed" ? "danger" : "default"}>{words[c.state] ?? c.state}</Title>
+        <Hero>{money(bankMinor)}</Hero>
+        <Muted>to {stage.to}</Muted>
+        <Small>{c.detail}</Small>
+        {!FINAL.has(c.state) ? <Spinner /> : null}
       </Shell>
     );
   }
@@ -263,71 +261,72 @@ export default function CashOut(props: CashOutProps) {
   return (
     <Shell onDone={props.onDone}>
       {pending ? (
-        <View style={styles.resume}>
-          <Text style={styles.text}>A cash-out of {money(BigInt(pending.localMinor))} to {pending.to} did not finish.</Text>
-          <Pressable style={styles.primary} onPress={() => void run(pending)} disabled={!props.sign} accessibilityRole="button">
-            <Text style={styles.primaryText}>Finish it</Text>
-          </Pressable>
-        </View>
+        <>
+          <Notice tone="caution">
+            A cash-out of {money(BigInt(pending.localMinor))} to {pending.to} did not finish.
+          </Notice>
+          <Button label="Finish it" disabled={!props.sign} onPress={() => void run(pending)} />
+        </>
       ) : (
         <>
-          <Text style={styles.label}>AMOUNT</Text>
-          <TextInput
-            style={styles.input}
+          <Field
+            label="Amount"
             value={amountText}
             onChangeText={setAmountText}
-            keyboardType="decimal-pad"
+            keyboardType="number-pad"
             placeholder={`${props.currency.symbol}0`}
-            placeholderTextColor="#5f646b"
+            style={styles.amountInput}
+            hint={
+              balanceLocal !== null
+                ? `${money(balanceLocal)} available${tokenMinor !== null ? ` · this is ${formatDollars(tokenMinor)}` : ""}`
+                : undefined
+            }
           />
-          {props.balanceBaseUnits !== null ? (
-            <Text style={styles.small}>
-              {formatTokenAmount(props.balanceBaseUnits)} USDC in your account
-              {tokenMinor !== null ? ` · this is ${formatTokenAmount(tokenMinor)} USDC` : ""}
-            </Text>
+          {balanceLocal !== null && balanceLocal > 0n ? (
+            <TextButton
+              label="Cash out everything"
+              tone="positive"
+              onPress={() => setAmountText((balanceLocal / 10n ** BigInt(props.currency.minorDigits)).toString())}
+            />
           ) : null}
-          {tooMuch ? <Text style={styles.warn}>That is more than your balance.</Text> : null}
+          {tooMuch ? <Notice tone="danger">That is more than your balance.</Notice> : null}
 
-          <Text style={styles.label}>TO</Text>
+          <Label>To</Label>
           {bank ? (
-            <Pressable onPress={() => { setBank(null); setHolder(null); }} accessibilityRole="button">
-              <Text style={styles.choice}>{bank.name} · change</Text>
-            </Pressable>
+            <Card onPress={() => { setBank(null); setHolder(null); }} accessibilityLabel={`${bank.name}. Change bank`}>
+              <View style={styles.bankRow}>
+                <Body>{bank.name}</Body>
+                <Small tone="positive">Change</Small>
+              </View>
+            </Card>
           ) : (
             <>
-              <TextInput style={styles.inputSmall} value={filter} onChangeText={setFilter} placeholder="Find your bank" placeholderTextColor="#5f646b" />
+              <Field label="Bank" value={filter} onChangeText={setFilter} placeholder="Type your bank's name" />
               {shown.map((b) => (
-                <Pressable key={b.code} onPress={() => { setBank(b); setFilter(""); setHolder(null); }} accessibilityRole="button">
-                  <Text style={styles.option}>{b.name}</Text>
-                </Pressable>
+                <Card key={b.code} onPress={() => { setBank(b); setFilter(""); setHolder(null); }} accessibilityLabel={b.name}>
+                  <Body>{b.name}</Body>
+                </Card>
               ))}
             </>
           )}
-          <TextInput
-            style={styles.inputSmall}
+          <Field
+            label="Account number"
             value={account}
             onChangeText={(t) => { setAccount(t.replace(/\D/g, "").slice(0, 10)); setHolder(null); }}
             onEndEditing={() => void check()}
             keyboardType="number-pad"
-            placeholder="10-digit account number"
-            placeholderTextColor="#5f646b"
+            placeholder="10 digits"
           />
-          {checking ? <Text style={styles.small}>Checking the account…</Text> : null}
-          {holder ? <Text style={styles.holder}>{holder}</Text> : null}
-          {note ? <Text style={styles.warn}>{note}</Text> : null}
+          {checking ? <Spinner label="Checking the account…" /> : null}
+          {holder ? <Notice tone="positive">{holder}</Notice> : null}
+          {note ? <Notice tone="danger">{note}</Notice> : null}
           {bank && account.length === 10 && !holder && !checking ? (
-            <Pressable onPress={() => void check()} accessibilityRole="button">
-              <Text style={styles.choice}>Check whose account this is</Text>
-            </Pressable>
+            <Button kind="secondary" label="Check whose account this is" onPress={() => void check()} />
           ) : null}
 
-          <Pressable style={[styles.primary, !ready && styles.disabled]} disabled={!ready} onPress={() => void start()} accessibilityRole="button">
-            <Text style={styles.primaryText}>
-              {localMinor ? `Cash out ${money(localMinor)}` : "Cash out"}
-            </Text>
-          </Pressable>
-          {!props.sign ? <Text style={styles.small}>Your wallet is not ready yet.</Text> : null}
-          <Text style={styles.small}>Paid by paj.cash to the account above. You approve one transfer; Nelo pays its fee.</Text>
+          <Button label={localMinor ? `Cash out ${money(localMinor)}` : "Cash out"} disabled={!ready} onPress={() => void start()} />
+          {!props.sign ? <Small>Your wallet is not ready yet.</Small> : null}
+          <Small>Paid by paj.cash to the account above. You approve one transfer; Nelo pays its fee.</Small>
         </>
       )}
     </Shell>
@@ -342,42 +341,17 @@ function parseLocal(text: string, digits: number): bigint | null {
 
 function Shell({ children, onDone }: { children: React.ReactNode; onDone: () => void }) {
   return (
-    <View style={styles.screen}>
-      <View style={styles.header}>
-        <Text style={styles.heading}>Cash out</Text>
-        <Pressable onPress={onDone} accessibilityRole="button">
-          <Text style={styles.link}>Done</Text>
-        </Pressable>
-      </View>
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        {children}
-      </ScrollView>
-    </View>
+    <Screen>
+      <Header title="Cash out" actions={[{ label: "Done", onPress: onDone }]} />
+      {children}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#101113", paddingTop: 64, paddingHorizontal: 20 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
-  heading: { color: "#e8e9ea", fontSize: 26, fontWeight: "700", letterSpacing: -0.6 },
-  link: { color: "#8d9299", fontSize: 16, paddingHorizontal: 8 },
-  body: { gap: 12, paddingBottom: 40 },
-  title: { color: "#e8e9ea", fontSize: 22, fontWeight: "700" },
-  big: { color: "#e8e9ea", fontSize: 34, fontWeight: "700", letterSpacing: -1 },
-  label: { color: "#8d9299", fontSize: 12, letterSpacing: 1.5, marginTop: 8 },
-  text: { color: "#8d9299", fontSize: 15.5, lineHeight: 23 },
-  small: { color: "#6d7278", fontSize: 13, lineHeight: 19 },
-  warn: { color: "#d4855e", fontSize: 14 },
-  good: { color: "#4fb98f", fontSize: 56 },
-  holder: { color: "#4fb98f", fontSize: 16, fontWeight: "700" },
-  choice: { color: "#4fb98f", fontSize: 15.5, paddingVertical: 6 },
-  option: { color: "#e8e9ea", fontSize: 16, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "#2a2c30" },
-  resume: { gap: 12 },
-  input: { color: "#e8e9ea", fontSize: 28, borderWidth: 1, borderColor: "#282b2f", borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16 },
-  inputSmall: { color: "#e8e9ea", fontSize: 17, borderWidth: 1, borderColor: "#282b2f", borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16 },
-  primary: { backgroundColor: "#1a6b4c", borderRadius: 14, paddingVertical: 18, alignItems: "center", marginTop: 12 },
-  disabled: { backgroundColor: "#1d1f22" },
-  primaryText: { color: "#ffffff", fontSize: 17, fontWeight: "700" },
+  mark: { color: color.positive, fontSize: 56 },
+  amountInput: { fontSize: type.hero, fontWeight: "700", minHeight: 68 },
+  bankRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
 });
 
 /** A Privy merchant's cash-out: the same screen, signed through Privy. Render only inside PrivyProvider. */
