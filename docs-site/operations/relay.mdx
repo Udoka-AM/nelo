@@ -21,44 +21,41 @@ A refusal on budget or the per-vault cap tells the till to retry later; any othe
 ## Run it on the Mac
 
 <Steps>
+  <Step title="Set up every setting, once">
+    ```bash
+    cd ~/nelo && git pull && pnpm install
+    pnpm setup:env
+    ```
+    This writes the relayer's settings to `~/.config/nelo/relay.env` and the settlement service's to `~/.config/nelo/settle.env`, both owner-only, and creates `apps/merchant/.env` and `apps/payer/.env` from their examples if they are missing. It generates the tokens and copies them into the apps, so the two ends always match. Then it lists what is still blank.
+
+    It never changes a value you have set, and it keeps the tokens it generated, so run it again whenever you like.
+  </Step>
+  <Step title="Fill in the keys it asks for">
+    Open the files it names and paste in:
+    - `RELAY_RPC_URL` in `~/.config/nelo/relay.env`: your Helius devnet URL. If one of the apps' `.env` already has one, it is copied across for you.
+    - `PAJ_API_KEY` in `~/.config/nelo/settle.env`, once paj.cash sends the staging key.
+  </Step>
   <Step title="A fee-payer key, funded with devnet SOL">
     ```bash
     solana-keygen new -o ~/.config/solana/nelo/relay-fee-payer.json
-    solana address -k ~/.config/solana/nelo/relay-fee-payer.json
     solana airdrop 2 $(solana address -k ~/.config/solana/nelo/relay-fee-payer.json) -u devnet
     ```
     If the airdrop is rate-limited, use faucet.solana.com with that address. This key pays fees and nothing else: it has no authority over the program or anyone's funds. Keep it out of the repo like every other keypair.
   </Step>
-  <Step title="Start it">
+  <Step title="Start it, and put a tunnel in front of it">
     ```bash
-    cd ~/nelo/services/relay
-    export RELAY_RPC_URL='https://devnet.helius-rpc.com/?api-key=YOUR_KEY'
-    # Optional: tried in order when the one above does not answer.
-    # export RELAY_RPC_FALLBACK_URLS='https://another-provider.example/…'
-    export RELAY_KEYPAIR=~/.config/solana/nelo/relay-fee-payer.json
-    export RELAY_TOKEN=$(openssl rand -hex 24)
-    export RELAY_LEDGER=~/.config/solana/nelo/relay-ledger.json
-    echo "RELAY_TOKEN=$RELAY_TOKEN"   # the merchant app needs this
-    pnpm start
-    ```
-    It listens on `127.0.0.1:8787`. It needs Node 22.18 or later, which runs TypeScript directly. Keep the ledger file: it is how a retried voucher gets the same answer, so it must survive restarts.
-  </Step>
-  <Step title="Put a public address in front of it">
-    ```bash
-    brew install cloudflared
+    cd ~/nelo/services/relay && pnpm start          # reads ~/.config/nelo/relay.env
+    # in another terminal:
+    brew install cloudflared                        # once
     cloudflared tunnel --url http://127.0.0.1:8787
     ```
-    It prints an `https://….trycloudflare.com` address. Check it from a phone's browser: `https://…trycloudflare.com/v1/health` should show the fee payer's address. The quick-tunnel address changes whenever `cloudflared` restarts; a named tunnel keeps one address, and is worth setting up once the demo date is fixed.
+    It listens on `127.0.0.1:8787` and needs Node 22.18 or later. Keep the ledger file it writes: it is how a retried voucher gets the same answer, so it must survive restarts. Check the tunnel from a phone's browser: `https://…trycloudflare.com/v1/health` should show the fee payer's address.
   </Step>
-  <Step title="Point the merchant app at it">
-    In `apps/merchant/.env`:
+  <Step title="Point the apps at it">
+    ```bash
+    cd ~/nelo && pnpm setup:env --relay-url https://….trycloudflare.com
     ```
-    EXPO_PUBLIC_NELO_RELAY_URL=https://….trycloudflare.com
-    EXPO_PUBLIC_NELO_RELAY_TOKEN=<the RELAY_TOKEN from above>
-    ```
-    Then restart Metro with `--clear`. No new native build is needed for this.
-
-    Put the same two lines in `apps/payer/.env` too. A customer paid by another customer settles through the same relayer.
+    This writes the address into both apps' `.env`. A quick tunnel's address changes whenever `cloudflared` restarts, so run this again each time. Then restart Metro with `npx expo start --dev-client --clear`; no new native build is needed.
   </Step>
 </Steps>
 
@@ -77,36 +74,59 @@ The submission is written to the ledger before the transaction is sent, and requ
 The settlement service (`services/settle`) opens payout orders with paj.cash, and the relayer pays the fee on the merchant's transfer to the order's deposit address. It runs on the same Mac, behind its own tunnel.
 
 <Steps>
+  <Step title="Start a tunnel for it, and tell the setup">
+    ```bash
+    cloudflared tunnel --url http://127.0.0.1:8788
+    cd ~/nelo && pnpm setup:env --settle-url https://….trycloudflare.com
+    ```
+    This writes the address to `SETTLE_PUBLIC_URL`, which paj.cash's webhook uses, and to the merchant app's `.env`. `PAJ_API_KEY` must be in `~/.config/nelo/settle.env` by now.
+  </Step>
   <Step title="Log in to paj.cash">
     ```bash
-    cd ~/nelo/services/settle
-    export PAJ_API_KEY='…'          # Nelo's paj.cash business key: server-side only
-    pnpm paj:login                  # paj.cash sends a code; type it in
+    cd ~/nelo/services/settle && pnpm paj:login
     ```
-    The session token is saved owner-only to `~/.config/nelo/paj-session.json`. When it expires, cash-outs pause with a message saying so; run this again.
+    paj.cash sends a code to the email or phone you give; type it in. The session is saved owner-only to `~/.config/nelo/paj-session.json`. When it expires, cash-outs pause with a message saying so; run this again.
   </Step>
-  <Step title="Start it, and put a tunnel in front of it">
+  <Step title="Start it">
     ```bash
-    cloudflared tunnel --url http://127.0.0.1:8788     # note the https address
-    export SETTLE_PUBLIC_URL=https://….trycloudflare.com
-    export SETTLE_WEBHOOK_SECRET=$(openssl rand -hex 16)
-    export SETTLE_TOKEN=$(openssl rand -hex 24)
-    echo "SETTLE_TOKEN=$SETTLE_TOKEN"
-    pnpm start
+    pnpm start      # reads ~/.config/nelo/settle.env
     ```
-    `PAJ_ENV` defaults to staging. `SETTLE_MINT` defaults to devnet USDC; if paj.cash staging wants another mint, set it here.
-  </Step>
-  <Step title="Point the merchant app at it">
-    In `apps/merchant/.env`:
-    ```
-    EXPO_PUBLIC_NELO_SETTLE_URL=https://….trycloudflare.com
-    EXPO_PUBLIC_NELO_SETTLE_TOKEN=<the SETTLE_TOKEN from above>
-    ```
-    The till then shows paj.cash's naira rate, and the balance opens Cash out.
+    Restart Metro with `--clear`. The till then shows paj.cash's naira rate, and the balance opens Cash out.
   </Step>
 </Steps>
 
-The relayer allows 5 cash-out transfers per merchant a day (`RELAY_CASHOUTS_PER_DAY`). If paj.cash's deposit addresses turn out to have no USDC token account, set `RELAY_SPONSOR_DEPOSIT_ACCOUNTS=true` to have the relayer open one, at about 0.002 SOL each.
+The relayer allows 5 cash-out transfers per merchant a day (`RELAY_CASHOUTS_PER_DAY`). If paj.cash's deposit addresses turn out to have no USDC token account, set `RELAY_SPONSOR_DEPOSIT_ACCOUNTS=true` in `relay.env` to have the relayer open one, at about 0.002 SOL each.
+
+## Every setting
+
+`pnpm setup:env` writes all of these; this is what each one is.
+
+| Where | Setting | What | Set by |
+|---|---|---|---|
+| `~/.config/nelo/relay.env` | `RELAY_RPC_URL` | Devnet RPC with a quota, e.g. Helius | you |
+| | `RELAY_RPC_FALLBACK_URLS` | Other providers, tried in order when that one does not answer. Optional | you |
+| | `RELAY_KEYPAIR` | The fee-payer key file | setup |
+| | `RELAY_LEDGER` | What the relayer has submitted. Keep it | setup |
+| | `RELAY_TOKEN` | Bearer token; the apps hold a copy | setup |
+| | `RELAY_DAILY_BUDGET_SOL`, `RELAY_MAX_PER_VAULT`, `RELAY_CASHOUTS_PER_DAY` | Limits: 0.5, 200, 5 | defaults |
+| | `RELAY_SPONSOR_DEPOSIT_ACCOUNTS` | `true` to pay rent for a deposit account | off |
+| | `RELAY_MINT`, `RELAY_MINT_DECIMALS`, `RELAY_PORT`, `RELAY_HOST` | Devnet USDC, 6, 8787, 127.0.0.1 | defaults |
+| `~/.config/nelo/settle.env` | `PAJ_API_KEY` | Nelo's paj.cash business key. Never in an app | you |
+| | `PAJ_ENV` | `staging` or `production` | setup: staging |
+| | `SETTLE_PUBLIC_URL` | This service's tunnel, for paj.cash's webhook | `--settle-url` |
+| | `SETTLE_WEBHOOK_SECRET` | Part of the webhook's path | setup |
+| | `SETTLE_TOKEN` | Bearer token; the merchant app holds a copy | setup |
+| | `PAJ_LOGIN` | Where paj.cash sends the login code; skips the prompt. Optional | you |
+| | `SETTLE_MINT`, `NELO_FEE_USDC` | The mint paj.cash takes; Nelo's fee per cash-out. Optional | you |
+| | `PAJ_SESSION_FILE`, `SETTLE_CASHOUTS_FILE`, `SETTLE_PORT`, `SETTLE_HOST` | Under `~/.config/nelo`, 8788, 127.0.0.1 | defaults |
+| `apps/merchant/.env` | `EXPO_PUBLIC_SOLANA_RPC_URL`, `EXPO_PUBLIC_SOLANA_RPC_FALLBACK_URLS` | The till's RPC, and fallbacks | you, or copied |
+| | `EXPO_PUBLIC_NELO_RELAY_URL`, `EXPO_PUBLIC_NELO_RELAY_TOKEN` | The relayer | `--relay-url`, setup |
+| | `EXPO_PUBLIC_NELO_SETTLE_URL`, `EXPO_PUBLIC_NELO_SETTLE_TOKEN` | The settlement service | `--settle-url`, setup |
+| | `EXPO_PUBLIC_PRIVY_APP_ID`, `EXPO_PUBLIC_PRIVY_CLIENT_ID` | Phone-number onboarding. Optional | you |
+| `apps/payer/.env` | `EXPO_PUBLIC_SOLANA_RPC_URL`, `EXPO_PUBLIC_SOLANA_RPC_FALLBACK_URLS` | The payer app's RPC | you, or copied |
+| | `EXPO_PUBLIC_NELO_RELAY_URL`, `EXPO_PUBLIC_NELO_RELAY_TOKEN` | The relayer, for payments received from other customers | `--relay-url`, setup |
+
+Every `EXPO_PUBLIC_` value is compiled into the app and readable by anyone holding the APK. The RPC URL and the two tokens are fine there; `PAJ_API_KEY`, the fee-payer key and the paj.cash session are not, and live only on the Mac.
 
 ## Double spends
 
