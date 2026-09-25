@@ -3,6 +3,8 @@
  *
  *   POST /v1/redeem   { "packet": "<202 bytes, base64>" }  → RedeemResponse
  *   POST /v1/conflict { "a": "<base64>", "b": "<base64>" } → ConflictResponse
+ *   POST /v1/cashout/prepare { order, owner, deposit, amount } → the transfer to sign
+ *   POST /v1/cashout/submit  { order, wire }                   → its signature
  *   GET  /v1/health   who pays, and for which mint
  *
  * Requests are handled one at a time. The ledger is read, decided on and
@@ -17,6 +19,7 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { redeem, type RedeemDeps } from "./redeem.ts";
 import { reportConflict, sweep, type ConflictRpc } from "./conflict.ts";
+import { prepareCashout, submitCashout, type CashoutLimits } from "./cashout.ts";
 
 export interface ServerOptions {
   deps: Omit<RedeemDeps, "now" | "rpc"> & { rpc: ConflictRpc };
@@ -24,6 +27,8 @@ export interface ServerOptions {
   now: () => number;
   /** When set, requests must carry `authorization: Bearer <token>`. */
   token?: string;
+  /** Cash-out transfers. Omitted: the endpoints answer 404. */
+  cashout?: { limits: Omit<CashoutLimits, "budgetLamports">; decimals: number };
 }
 
 /** Run async work one at a time, in arrival order. */
@@ -109,6 +114,52 @@ export function buildRelay(options: ServerOptions): Relay {
     if (a.length !== 202 || b.length !== 202) return reply.code(400).send({ error: "each voucher is 202 bytes" });
     try {
       return await serially(() => reportConflict(a, b, conflictDeps()));
+    } catch (e) {
+      return reply.code(503).send({ error: e instanceof Error ? e.message : "unavailable" });
+    }
+  });
+
+  const cashoutDeps = () => ({
+    rpc: options.deps.rpc,
+    feePayer: options.deps.feePayer,
+    ledger: options.deps.ledger,
+    mint: options.deps.config.mint,
+    decimals: options.cashout!.decimals,
+    ...(options.deps.config.tokenProgram ? { tokenProgram: options.deps.config.tokenProgram } : {}),
+    limits: { ...options.cashout!.limits, budgetLamports: options.deps.config.limits.budgetLamports },
+    now: options.now(),
+  });
+
+  app.post("/v1/cashout/prepare", async (request, reply) => {
+    if (!options.cashout) return reply.code(404).send({ error: "cash-outs are not enabled" });
+    const body = request.body as { order?: unknown; owner?: unknown; deposit?: unknown; amount?: unknown } | null;
+    if (
+      !body ||
+      typeof body.order !== "string" ||
+      typeof body.owner !== "string" ||
+      typeof body.deposit !== "string" ||
+      typeof body.amount !== "string" ||
+      !/^\d{1,20}$/.test(body.amount)
+    ) {
+      return reply.code(400).send({ error: "expected { order, owner, deposit, amount: base units as a string }" });
+    }
+    const input = { order: body.order, owner: body.owner, deposit: body.deposit, amount: BigInt(body.amount) };
+    try {
+      return await serially(() => prepareCashout(input, cashoutDeps()));
+    } catch (e) {
+      return reply.code(503).send({ error: e instanceof Error ? e.message : "unavailable" });
+    }
+  });
+
+  app.post("/v1/cashout/submit", async (request, reply) => {
+    if (!options.cashout) return reply.code(404).send({ error: "cash-outs are not enabled" });
+    const body = request.body as { order?: unknown; wire?: unknown } | null;
+    if (!body || typeof body.order !== "string" || typeof body.wire !== "string") {
+      return reply.code(400).send({ error: "expected { order, wire: base64 }" });
+    }
+    const wire = new Uint8Array(Buffer.from(body.wire, "base64"));
+    try {
+      return await serially(() => submitCashout(body.order as string, wire, cashoutDeps()));
     } catch (e) {
       return reply.code(503).send({ error: e instanceof Error ? e.message : "unavailable" });
     }

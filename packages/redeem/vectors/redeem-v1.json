@@ -1,4 +1,76 @@
 {
+  "cashout": {
+    "createDepositAccount": {
+      "accounts": [
+        {
+          "isSigner": true,
+          "isWritable": true,
+          "pubkey": "4Ss5JMkXAD9Z7cktFEdrqeMuT6jGMF1pVozTyPHZ6zT4"
+        },
+        {
+          "isSigner": false,
+          "isWritable": true,
+          "pubkey": "Ehw3wKwaoW9aor82XXmTJQ6z9AT1pvuoJ5QMjoSm4zwy"
+        },
+        {
+          "isSigner": false,
+          "isWritable": false,
+          "pubkey": "6k78AbasGMFFrhG95Pj6jQbqkVt7FQMhVgemxJovWKR6"
+        },
+        {
+          "isSigner": false,
+          "isWritable": false,
+          "pubkey": "7tj9biW3KRJ7EEWmVUGigHiouCTXhV2dzcyvwma7Cyu7"
+        },
+        {
+          "isSigner": false,
+          "isWritable": false,
+          "pubkey": "11111111111111111111111111111111"
+        },
+        {
+          "isSigner": false,
+          "isWritable": false,
+          "pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "dataHex": "01",
+      "programId": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+    },
+    "input": {
+      "amount": "12345678",
+      "decimals": 6,
+      "deposit": "6k78AbasGMFFrhG95Pj6jQbqkVt7FQMhVgemxJovWKR6",
+      "mint": "7tj9biW3KRJ7EEWmVUGigHiouCTXhV2dzcyvwma7Cyu7",
+      "owner": "3JF3sEqM796hk5WFqA6EtmEwJQ9quALszsfJyvXNQKy3",
+      "relayer": "4Ss5JMkXAD9Z7cktFEdrqeMuT6jGMF1pVozTyPHZ6zT4"
+    },
+    "transferChecked": {
+      "accounts": [
+        {
+          "isSigner": false,
+          "isWritable": true,
+          "pubkey": "7DP7T5tPda74u3M7JzE5QCT96zd6ZEhiPNdY9ceBbjbN"
+        },
+        {
+          "isSigner": false,
+          "isWritable": false,
+          "pubkey": "7tj9biW3KRJ7EEWmVUGigHiouCTXhV2dzcyvwma7Cyu7"
+        },
+        {
+          "isSigner": false,
+          "isWritable": true,
+          "pubkey": "Ehw3wKwaoW9aor82XXmTJQ6z9AT1pvuoJ5QMjoSm4zwy"
+        },
+        {
+          "isSigner": true,
+          "isWritable": false,
+          "pubkey": "3JF3sEqM796hk5WFqA6EtmEwJQ9quALszsfJyvXNQKy3"
+        }
+      ],
+      "dataHex": "0c4e61bc000000000006",
+      "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+    }
+  },
   "conflict": {
     "input": {
       "packetAHex": "01076e60e33a1fa13e521f9c57cb1f47c7077927b6b8f20f4c196ac10b7755b234090000000000000080969800000000000100000000000000222222222222222222222222222222222222222222222222222222222222222240f9a16a0000000003030303030303036a1d0413a6b85a993f166a31ce641b5578632fb0dd4dd522e691faf475f113f7187ff52d34ddbb55069c28fe7dfae7c24815d5181aedffc85b0fb9d92ffb7f72020b3d58ffeeb0525da579bcc33edb4e1e0036f8e2afc63aac57bcf511efd8531f",

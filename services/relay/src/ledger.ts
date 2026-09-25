@@ -43,11 +43,33 @@ export interface ConflictReport {
   slashSignature: string | null;
 }
 
+/** A merchant's cash-out transfer to a payout partner, keyed by the partner's order id. */
+export interface Transfer {
+  owner: string;
+  deposit: string;
+  /** Token base units, as a decimal string. */
+  amount: string;
+  /** Base64 of the unsigned transaction the relayer built. The only thing it will sign. */
+  wire: string;
+  /** Hex of its message. */
+  message: string;
+  lastValidBlockHeight: number;
+  createsAccount: boolean;
+  costLamports: number;
+  preparedAt: number;
+  /** Set once the relayer has signed and sent it. */
+  signature: string | null;
+}
+
 export interface LedgerState {
   /** `${vault}:${seq}` → the live submission for that voucher. */
   submissions: Record<string, Submission>;
   /** `${vault}:${seq}` → the double spend reported for it. */
   conflicts?: Record<string, ConflictReport>;
+  /** Payout order id → the cash-out transfer built for it. */
+  transfers?: Record<string, Transfer>;
+  /** Cash-out transfers sent per merchant in the current window. */
+  perOwner?: Record<string, number>;
   /** Merchants whose token account the relayer has funded. Once each. */
   fundedMerchants: string[];
   /** UTC day, `YYYY-MM-DD`, that the spend below belongs to. */
@@ -62,12 +84,12 @@ export interface Ledger {
 }
 
 export function emptyLedger(day: string): LedgerState {
-  return { submissions: {}, conflicts: {}, fundedMerchants: [], day, spentLamports: 0, perVault: {} };
+  return { submissions: {}, conflicts: {}, transfers: {}, perOwner: {}, fundedMerchants: [], day, spentLamports: 0, perVault: {} };
 }
 
 /** The day's spend resets at UTC midnight; everything else carries over. */
 export function rollDay(state: LedgerState, day: string): LedgerState {
-  return state.day === day ? state : { ...state, day, spentLamports: 0, perVault: {} };
+  return state.day === day ? state : { ...state, day, spentLamports: 0, perVault: {}, perOwner: {} };
 }
 
 export function utcDay(nowSeconds: number): string {

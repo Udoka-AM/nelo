@@ -472,3 +472,92 @@ test("only a real conflict is accepted: same vault and sequence, different bytes
   const forged = encode({ ...decode(PA), amount: decode(PA).amount + 1n });
   assert.match((checkConflict(PA, forged) as { reason: string }).reason, /does not verify/);
 });
+
+// ---- cash-out: a token transfer to a payout partner, fee paid by the relayer ----
+
+import {
+  buildCashout,
+  checkOwnerSigned,
+  createDepositAccountInstruction,
+  transferCheckedInstruction,
+  withSignature,
+} from "../src/index.ts";
+
+type IxJson = { programId: string; dataHex: string; accounts: { pubkey: string; isSigner: boolean; isWritable: boolean }[] };
+const K = (VECTORS as unknown as { cashout: {
+  input: { owner: string; deposit: string; relayer: string; mint: string; amount: string; decimals: number };
+  createDepositAccount: IxJson;
+  transferChecked: IxJson;
+} }).cashout;
+const asMetas = (ix: IxJson) => ix.accounts.map((x) => ({ address: x.pubkey, role: roleOf(x) }));
+
+test("transfer_checked matches the SPL token crate: data, accounts, roles", () => {
+  const ix = transferCheckedInstruction({
+    owner: K.input.owner,
+    destinationOwner: K.input.deposit,
+    mint: K.input.mint,
+    amount: BigInt(K.input.amount),
+    decimals: K.input.decimals,
+  });
+  assert.equal(ix.programAddress, K.transferChecked.programId);
+  assert.equal(hex(ix.data), K.transferChecked.dataHex);
+  assert.deepEqual(ix.accounts, asMetas(K.transferChecked));
+});
+
+test("the deposit account's create_idempotent matches the ATA crate", () => {
+  const ix = createDepositAccountInstruction({ payer: K.input.relayer, owner: K.input.deposit, mint: K.input.mint });
+  assert.equal(ix.programAddress, K.createDepositAccount.programId);
+  assert.equal(hex(ix.data), K.createDepositAccount.dataHex);
+  assert.deepEqual(ix.accounts, asMetas(K.createDepositAccount));
+});
+
+test("a cash-out is paid by the relayer and needs the merchant's signature, exactly as built", async () => {
+  const { ed25519 } = await import("@noble/curves/ed25519");
+  const { getTransactionDecoder, getCompiledTransactionMessageDecoder } = await import("@solana/kit");
+  const ownerKey = ed25519.utils.randomPrivateKey();
+  const owner = encodeBase58(ed25519.getPublicKey(ownerKey));
+  const relayerKey = ed25519.utils.randomPrivateKey();
+  const relayer = encodeBase58(ed25519.getPublicKey(relayerKey));
+  const lifetime = { blockhash: encodeBase58(new Uint8Array(32).fill(9)), lastValidBlockHeight: 50n };
+  const u = buildCashout(
+    { owner, deposit: K.input.deposit, mint: K.input.mint, amount: 5_000_000n, decimals: 6, feePayer: relayer, createDepositAccount: true },
+    lifetime,
+  );
+  const m = getCompiledTransactionMessageDecoder().decode(u.message);
+  assert.equal(m.staticAccounts[0], relayer, "the relayer pays");
+  assert.equal(m.header.numSignerAccounts, 2, "and the merchant signs");
+
+  const signed = withSignature(u.wire, owner, ed25519.sign(u.message, ownerKey));
+  const ok = checkOwnerSigned(u, signed, owner);
+  assert.ok(ok.ok);
+
+  // A signature over other bytes, or no signature, is refused.
+  const forged = withSignature(u.wire, owner, ed25519.sign(new Uint8Array([1, 2, 3]), ownerKey));
+  assert.equal(checkOwnerSigned(u, forged, owner).ok, false);
+  assert.equal(checkOwnerSigned(u, u.wire, owner).ok, false);
+  // A different message, even a validly signed one, is refused.
+  const other = buildCashout(
+    { owner, deposit: K.input.owner, mint: K.input.mint, amount: 5_000_000n, decimals: 6, feePayer: relayer, createDepositAccount: false },
+    lifetime,
+  );
+  const otherSigned = withSignature(other.wire, owner, ed25519.sign(other.message, ownerKey));
+  assert.equal(checkOwnerSigned(u, otherSigned, owner).ok, false);
+
+  // With the relayer's signature added, both verify.
+  const full = withSignature(signed, relayer, ed25519.sign(u.message, relayerKey));
+  const sigs = getTransactionDecoder().decode(full).signatures as Record<string, Uint8Array>;
+  assert.ok(ed25519.verify(sigs[relayer]!, u.message, ed25519.getPublicKey(relayerKey)));
+  assert.ok(ed25519.verify(sigs[owner]!, u.message, ed25519.getPublicKey(ownerKey)));
+});
+
+test("a cash-out refuses nonsense before it becomes a transaction", () => {
+  const base = { owner: K.input.owner, destinationOwner: K.input.deposit, mint: K.input.mint, decimals: 6 };
+  assert.throws(() => transferCheckedInstruction({ ...base, amount: 0n }));
+  assert.throws(() => transferCheckedInstruction({ ...base, amount: 1n << 64n }));
+  assert.throws(() =>
+    buildCashout(
+      { owner: K.input.relayer, deposit: K.input.deposit, mint: K.input.mint, amount: 1n, decimals: 6, feePayer: K.input.relayer, createDepositAccount: false },
+      { blockhash: encodeBase58(new Uint8Array(32).fill(9)), lastValidBlockHeight: 1n },
+    ),
+  );
+});

@@ -253,3 +253,4 @@ export function redeemInstructions(input: RedeemInput): readonly [Instruction, I
 export * from "./transaction.ts";
 export * from "./enrol.ts";
 export * from "./conflict.ts";
+export * from "./cashout.ts";

@@ -9,6 +9,8 @@
  *   RELAY_PORT / RELAY_HOST default 8787 on 127.0.0.1: a tunnel fronts it
  *   RELAY_DAILY_BUDGET_SOL  default 0.5
  *   RELAY_MAX_PER_VAULT     redemptions per vault per day, default 200
+ *   RELAY_CASHOUTS_PER_DAY  cash-out transfers per merchant per day, default 5
+ *   RELAY_SPONSOR_DEPOSIT_ACCOUNTS  "true" to pay rent for a deposit address with no token account
  *
  * See docs-site/operations/relay.mdx for running it on a Mac behind a tunnel.
  */
@@ -41,6 +43,13 @@ const endpoint = failover(endpointsFrom(required("RELAY_RPC_URL"), process.env.R
 
 const relay = buildRelay({
   now,
+  cashout: {
+    decimals: Number(process.env.RELAY_MINT_DECIMALS ?? "6"),
+    limits: {
+      perOwnerPerDay: Number(process.env.RELAY_CASHOUTS_PER_DAY ?? "5"),
+      sponsorDepositAccounts: process.env.RELAY_SPONSOR_DEPOSIT_ACCOUNTS === "true",
+    },
+  },
   ...(process.env.RELAY_TOKEN?.trim() ? { token: process.env.RELAY_TOKEN.trim() } : {}),
   deps: {
     rpc: createRelayRpc(endpoint.url, endpoint.fetch),

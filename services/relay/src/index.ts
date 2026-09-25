@@ -48,5 +48,6 @@ export { redeem, type RedeemResponse, type RelayRpc, type RelayConfig } from "./
 export { buildRelay, buildServer, serial, type Relay } from "./server.ts";
 export { reportConflict, sweep, type ConflictResponse, type ConflictRpc } from "./conflict.ts";
 export { createRelayRpc } from "./rpc.ts";
+export { prepareCashout, submitCashout, type CashoutDeps, type CashoutLimits } from "./cashout.ts";
 export { feePayerFromSecret, loadFeePayer, type FeePayer } from "./feePayer.ts";
 export { emptyLedger, fileLedger, memoryLedger, type Ledger, type LedgerState } from "./ledger.ts";

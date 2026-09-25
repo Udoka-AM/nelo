@@ -418,8 +418,56 @@ fn conflict() -> Value {
     })
 }
 
+/// A merchant cashing out: their USDC to a payout partner's deposit address,
+/// fee paid by the relayer. Built by the SPL crates themselves, so the
+/// TypeScript builder is checked against them rather than against a reading
+/// of the token program.
+fn cashout() -> Value {
+    use anchor_spl::{
+        associated_token::spl_associated_token_account::instruction::create_associated_token_account_idempotent,
+        token::spl_token::instruction::transfer_checked,
+    };
+    let owner = Pubkey::new_from_array([0x22; 32]);
+    let deposit = Pubkey::new_from_array([0x55; 32]);
+    let relayer = Pubkey::new_from_array([0x33; 32]);
+    let mint = Pubkey::new_from_array([0x66; 32]);
+    let amount: u64 = 12_345_678;
+    let create = create_associated_token_account_idempotent(&relayer, &deposit, &mint, &SPL_TOKEN);
+    let transfer = transfer_checked(
+        &SPL_TOKEN,
+        &get_associated_token_address_with_program_id(&owner, &mint, &SPL_TOKEN),
+        &mint,
+        &get_associated_token_address_with_program_id(&deposit, &mint, &SPL_TOKEN),
+        &owner,
+        &[],
+        amount,
+        6,
+    )
+    .unwrap();
+    let ix_json = |ix: &Instruction| {
+        json!({
+            "programId": ix.program_id.to_string(),
+            "dataHex": hex(&ix.data),
+            "accounts": ix.accounts.iter().map(account_json).collect::<Vec<_>>(),
+        })
+    };
+    json!({
+        "input": {
+            "owner": owner.to_string(),
+            "deposit": deposit.to_string(),
+            "relayer": relayer.to_string(),
+            "mint": mint.to_string(),
+            "amount": amount.to_string(),
+            "decimals": 6,
+        },
+        "createDepositAccount": ix_json(&create),
+        "transferChecked": ix_json(&transfer),
+    })
+}
+
 fn all() -> Value {
     json!({
+        "cashout": cashout(),
         "conflict": conflict(),
         "enrolment": enrolment(),
         "transactions": cases().iter().map(expected).collect::<Vec<_>>(),
