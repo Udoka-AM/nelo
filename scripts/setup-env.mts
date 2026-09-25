@@ -37,8 +37,11 @@ const args = process.argv.slice(2);
 const flag = (name: string) => {
   const i = args.indexOf(name);
   const v = i >= 0 ? args[i + 1] : undefined;
-  if (i >= 0 && (!v || !/^https:\/\/[^\s]+$/.test(v))) {
-    console.error(`${name} needs an https:// address`);
+  // A real address: plain ASCII host, not the "…" placeholder copied from the docs.
+  if (i >= 0 && (!v || !/^https:\/\/[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d+)?(\/\S*)?$/.test(v))) {
+    console.error(
+      `${name} needs the real https:// address cloudflared printed, e.g. https://blue-sky-1234.trycloudflare.com, not "${v ?? ""}".`,
+    );
     process.exit(1);
   }
   return v?.replace(/\/+$/, "");
@@ -149,6 +152,16 @@ function appEnv(app: string): EnvFile {
 const merchant = appEnv("merchant");
 const payer = appEnv("payer");
 
+// An earlier version accepted the docs' "https://….trycloudflare.com" placeholder. Clear it.
+for (const [f, key] of [
+  [merchant, "EXPO_PUBLIC_NELO_RELAY_URL"],
+  [merchant, "EXPO_PUBLIC_NELO_SETTLE_URL"],
+  [payer, "EXPO_PUBLIC_NELO_RELAY_URL"],
+  [settle, "SETTLE_PUBLIC_URL"],
+] as const) {
+  if (f.get(key).includes("…")) f.set(key, "", true);
+}
+
 // The tokens are the services'; the apps hold copies, kept in step.
 merchant.set("EXPO_PUBLIC_NELO_RELAY_TOKEN", relay.get("RELAY_TOKEN"), true);
 merchant.set("EXPO_PUBLIC_NELO_SETTLE_TOKEN", settle.get("SETTLE_TOKEN"), true);
@@ -197,6 +210,30 @@ if (!existsSync(relay.get("RELAY_KEYPAIR"))) {
       `    solana-keygen new -o ${relay.get("RELAY_KEYPAIR").replace(home, "~")}\n` +
       `    solana airdrop 2 $(solana address -k ${relay.get("RELAY_KEYPAIR").replace(home, "~")}) -u devnet`,
   );
+}
+
+// Ask the RPC one harmless question, so a refused key shows up here rather
+// than as "sweep failed: HTTP 401" once the relayer is running.
+const rpcUrl = relay.get("RELAY_RPC_URL");
+if (rpcUrl) {
+  try {
+    const r = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getHealth" }),
+      signal: AbortSignal.timeout(8_000),
+    });
+    const host = new URL(rpcUrl).host;
+    if (r.status === 401 || r.status === 403) {
+      todo.push(`  RELAY_RPC_URL (${host}) refuses the request: HTTP ${r.status}. The API key in it is wrong or missing: check it against the Helius dashboard.`);
+    } else if (!r.ok) {
+      todo.push(`  RELAY_RPC_URL (${host}) answered HTTP ${r.status}.`);
+    } else {
+      console.log(`RPC check: ${host} answers.`);
+    }
+  } catch {
+    todo.push("  RELAY_RPC_URL could not be reached (no network, or not a URL).");
+  }
 }
 
 console.log(todo.length ? `\nStill to fill in:\n${todo.join("\n")}` : "\nEverything is set.");

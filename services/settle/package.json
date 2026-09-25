@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "start": "node --env-file-if-exists=$HOME/.config/nelo/settle.env src/main.ts",
-    "paj:login": "node --env-file-if-exists=$HOME/.config/nelo/settle.env src/paj-login.ts",
+    "start": "node --disable-warning=ExperimentalWarning --env-file-if-exists=$HOME/.config/nelo/settle.env src/main.ts",
+    "paj:login": "node --disable-warning=ExperimentalWarning --env-file-if-exists=$HOME/.config/nelo/settle.env src/paj-login.ts",
     "dev": "node --watch src/main.ts",
     "test": "node --test \"test/*.test.ts\""
   },

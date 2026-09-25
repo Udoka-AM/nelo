@@ -8,7 +8,7 @@
     "test": "pnpm -r test && anchor test",
     "program:build": "anchor build",
     "program:test": "anchor test",
-    "setup:env": "node scripts/setup-env.mts"
+    "setup:env": "node --disable-warning=ExperimentalWarning scripts/setup-env.mts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
