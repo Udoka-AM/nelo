@@ -114,15 +114,17 @@ Seven Pyth feed ids are wired and each was verified against the Hermes API — o
 
 ---
 
-## `apps/payer` — the probe
+## `apps/payer`
 
-<Note>
-**This is not the product yet, and its own header says so.** It exists to answer the questions only a real handset can, and the real payer UI is week-3 work.
+Pay without signal, and be paid by another customer the same way.
 
-There is no vault funding and no voucher emission to a merchant in it — it exercises the codec and the secure element as *checks*.
-</Note>
+- **Once, online:** connect a wallet, make the payment key in the secure element, and open a vault with a first deposit.
+- **Pay:** scan a till's code or another customer's receive code, confirm, and show the voucher.
+- **Receive from someone:** show a receive code, scan the other phone's voucher, and accept it. It is checked offline with the till's own code, and settles through Nelo's relayer into your wallet on the next Sync.
 
-Hosts `@nelo/attest`. The round trip it runs — keygen in the secure element, sign the 105 bytes, verify with the merchant's own code — is a check, not a payment flow.
+Typechecks and bundles; never run on a handset. Settling what was received needs `EXPO_PUBLIC_NELO_RELAY_URL` and `EXPO_PUBLIC_NELO_RELAY_TOKEN` in `apps/payer/.env`, the same as the merchant app's.
+
+Hosts `@nelo/attest`. The device checks below remain one tap away from the home screen.
 
 ### The probe
 
@@ -142,7 +144,7 @@ The screen that answers *"does this handset actually work?"* — and the one tha
 
 Where StrongBox is absent the correct behaviour is **online-only**. Silently falling back to a software key would keep the demo working while destroying the entire argument, and `@nelo/attest` enforces that at the module level — it throws rather than retrying without the flag.
 
-The probe *detects and labels* this correctly. The enforcement point a merchant would actually hit — refusing to emit an offline voucher and saying why — **does not exist yet**, because nothing emits vouchers yet. That arrives with the payer UI in week 3.
+The probe *detects and labels* this correctly, and the payer app says so on its welcome screen before a payer sets up.
 </Warning>
 
 Check a handset without building anything:

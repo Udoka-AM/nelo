@@ -20,3 +20,11 @@ export const FLOOR_LIMIT = 50_000_000n;
 
 /** The Android Keystore alias of this phone's payment key. */
 export const KEY_ALIAS = "nelo.payer.device.v1";
+
+/**
+ * Nelo's relayer, which settles payments this phone received from another
+ * customer: it submits them and pays the fees. See services/relay. The token
+ * is not a secret from anyone holding the APK.
+ */
+export const relayUrl = process.env.EXPO_PUBLIC_NELO_RELAY_URL?.trim().replace(/\/+$/, "") || null;
+export const relayToken = process.env.EXPO_PUBLIC_NELO_RELAY_TOKEN?.trim() || null;

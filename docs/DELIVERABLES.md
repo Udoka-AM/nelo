@@ -388,7 +388,7 @@ that is not negotiable — half the marks.
 4. **Offline queue and settle-on-reconnect.** Durable nonce accounts so a queued transfer never
    expires. [`services/relay`](../services/relay/src/index.ts) — retry, multi-RPC failover.
    *(Anchor)*
-   **Built:** [`packages/queue`](../packages/queue/src/queue.ts), 58 tests. **No durable
+   **Built:** [`packages/queue`](../packages/queue/src/queue.ts), 63 tests. **No durable
    nonces**, on purpose. The queue holds vouchers, not signed transactions, and signs each
    redemption with a fresh blockhash when it is sent. So the only deadline is the voucher's
    own expiry, and a nonce account would cost rent and an instruction per redemption for
@@ -431,6 +431,19 @@ that is not negotiable — half the marks.
 7. **Peer-to-peer transfer.** This falls out of the same code — the voucher does not know what
    a merchant is. *(Android)*
    **Done when:** two customers settle a bill between them with no merchant involved.
+   **Built, never run on a handset.** It did fall out of the same code. The one being paid
+   taps *Receive from someone*, enters the amount, and shows a receive code: the till's Solana
+   Pay code without the reference ([`receiveCode`](../packages/till/src/receive.ts)). The payer
+   scans it with the same *Pay* flow they use at a till and shows the voucher. The receiver
+   scans that and checks it offline with the till's own `scan`, against a payer list synced
+   the same way. It is kept in the till's own store and settled through the relayer on the
+   next Sync, into the receiver's wallet, with no SOL. To make that literal rather than
+   copied, the till's SQLite store (`voucherDb`) moved into `@nelo/till` and the relayer and
+   RPC clients into `@nelo/queue`; the merchant app now uses both, with its schema unchanged.
+   The store is tested against Node's own SQLite. [`p2p.test.ts`](../packages/till/test/p2p.test.ts)
+   runs the whole thing on both phones' code: A pays B, B keeps it, the same code shown to B
+   again or to anyone else is refused. Receiving needs an enrolled vault today; the money it
+   brings lands in the wallet, and becomes spendable offline with an ordinary deposit.
 8. **Full design pass across every screen.** *(Design)*
 9. **The SKR election UI, with the disclosure.** Cash or SKR, and one plain sentence saying
    that electing SKR means accepting price risk on a volatile asset. *(Design)*

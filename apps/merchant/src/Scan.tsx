@@ -16,7 +16,6 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { enqueue } from "@nelo/queue";
 import { describeRisk, scan, type Scan } from "@nelo/till";
 import { formatLocalAmount, formatTokenAmount } from "@nelo/pay";
-import { getBase64Decoder } from "@solana/kit";
 import { addConflict, addVoucher, loadCache, voucherStore } from "./offline";
 
 export interface ScanProps {
@@ -79,8 +78,7 @@ export default function ScanPayment(props: ScanProps) {
         // has spent the same money twice. Do not hand anything over. Keep the
         // pair: on the next settle the relayer reports it, which freezes the
         // payer's vault and takes their stake.
-        const b64 = getBase64Decoder();
-        await addConflict(r.existing.id, b64.decode(r.existing.packet), b64.decode(r.incoming));
+        await addConflict(r.existing.id, r.existing.packet, r.incoming);
         setStage({
           step: "problem",
           message:

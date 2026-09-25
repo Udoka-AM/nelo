@@ -206,3 +206,13 @@ test("compression rejects malformed points", () => {
   badPrefix[0] = 0x02;
   assert.throws(() => compressPublicKey(badPrefix), /0x04/);
 });
+
+test("base64 encodes like Node's Buffer, and round-trips, at every padding", async () => {
+  const { encodeBase64, decodeBase64 } = await import("../src/index.ts");
+  for (let n = 0; n <= 205; n++) {
+    const bytes = Uint8Array.from({ length: n }, (_, i) => (i * 37 + n) & 0xff);
+    const text = encodeBase64(bytes);
+    assert.equal(text, Buffer.from(bytes).toString("base64"), `length ${n}`);
+    assert.deepEqual(decodeBase64(text), bytes);
+  }
+});

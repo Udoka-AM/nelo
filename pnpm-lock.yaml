@@ -132,9 +132,15 @@ importers:
       '@nelo/pay':
         specifier: workspace:*
         version: link:../../packages/pay
+      '@nelo/queue':
+        specifier: workspace:*
+        version: link:../../packages/queue
       '@nelo/redeem':
         specifier: workspace:*
         version: link:../../packages/redeem
+      '@nelo/till':
+        specifier: workspace:*
+        version: link:../../packages/till
       '@nelo/voucher':
         specifier: workspace:*
         version: link:../../packages/voucher
@@ -295,6 +301,9 @@ importers:
       '@nelo/enrol':
         specifier: workspace:*
         version: link:../enrol
+      '@nelo/pay':
+        specifier: workspace:*
+        version: link:../pay
       '@nelo/queue':
         specifier: workspace:*
         version: link:../queue
@@ -305,9 +314,6 @@ importers:
       '@nelo/issue':
         specifier: workspace:*
         version: link:../issue
-      '@nelo/pay':
-        specifier: workspace:*
-        version: link:../pay
       '@noble/curves':
         specifier: ^1.6.0
         version: 1.9.7

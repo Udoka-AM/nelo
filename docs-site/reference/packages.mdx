@@ -27,7 +27,7 @@ The layout is a **contract with the on-chain program** — bytes `0..105` must m
 The only package with a runtime dependency (`@noble/curves`), so it is the one suite that needs `pnpm install` before it runs.
 </Warning>
 
-**29 tests.** See [Voucher format](/concepts/voucher-format).
+**38 tests.** See [Voucher format](/concepts/voucher-format).
 
 ---
 
@@ -288,4 +288,22 @@ The codes come from `vectors/program-errors-v1.json`, which the program generate
 
 `standing(entry)` puts an entry in the four words close of day uses: settled, owed, held or lost, with why in words a merchant can act on.
 
-**58 tests**, against a fake network. Wired into the merchant app, never run on a handset.
+`relayPrepare`, `reportConflict` and `rpcStatuses` are the network half of settling, shared by the merchant's till and a customer who was paid by another: the relayer builds, pays for and sends each redemption. `fetch` is injected, so they are tested as they run.
+
+**63 tests**, against a fake network. Wired into the merchant app and the payer app, never run on a handset.
+
+---
+
+## `@nelo/till`
+
+What a phone that takes vouchers needs, whether it is a merchant's till or a customer being paid by another customer. A voucher does not know what a merchant is.
+
+```ts
+scan({ text, cache, merchant, charged, queued, now })  // take | refused | short | unknown-vault | …
+voucherDb(open)                                         // queue, payer list, double spends, in SQLite
+receiveCode(recipient, amount, mint)                    // the code a customer shows to be paid
+```
+
+`voucherDb` is written against the four calls `expo-sqlite` and Node's `node:sqlite` share, and tested on the second, including a close and reopen. The merchant app's schema is unchanged by the move.
+
+**17 tests**, including the two-phone sale and the two-customer transfer end to end.

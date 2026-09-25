@@ -1,162 +1,34 @@
 /**
  * Storage for offline payments: the queue of vouchers taken and not yet paid,
- * and the cached list of payers they are checked against.
+ * the cached list of payers they are checked against, and double spends
+ * caught. The logic is `voucherDb` in `@nelo/till`, shared with the payer
+ * app, which receives from other customers the same way.
  *
  * Its own SQLite file, separate from the day-book. The day-book records money
  * that has arrived. This records money the merchant is *owed*, and mixing the
  * two in one table is how a till ends up showing takings it has not received.
- *
- * Writes resolve only once SQLite has them. `@nelo/queue` relies on that: it
- * stores a redemption's signature before the transaction is sent, so that a
- * crash cannot leave an attempt nobody knows about.
  */
 import * as SQLite from "expo-sqlite";
-import {
-  emptyCache,
-  fromRecord as cacheFromRecord,
-  toRecord as cacheToRecord,
-  type EnrolmentCache,
-} from "@nelo/enrol";
-import { fromRecord, toRecord, type Entry, type EntryRecord, type Store } from "@nelo/queue";
+import { voucherDb, type Taken } from "@nelo/till";
 
-let db: SQLite.SQLiteDatabase | null = null;
+const db = voucherDb(() => SQLite.openDatabaseAsync("nelo-till.db"));
 
-async function handle(): Promise<SQLite.SQLiteDatabase> {
-  if (db) return db;
-  db = await SQLite.openDatabaseAsync("nelo-till.db");
-  await db.execAsync(`
-    PRAGMA journal_mode = WAL;
-    CREATE TABLE IF NOT EXISTS kv (
-      key   TEXT PRIMARY KEY NOT NULL,
-      value TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS conflicts (
-      id        TEXT PRIMARY KEY NOT NULL,
-      a         TEXT NOT NULL,
-      b         TEXT NOT NULL,
-      reported  TEXT
-    );
-    CREATE TABLE IF NOT EXISTS vouchers (
-      id           TEXT PRIMARY KEY NOT NULL,
-      record       TEXT NOT NULL,
-      local_minor  TEXT NOT NULL,
-      currency     TEXT NOT NULL,
-      booked       INTEGER NOT NULL DEFAULT 0
-    );
-  `);
-  return db;
-}
+export type Unbooked = Taken;
 
-const CACHE_KEY = "enrolment-cache";
-
-export async function loadCache(): Promise<EnrolmentCache> {
-  const database = await handle();
-  const row = await database.getFirstAsync<{ value: string }>(`SELECT value FROM kv WHERE key = ?`, CACHE_KEY);
-  if (!row) return emptyCache();
-  try {
-    return cacheFromRecord(JSON.parse(row.value));
-  } catch {
-    // A cache that will not parse is a cache to rebuild on the next sync, not
-    // a reason for the till to stop opening.
-    return emptyCache();
-  }
-}
-
-export async function saveCache(cache: EnrolmentCache): Promise<void> {
-  const database = await handle();
-  await database.runAsync(
-    `INSERT INTO kv (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-    CACHE_KEY,
-    JSON.stringify(cacheToRecord(cache)),
-  );
-}
-
-/** The queue's view of the table. */
-export const voucherStore: Store = {
-  async all() {
-    const database = await handle();
-    const rows = await database.getAllAsync<{ record: string }>(`SELECT record FROM vouchers`);
-    return rows.map((r) => fromRecord(JSON.parse(r.record) as EntryRecord));
-  },
-  async put(entry: Entry) {
-    const database = await handle();
-    await database.runAsync(`UPDATE vouchers SET record = ? WHERE id = ?`, JSON.stringify(toRecord(entry)), entry.id);
-  },
-};
-
+export const voucherStore = db.queue;
+export const loadCache = db.loadCache;
+export const saveCache = db.saveCache;
 /**
  * A voucher the merchant has just handed goods over for, with what they
  * charged in their own currency: that is what the day-book shows once it
  * settles.
  */
-export async function addVoucher(entry: Entry, localMinor: bigint, currency: string): Promise<void> {
-  const database = await handle();
-  await database.runAsync(
-    `INSERT OR IGNORE INTO vouchers (id, record, local_minor, currency) VALUES (?, ?, ?, ?)`,
-    entry.id,
-    JSON.stringify(toRecord(entry)),
-    localMinor.toString(),
-    currency,
-  );
-}
-
-export interface Unbooked {
-  entry: Entry;
-  localMinor: bigint;
-  currency: string;
-}
-
-/** Settled vouchers not yet written to the day-book. */
-export async function unbooked(): Promise<Unbooked[]> {
-  const database = await handle();
-  const rows = await database.getAllAsync<{ record: string; local_minor: string; currency: string }>(
-    `SELECT record, local_minor, currency FROM vouchers WHERE booked = 0`,
-  );
-  return rows
-    .map((r) => ({
-      entry: fromRecord(JSON.parse(r.record) as EntryRecord),
-      localMinor: BigInt(r.local_minor),
-      currency: r.currency,
-    }))
-    .filter((u) => u.entry.status === "settled");
-}
-
-export async function markBooked(id: string): Promise<void> {
-  const database = await handle();
-  await database.runAsync(`UPDATE vouchers SET booked = 1 WHERE id = ?`, id);
-}
-
-/**
- * A double spend this till caught: two different vouchers at one sequence.
- * Kept until the relayer has reported it, which freezes the payer's vault and
- * slashes their stake. Stored as base64, the form the relayer takes.
- */
-export async function addConflict(id: string, a: string, b: string): Promise<void> {
-  const database = await handle();
-  await database.runAsync(`INSERT OR IGNORE INTO conflicts (id, a, b) VALUES (?, ?, ?)`, id, a, b);
-}
-
-export async function unreported(): Promise<{ id: string; a: string; b: string }[]> {
-  const database = await handle();
-  return database.getAllAsync<{ id: string; a: string; b: string }>(
-    `SELECT id, a, b FROM conflicts WHERE reported IS NULL`,
-  );
-}
-
-export async function markReported(id: string, outcome: string): Promise<void> {
-  const database = await handle();
-  await database.runAsync(`UPDATE conflicts SET reported = ? WHERE id = ?`, outcome, id);
-}
-
+export const addVoucher = db.add;
+export const unbooked = db.unbooked;
+export const markBooked = db.markBooked;
 /** Every offline payment this till has taken, with what was charged for it. */
-export async function offlinePayments(): Promise<Unbooked[]> {
-  const database = await handle();
-  const rows = await database.getAllAsync<{ record: string; local_minor: string; currency: string }>(
-    `SELECT record, local_minor, currency FROM vouchers`,
-  );
-  return rows.map((r) => ({
-    entry: fromRecord(JSON.parse(r.record) as EntryRecord),
-    localMinor: BigInt(r.local_minor),
-    currency: r.currency,
-  }));
-}
+export const offlinePayments = db.taken;
+/** Kept until the relayer has reported it, which freezes the payer's vault. */
+export const addConflict = db.addConflict;
+export const unreported = db.unreported;
+export const markReported = db.markReported;

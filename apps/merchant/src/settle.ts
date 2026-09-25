@@ -22,14 +22,15 @@
  */
 import { getBase64Decoder } from "@solana/kit";
 import {
+  relayPrepare,
+  reportConflict,
+  rpcStatuses,
   settleOnce,
-  type Declined,
   type Entry,
-  type Prepared,
+  type Relayer,
   type RoundReport,
   type SendResult,
   type SettleDeps,
-  type SignatureStatus,
 } from "@nelo/queue";
 import { buildRedemption, checkSigned, TOKEN_PROGRAM_ID } from "@nelo/redeem";
 import { record } from "./daybook";
@@ -37,6 +38,8 @@ import { relayToken, relayUrl, rpcUrl } from "./config";
 import { markBooked, markReported, unbooked, unreported, voucherStore } from "./offline";
 import { signTransactions } from "./wallet";
 import type { MerchantAccount } from "./account";
+
+const relayer: Relayer = { url: relayUrl, ...(relayToken ? { token: relayToken } : {}) };
 
 type Rpc = { result?: unknown; error?: { message?: string; data?: { err?: unknown } } };
 
@@ -64,73 +67,23 @@ export type Settled =
   | { kind: "wallet"; reason: string };
 
 /**
- * Hand one voucher to the relayer. It builds, pays for and sends the
- * transaction, and answers with its signature: a repeated ask gets the same
- * one back while it can still land.
- */
-async function viaRelay(entry: Entry): Promise<Prepared | Declined> {
-  const response = await fetch(`${relayUrl}/v1/redeem`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      ...(relayToken ? { authorization: `Bearer ${relayToken}` } : {}),
-    },
-    body: JSON.stringify({ packet: getBase64Decoder().decode(entry.packet) }),
-  });
-  // 5xx and anything unreadable: treat as offline, and ask again next round.
-  if (response.status >= 500) throw new Error(`relayer unavailable (${response.status})`);
-  if (!response.ok) {
-    return { declined: { RelayDeclined: { reason: `HTTP ${response.status}`, retryable: false } } };
-  }
-  const answer = (await response.json()) as
-    | { status: "sent"; signature: string }
-    | { status: "rejected"; err: unknown }
-    | { status: "declined"; reason: string; retryable: boolean; conflict?: boolean };
-  switch (answer.status) {
-    case "sent":
-      // Already sent by the relayer; there is nothing left to do but record it.
-      return { signature: answer.signature, send: async () => ({ kind: "sent" }) };
-    case "rejected":
-      // Simulation refused it and nothing landed: classify the chain's error.
-      return { declined: answer.err };
-    case "declined":
-      return {
-        declined: {
-          RelayDeclined: { reason: answer.reason, retryable: answer.retryable, conflict: answer.conflict === true },
-        },
-      };
-  }
-}
-
-/**
  * Send every double spend this till caught to the relayer. Offline, or the
  * relayer down, it stays for the next round.
  */
 async function reportConflicts(): Promise<number> {
   let reported = 0;
   for (const c of await unreported()) {
-    const response = await fetch(`${relayUrl}/v1/conflict`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...(relayToken ? { authorization: `Bearer ${relayToken}` } : {}),
-      },
-      body: JSON.stringify({ a: c.a, b: c.b }),
-    }).catch(() => null);
-    if (!response || response.status >= 500) break;
-    const answer = (await response.json().catch(() => ({}))) as { status?: string };
-    // Reported, already frozen, or not proof at all: either way, done asking.
-    if (answer.status && answer.status !== "rejected") {
-      await markReported(c.id, answer.status);
-      if (answer.status === "reported") reported++;
-    }
+    const outcome = await reportConflict(relayer, c.a, c.b);
+    if (!outcome.done) continue;
+    await markReported(c.id, outcome.status);
+    if (outcome.status === "reported") reported++;
   }
   return reported;
 }
 
 export async function settleVouchers(merchant: MerchantAccount, mint: string): Promise<Settled> {
   if (relayUrl) {
-    const report = await settleOnce(voucherStore, { now: () => Date.now(), prepare: viaRelay, statuses });
+    const report = await settleOnce(voucherStore, { now: () => Date.now(), prepare: relayPrepare(relayer), statuses });
     await bookSettled(mint);
     const conflictsReported = report.offline ? 0 : await reportConflicts();
     return { kind: "round", report, conflictsReported };
@@ -206,21 +159,7 @@ async function settleWithWallet(merchant: MerchantAccount, mint: string): Promis
   return { kind: "round", report };
 }
 
-async function statuses(signatures: readonly string[]): Promise<ReadonlyMap<string, SignatureStatus>> {
-  const value = await result<{
-    value: ({ err: unknown; confirmationStatus: string | null } | null)[];
-  }>("getSignatureStatuses", [[...signatures], { searchTransactionHistory: true }]);
-  const out = new Map<string, SignatureStatus>();
-  signatures.forEach((signature, i) => {
-    const s = value.value[i];
-    if (!s) out.set(signature, { kind: "not-found" });
-    else if (s.err) out.set(signature, { kind: "failed", err: s.err });
-    else if (s.confirmationStatus === "confirmed" || s.confirmationStatus === "finalized") {
-      out.set(signature, { kind: "confirmed" });
-    } else out.set(signature, { kind: "processing" });
-  });
-  return out;
-}
+const statuses = rpcStatuses(rpcUrl);
 
 /**
  * Settled vouchers go into the day-book, once each. Keyed on the voucher's id,

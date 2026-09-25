@@ -55,6 +55,8 @@ A refusal on budget or the per-vault cap tells the till to retry later; any othe
     EXPO_PUBLIC_NELO_RELAY_TOKEN=<the RELAY_TOKEN from above>
     ```
     Then restart Metro with `--clear`. No new native build is needed for this.
+
+    Put the same two lines in `apps/payer/.env` too. A customer paid by another customer settles through the same relayer.
   </Step>
 </Steps>
 

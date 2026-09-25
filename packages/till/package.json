@@ -7,13 +7,13 @@
   "dependencies": {
     "@nelo/accept": "workspace:*",
     "@nelo/enrol": "workspace:*",
+    "@nelo/pay": "workspace:*",
     "@nelo/queue": "workspace:*",
     "@nelo/voucher": "workspace:*"
   },
   "devDependencies": {
     "@noble/curves": "^1.6.0",
-    "@nelo/issue": "workspace:*",
-    "@nelo/pay": "workspace:*"
+    "@nelo/issue": "workspace:*"
   },
   "scripts": {
     "test": "node --test \"test/*.test.ts\""
