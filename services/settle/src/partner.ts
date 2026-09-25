@@ -52,6 +52,12 @@ export type DisburseResult =
       fidelity: Fidelity;
       /** The partner's own reference. The idempotency key for settlement. */
       partnerReference: string;
+      /**
+       * Set by a partner that is paid by a transfer to it rather than out of
+       * funds it already holds, such as paj.cash: send `tokenMinor` of `mint`
+       * to `address`, and the payout proceeds once it arrives.
+       */
+      funding?: { address: string; mint: string; tokenMinor: bigint; localMinor: bigint };
     }
   | {
       status: "rejected";

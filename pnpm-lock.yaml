@@ -368,6 +368,9 @@ importers:
 
   services/settle:
     dependencies:
+      '@nelo/onboard':
+        specifier: workspace:*
+        version: link:../../packages/onboard
       fastify:
         specifier: ^5.0.0
         version: 5.12.3

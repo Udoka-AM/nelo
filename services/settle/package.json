@@ -3,10 +3,13 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/index.ts",
+    "start": "node src/main.ts",
+    "paj:login": "node src/paj-login.ts",
+    "dev": "node --watch src/main.ts",
     "test": "node --test \"test/*.test.ts\""
   },
   "dependencies": {
+    "@nelo/onboard": "workspace:*",
     "fastify": "^5.0.0"
   },
   "main": "./src/index.ts",
