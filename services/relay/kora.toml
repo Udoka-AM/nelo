@@ -1,3 +1,6 @@
+# Not used by the relayer as it runs today: `src/main.ts` signs with its own
+# fee-payer key. Kept, with `src/kora.ts`, in case a Kora node is wanted later.
+#
 # This is the node's own policy. It is the second of two gates: `src/policy.ts`
 # decides what Nelo will *ask* for, and this decides what the node will *sign*
 # even if asked. Neither is sufficient alone.

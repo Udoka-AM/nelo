@@ -220,28 +220,30 @@ Order matters here; each step feeds the next.
    Until one of those is settled the till runs a configured rate **and says so on screen**.
    **Done when:** a customer pays with **an unmodified third-party wallet** and the merchant
    sees the local-currency amount confirm. No Nelo app on the customer side.
-4. **Kora relayer, so nobody needs SOL.** *(Anchor)*
-   **The sponsorship policy is done** — [`services/relay`](../services/relay), 25 tests.
-   What may be sponsored, what it costs, and the Kora JSON-RPC client that pays it.
-   **Scope, stated rather than implied:** this is not what makes an *ordinary* sale
-   gasless. Online, the customer's wallet pays the fee and creates the merchant's token
-   account, so a merchant with zero SOL completes a sale today with no relayer at all.
-   The relayer is for the **offline** redemption — a merchant reconnecting with signed
-   vouchers and no SOL. `redeem_voucher` is built for it: its only signer is an
-   unconstrained `payer`, and it is the only instruction in the program that is, because
-   every other one needs the vault owner or the risk authority.
+4. **A relayer, so nobody needs SOL.** *(Anchor)*
+   **Built: Nelo's own relayer**, [`services/relay`](../services/relay/src/redeem.ts), 53 tests.
+   It holds its own fee-payer key and builds, signs, pays for and sends each redemption. It
+   replaced the plan's Kora node: it needs its own ledger for idempotency and its own policy
+   either way, so a separate node would only have been a second service to run. The Kora client (`kora.ts`, `kora.toml`) is still in the package, unused,
+   in case a Kora node is wanted later.
+   **Scope, stated rather than implied:** an *ordinary* sale never needed a relayer. Online,
+   the customer's wallet pays the fee and creates the merchant's token account, so a merchant
+   with zero SOL completes a sale with no relayer at all. The relayer is for the **offline**
+   redemption, a merchant reconnecting with signed vouchers and no SOL, whether they signed up
+   with a wallet or through Privy. `redeem_voucher` allows it: its only signer is an
+   unconstrained `payer`, the only such instruction in the program, and it pays exactly the
+   merchant the voucher names, so the relayer can submit a voucher but cannot redirect it.
+   The relayer also reports double spends and cranks `slash`, paying for both.
    **The finding that shaped it:** the exposure is rent, not fees. `merchant_token` is
-   `init_if_needed, payer = payer`, so the sponsor funds a 2,039,280-lamport token
-   account for a merchant who has never been paid — four hundred times a signature. And
-   Kora's own `max_allowed_lamports` cannot see it: that is enforced against outflow
-   parsed from the transaction's *own* instruction list, and this account is created by a
-   CPI inside the program. So there are two gates — `kora.toml` for what the node will
-   sign, `policy.ts` for what Nelo will ask for — and funding a new account is off by
-   default.
-   **Built:** the transaction builder, `packages/redeem`. It is pinned byte for byte to the
-   program's own Anchor builders through `tests/tx_vectors.rs`. It has not yet been
-   broadcast; that happens with the offline queue that will feed it, in week 3.
-   **Done when:** a merchant with a zero SOL balance completes a sale.
+   `init_if_needed, payer = payer`, so the sponsor funds a 2,039,280-lamport token account
+   for a merchant who has never been paid, four hundred times a signature. The policy
+   ([`policy.ts`](../services/relay/src/policy.ts)) funds that once per merchant, never
+   again, and caps daily spend and redemptions per vault.
+   **Idempotent:** a voucher asked about again gets the same signature while its transaction
+   can still land, and the ledger entry is written before the transaction is sent. It runs on
+   the founder's Mac behind a tunnel for the demo; see `docs-site/operations/relay.mdx`.
+   **Done when:** a merchant with a zero SOL balance completes a sale. Met in code for both
+   paths; never run from a phone.
 5. **Balance in local currency, held in dollars.** *(Android + Design)*
    **Done.** The till reads the merchant's USDC balance and shows it in their own
    currency, alongside what is actually held — both, because the dollar underneath is

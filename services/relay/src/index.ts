@@ -25,7 +25,8 @@
  * ## The shape
  *
  *   `policy.ts`  what may be sponsored, and what it costs. Pure, tested.
- *   `kora.ts`    the JSON-RPC client for the node that holds the key.
+ *   `kora.ts`    a client for a Kora node. Not used: the relayer holds its own
+ *                fee-payer key (`feePayer.ts`). Kept in case a Kora node is wanted.
  *
  *   `redeem.ts`  submitting a voucher as fee payer, idempotently.
  *   `ledger.ts`  what has been submitted and spent, on disk.

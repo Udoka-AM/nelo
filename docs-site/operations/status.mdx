@@ -62,7 +62,7 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | Live price feed | ❌ Blocked on a product decision |
 | Onboarding — the flow's rules | ✅ Proven (29 of `@nelo/onboard`'s 60) |
 | Onboarding — the Privy calls | ⚠️ Typechecked against the SDK; needs an app ID and a device |
-| Gasless relayer | 🟡 Sponsorship policy done; needs a Kora node and the builder |
+| Gasless relayer | ✅ Nelo's own relayer pays offline settlement fees and a merchant's first token account, so merchants need no SOL; never run from a phone. Payers still need SOL to set up |
 | Slashing | ✅ Stake moves to the reserve (5 LiteSVM tests); the relayer reports conflicts and cranks it, never run on a cluster; ❌ nothing pays out of the reserve yet |
 | CI | ✅ Three jobs — tests, typecheck, `anchor test` |
 

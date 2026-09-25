@@ -465,9 +465,9 @@ from any amount of design.
 | Vault program | **Anchor 1.2.x** — vault PDA, 128-slot replay window, timelocked withdraw, Trust Stake | Deploy gas |
 | Signing | **Android StrongBox** P-256 + key attestation, via a Kotlin Expo module | OS-level |
 | Verification | **secp256r1 precompile** at `Secp256r1SigVerify111…`, via instruction introspection | Free |
-| Durable nonce | Nonce accounts for the settle-on-reconnect path, so a queued transfer never expires | ~0.0015 SOL each |
+| Settle on reconnect | The till queues vouchers, not signed transactions, and each redemption is signed fresh when sent, so nothing expires and no durable nonce is needed | Free |
 | Transport | **react-native-hce** (NFC Type 4), **react-native-ble-plx** fallback, QR at v10 / ECC M | Free, MIT |
-| Fee sponsor | **Kora** relayer — neither merchant nor customer ever needs SOL | Self-hosted |
+| Fee sponsor | **Nelo's own relayer** (`services/relay`) pays offline settlement fees, so a merchant never needs SOL. Kora was the plan; its client is kept, unused | Self-hosted |
 | Price feed | **Pyth** or Switchboard, USD → local currency | Free on-chain |
 | SKR | Guardian delegation for staked collateral; TWAP for the haircut | Market cost |
 | Payout | **Yellow Card** or **Onafriq** in the first corridor; a regional equivalent per new market | Commercial |
