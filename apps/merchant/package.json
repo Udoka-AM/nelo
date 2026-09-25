@@ -14,6 +14,7 @@
     "@nelo/redeem": "workspace:*",
     "@nelo/rpc": "workspace:*",
     "@nelo/till": "workspace:*",
+    "@nelo/ui": "workspace:*",
     "@nelo/voucher": "workspace:*",
     "@privy-io/expo": "^0.74.1",
     "@privy-io/expo-native-extensions": "0.0.12",

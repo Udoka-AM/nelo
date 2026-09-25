@@ -198,3 +198,23 @@ test("a converted address is usable as a Solana Pay recipient", () => {
   });
   assert.equal(decodeTransferRequest(url).recipient, MERCHANT);
 });
+
+test("money for a person: grouped, with minor units only when there are any", async () => {
+  const { formatMoney, formatDollars } = await import("../src/index.ts");
+  const NGN = { symbol: "₦", minorDigits: 2 };
+  assert.equal(formatMoney(12_848_125n, NGN), "₦128,481.25");
+  assert.equal(formatMoney(250_000n, NGN), "₦2,500");
+  assert.equal(formatMoney(250_000n, NGN, { minor: "always" }), "₦2,500.00");
+  assert.equal(formatMoney(5n, NGN), "₦0.05");
+  assert.equal(formatMoney(0n, NGN), "₦0");
+  assert.equal(formatMoney(100_000_000_000n, NGN), "₦1,000,000,000");
+  assert.equal(formatMoney(-150n, NGN), "-₦1.50");
+  assert.equal(formatMoney(1234n, { symbol: "¥", minorDigits: 0 }), "¥1,234");
+
+  assert.equal(formatDollars(84_250_000n), "$84.25");
+  assert.equal(formatDollars(84_259_999n), "$84.25", "rounded down, never up");
+  assert.equal(formatDollars(1_234_567_890_000n), "$1,234,567.89");
+  assert.equal(formatDollars(17_391n), "$0.01");
+  assert.equal(formatDollars(9_999n), "under $0.01");
+  assert.equal(formatDollars(0n), "$0.00");
+});

@@ -53,6 +53,9 @@ importers:
       '@nelo/till':
         specifier: workspace:*
         version: link:../../packages/till
+      '@nelo/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@nelo/voucher':
         specifier: workspace:*
         version: link:../../packages/voucher
@@ -153,6 +156,9 @@ importers:
       '@nelo/till':
         specifier: workspace:*
         version: link:../../packages/till
+      '@nelo/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@nelo/voucher':
         specifier: workspace:*
         version: link:../../packages/voucher
@@ -348,6 +354,8 @@ importers:
       '@noble/curves':
         specifier: ^1.6.0
         version: 1.9.7
+
+  packages/ui: {}
 
   packages/voucher:
     dependencies:

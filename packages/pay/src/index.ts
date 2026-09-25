@@ -141,6 +141,41 @@ export function formatLocalAmount(minor: bigint, minorDigits: number = 2): strin
   return `${whole}.${fraction}`;
 }
 
+const group = (digits: string) => digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+/**
+ * Money for a person to read: `₦128,481.25`, `₦2,500`.
+ *
+ * Grouped, because `₦128481.25` has to be counted digit by digit at a busy
+ * counter. The minor units are shown only when there are any, unless
+ * `minor: "always"`: a stall prices in whole naira, and `₦2,500.00` is noise.
+ */
+export function formatMoney(
+  minor: bigint,
+  currency: { symbol: string; minorDigits: number },
+  options: { minor?: "auto" | "always" } = {},
+): string {
+  const sign = minor < 0n ? "-" : "";
+  const abs = minor < 0n ? -minor : minor;
+  const divisor = pow10(currency.minorDigits);
+  const whole = group((abs / divisor).toString());
+  const fraction = currency.minorDigits > 0 ? (abs % divisor).toString().padStart(currency.minorDigits, "0") : "";
+  const showFraction = fraction !== "" && (options.minor === "always" || /[1-9]/.test(fraction));
+  return `${sign}${currency.symbol}${whole}${showFraction ? `.${fraction}` : ""}`;
+}
+
+/**
+ * Token base units as US dollars for a person: `$84.25`. Rounded **down** to
+ * the cent, like every other figure shown, so what is shown is never more
+ * than what is there. An amount under a cent says so rather than reading `$0`.
+ */
+export function formatDollars(baseUnits: bigint, decimals: number = USDC_DECIMALS): string {
+  if (baseUnits < 0n) return `-${formatDollars(-baseUnits, decimals)}`;
+  const cents = decimals >= 2 ? baseUnits / pow10(decimals - 2) : baseUnits * pow10(2 - decimals);
+  if (cents === 0n && baseUnits > 0n) return "under $0.01";
+  return formatMoney(cents, { symbol: "$", minorDigits: 2 }, { minor: "always" });
+}
+
 export {
   base64AddressToBase58,
   decodeBase58,

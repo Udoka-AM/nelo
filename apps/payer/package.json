@@ -12,6 +12,7 @@
     "@nelo/redeem": "workspace:*",
     "@nelo/rpc": "workspace:*",
     "@nelo/till": "workspace:*",
+    "@nelo/ui": "workspace:*",
     "@nelo/voucher": "workspace:*",
     "@noble/curves": "^1.6.0",
     "@noble/hashes": "^1.8.0",
