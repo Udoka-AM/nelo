@@ -523,14 +523,14 @@ that is not negotiable — half the marks.
 > settles, and the replayed voucher is refused. Feature freeze here. Week 4 is not for
 > building.
 >
-> **Rehearsed, on a local validator.** [`pnpm rehearse`](../tools/rehearse/src/main.ts) runs
-> the gate with the apps' and relayer's own code against a real validator: offline sale,
-> settle through the relayer, replay refused by the relayer and by the program, then a double
-> spend at a second till caught on reconnect, the vault frozen, the stake slashed, and a
-> pre-freeze voucher still paid. Passed twice on `solana-test-validator` with this commit's
-> program. **Not yet run on devnet** (unreachable from the development environment), and
-> with a software key and one process standing in for the secure element and the phones. The
-> gate itself still needs the two handsets.
+> **Rehearsed, and passed on devnet.** [`pnpm rehearse`](../tools/rehearse/src/main.ts) runs
+> the gate with the apps' and relayer's own code against a real cluster: offline sale, settle
+> through the relayer, replay refused by the relayer and by the program, then a double spend at
+> a second till caught on reconnect, the vault frozen, the stake slashed, and a pre-freeze
+> voucher still paid. **Passed on devnet on 26 Sep** ([redemption](https://explorer.solana.com/tx/5gkSdViA4ThH2v9DyLoP1X4XEdhh48sMrC3WEki5tuZKambZ2QfRsMrsMkPjYR3J5hpp2jkxCLYBozzmgZZ5BdRu?cluster=devnet)), except the slash,
+> which was skipped because the run could not stake against devnet's risk config; the slash
+> passes on a local validator. A software key and one process stand in for the secure element
+> and the phones, so the gate itself still needs the two handsets.
 
 ---
 

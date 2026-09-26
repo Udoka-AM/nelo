@@ -66,7 +66,7 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | Onboarding — the Privy calls | ⚠️ Typechecked against the SDK; needs an app ID and a device |
 | Gasless relayer | ✅ Nelo's own relayer pays offline settlement fees and a merchant's first token account, so merchants need no SOL; never run from a phone. Payers still need SOL to set up |
 | Slashing | ✅ Stake moves to the reserve (5 LiteSVM tests); the relayer reports conflicts and cranks it, never run on a cluster; ❌ nothing pays out of the reserve yet |
-| Gate rehearsal | ✅ `pnpm rehearse`: the week-3 gate plus double spend, freeze and slash, through the apps' and relayer's own code, passing on a local validator; ⚠️ not yet run on devnet
+| Gate rehearsal | ✅ `pnpm rehearse`: the week-3 gate plus double spend and freeze, through the apps' and relayer's own code, **passed on devnet**; ⚠️ slashing skipped on devnet (cannot stake against its risk config), passes on a local validator
 | CI | ✅ Three jobs — tests, typecheck, `anchor test` |
 
 ## The four things that block the most

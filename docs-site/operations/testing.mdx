@@ -259,7 +259,12 @@ It checks, in order:
 
 Each run makes fresh wallets and its own 6-decimal test mint, costs about 0.15 SOL on devnet, and sends what is left back to the funder. It refuses to run against mainnet.
 
-**Where it has run: a local `solana-test-validator` (Agave 4.2.2) with the program built from this commit, twice, both passing. Not yet on devnet**: the development environment cannot reach it. Two things are stood in for: the secure element (a software P-256 key) and the two phones (one process).
+**Where it has run:**
+
+- **Devnet, 26 Sep: passed, with slashing skipped.** Offline sale, settle through the relayer ([the redemption](https://explorer.solana.com/tx/5gkSdViA4ThH2v9DyLoP1X4XEdhh48sMrC3WEki5tuZKambZ2QfRsMrsMkPjYR3J5hpp2jkxCLYBozzmgZZ5BdRu?cluster=devnet)), replay refused by the relayer and by the program (`SequenceTooOld`), double spend caught at the second till and the vault frozen on chain, and a pre-freeze voucher paid from the frozen vault ([that redemption](https://explorer.solana.com/tx/3TbnEMAZXbqjMbDxPGEkY7MrfE3NHaQrJt6rd7tDm9qDJnQRmuLz3n36MUkqiKjHvAzviRvkZABweYXw51NBCXi9?cluster=devnet)). Slashing was skipped because the run could not stake: see the note below.
+- **A local `solana-test-validator`** (Agave 4.2.2, the program built from this commit): passed, every step including the slash, on a fresh validator and again with the risk config already present.
+
+Two things are stood in for in both: the secure element (a software P-256 key) and the two phones (one process).
 
 <Note>
 **Slashing on devnet depends on who controls the stake mint.** The risk config is created once per cluster, and its stake mint is whatever the first run gave it. On a fresh validator the rehearsal creates both and makes the funder the mint authority. On devnet it reads the stake mint's authority and, unless it is the funder, stakes nothing and reports the slash step as skipped rather than passed. If the devnet risk config was created by the week-1 `devnet.rs` run, its stake mint and its update authority were a throwaway key from that run, and neither can be used again.
