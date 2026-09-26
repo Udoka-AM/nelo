@@ -529,8 +529,19 @@ async function main() {
 
 main().catch((e) => {
   globalThis.fetch = realFetch;
-  console.error(`\n  ✗ ${e instanceof Error ? e.message : String(e)}`);
-  if (!(e instanceof Failed) && e instanceof Error && e.stack) console.error(e.stack.split("\n").slice(1, 6).join("\n"));
+  const message = e instanceof Error ? e.message : String(e);
+  console.error(`\n  ✗ ${message}`);
+  if (/HTTP 40[13]\b/.test(message)) {
+    // The first call is to the RPC, so this is nearly always a bad or expired key.
+    console.error(
+      `\n  The RPC at ${new URL(rpcUrl!).host} refused the request: its API key is wrong or expired.\n` +
+        `  Fix RELAY_RPC_URL in ~/.config/nelo/relay.env (the relayer uses it too), or run on\n` +
+        `  devnet's public endpoint for now:\n\n` +
+        `    pnpm rehearse --rpc https://api.devnet.solana.com`,
+    );
+  } else if (!(e instanceof Failed) && e instanceof Error && e.stack) {
+    console.error(e.stack.split("\n").slice(1, 6).join("\n"));
+  }
   console.error("\nGATE REHEARSAL FAILED.");
   process.exit(1);
 });
