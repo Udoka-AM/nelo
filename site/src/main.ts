@@ -3,7 +3,9 @@
  * the heavy parts load only when the visitor's device and network can use them.
  */
 import { reducedMotion, tier, watch } from "./adaptive";
+import { initDock } from "./dock";
 import { initGlass } from "./glass";
+import { initInteractions } from "./interactions";
 import { initTheme } from "./theme";
 import { initVideos } from "./video";
 import { initWaitlist } from "./waitlist";
@@ -14,6 +16,8 @@ initTheme();
 initWaitlist();
 initGlass();
 initVideos();
+initDock();
+initInteractions();
 
 if (tier() !== "lite" && !reducedMotion()) {
   // Hide the hero only for as long as the motion code takes to arrive, and

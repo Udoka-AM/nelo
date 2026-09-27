@@ -1,15 +1,15 @@
 <!doctype html>
-<html lang="en" data-tier="standard" data-motion="full">
+<html lang="en" data-tier="standard" data-motion="full" data-root="./">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>nelo — Any phone is a point of sale</title>
+    <title>nelo — Every business can now take payments on Solana</title>
     <meta name="description" content="Turn any phone into a point of sale. Take payments on Solana, priced in naira, cashed out to your bank. Even where there's no signal." />
     <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <meta property="og:title" content="nelo — Any phone is a point of sale" />
+    <meta property="og:title" content="nelo — Every business can now take payments on Solana" />
     <meta property="og:description" content="Take payments on Solana, priced in naira. Even where there's no signal." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="%VITE_SITE_URL%og.png" />
@@ -57,9 +57,10 @@
         <span>nelo</span>
       </a>
       <nav class="nav__links" aria-label="Sections">
-        <a href="#till">For business</a>
+        <a href="#easy">For business</a>
         <a href="#story">How it works</a>
         <a href="#features">Why nelo</a>
+        <a href="./pay/">nelo Pay</a>
       </nav>
       <button class="theme" type="button" aria-label="Switch between light and dark" data-theme-toggle>
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -90,20 +91,20 @@
         <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
         <div class="hero__copy">
           <p class="eyebrow">nelo for business</p>
-          <h1 id="hero-title" class="hero__title" data-split>Any phone is&nbsp;a <span class="grad">point of sale.</span></h1>
-          <p class="rotator reveal" aria-label="Take payments on Solana. Crypto in, naira out. Even where there's no signal.">
-            <span class="rotator__item is-on" aria-hidden="true">Take payments on Solana.</span>
-            <span class="rotator__item" aria-hidden="true">Crypto in. Naira out.</span>
+          <h1 id="hero-title" class="hero__title hero__title--long" data-split>Every business can now take payments <span class="grad">on&nbsp;Solana.</span></h1>
+          <p class="rotator reveal" aria-label="Any phone becomes a terminal. Everything in naira. Even where there's no signal.">
+            <span class="rotator__item is-on" aria-hidden="true">Any phone becomes a terminal.</span>
+            <span class="rotator__item" aria-hidden="true">Everything in naira.</span>
             <span class="rotator__item rotator__item--edge" aria-hidden="true">Even where there's no signal.</span>
           </p>
           <div class="hero__ctas reveal">
-            <a class="btn" href="#waitlist" data-magnetic>Turn your phone into a till</a>
-            <a class="btn btn--ghost" href="#story">See it work <span aria-hidden="true">↓</span></a>
+            <a class="btn btn--glow" href="#waitlist" data-magnetic>Turn your phone into a till</a>
+            <a class="btn btn--ghost" href="#story">See it work <span class="nudge-down" aria-hidden="true">↓</span></a>
           </div>
         </div>
 
         <div class="hero__stage" aria-label="nelo on two phones: the merchant's till and a customer paying">
-          <figure class="phone phone--payer" data-float>
+          <figure class="phone phone--back" data-float>
             <div class="phone__body">
               <div class="phone__screen">
                 <video data-clip="payer-pay" muted playsinline loop preload="none"
@@ -115,7 +116,7 @@
             <figcaption>Customer</figcaption>
           </figure>
 
-          <figure class="phone phone--merchant" data-float>
+          <figure class="phone phone--front" data-float>
             <div class="phone__body">
               <div class="phone__screen">
                 <video data-clip="merchant-sale" muted playsinline loop preload="none"
@@ -139,36 +140,70 @@
         </div>
       </section>
 
-      <!-- The market: the counter, not the wallet. -->
-      <section id="till" class="till" aria-labelledby="till-title">
+      <!-- Easy: what the seller never has to deal with. -->
+      <section id="easy" class="till" aria-labelledby="till-title">
         <h2 id="till-title" class="section-title reveal">A payment terminal.<br /><span class="muted">With no terminal.</span></h2>
         <div class="till__grid">
           <article class="till-card" data-glass data-spot>
             <span class="till-card__icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="28" height="28"><rect x="6.5" y="2.5" width="11" height="19" rx="3" /><path d="M10.5 18.5h3" /></svg>
             </span>
-            <h3>The phone you own.</h3>
-            <p>No terminal to buy or rent.</p>
+            <h3>Any phone becomes a terminal.</h3>
+            <p>Install the app. You're taking payments.</p>
+          </article>
+          <article class="till-card" data-glass data-spot>
+            <span class="till-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="28" height="28"><circle cx="12" cy="12" r="8.5" /><path d="M8.5 12.5l2.2 2.2 4.8-5" /></svg>
+            </span>
+            <h3>No crypto to handle.</h3>
+            <p>You never touch a token. nelo does.</p>
           </article>
           <article class="till-card" data-glass data-spot>
             <span class="till-card__icon till-card__icon--naira" aria-hidden="true">₦</span>
-            <h3>Priced in naira.</h3>
-            <p>Customers pay in dollars on Solana. You see naira.</p>
+            <h3>Everything in naira.</h3>
+            <p>Prices, receipts, payouts. Cash out to your bank.</p>
           </article>
           <article class="till-card" data-glass data-spot>
             <span class="till-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="28" height="28"><path d="M3 10.5 12 5l9 5.5M5 10.5V18M9.5 10.5V18M14.5 10.5V18M19 10.5V18M3 20.5h18" /></svg>
+              <svg viewBox="0 0 24 24" width="28" height="28"><rect x="5" y="10.5" width="14" height="10" rx="3" /><path d="M8.5 10.5V8a3.5 3.5 0 0 1 6.2-2.2" /><path class="cross" d="M3 3l18 18" /></svg>
             </span>
-            <h3>Cash out to your bank.</h3>
-            <p>Your takings, in naira, in your account.</p>
+            <h3>No seed phrase. No passkey.</h3>
+            <p>Sign in with your phone number.</p>
           </article>
           <article class="till-card" data-glass data-spot>
+            <span class="till-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="28" height="28"><rect x="3.5" y="6.5" width="17" height="12" rx="3" /><path d="M3.5 10.5h17M15.5 14.5h2" /></svg>
+            </span>
+            <h3>Any Solana wallet pays.</h3>
+            <p>Customers use the wallet they have, through Solana Pay.</p>
+          </article>
+          <article class="till-card till-card--edge" data-glass data-spot>
+            <span class="till-card__badge">Only on nelo</span>
             <span class="till-card__icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="28" height="28"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0" /><path class="cross" d="M3 3l18 18" /></svg>
             </span>
-            <h3>Network down? Still selling.</h3>
-            <p>The sale completes with no signal on either phone.</p>
+            <h3>Even with no internet.</h3>
+            <p>No signal on either phone? The sale still completes.</p>
           </article>
+        </div>
+
+        <div class="wallets" aria-labelledby="wallets-title">
+          <p class="eyebrow eyebrow--blue">Solana Pay</p>
+          <h3 id="wallets-title" class="wallets__title">Works with the wallet they already have.</h3>
+          <div class="dock" data-dock>
+            <ul class="dock__track">
+              <li class="dock__item"><span class="dock__icon"><img src="./wallets/phantom.svg" alt="" width="64" height="64" loading="lazy" /></span><span class="dock__name">Phantom</span></li>
+              <li class="dock__item"><span class="dock__icon"><img src="./wallets/solflare.svg" alt="" width="64" height="64" loading="lazy" /></span><span class="dock__name">Solflare</span></li>
+              <li class="dock__item"><span class="dock__icon"><img src="./wallets/backpack.svg" alt="" width="64" height="64" loading="lazy" /></span><span class="dock__name">Backpack</span></li>
+              <li class="dock__item"><span class="dock__icon"><img src="./wallets/glow.svg" alt="" width="64" height="64" loading="lazy" /></span><span class="dock__name">Glow</span></li>
+              <li class="dock__item"><span class="dock__icon dock__icon--mono" style="--hue: 28">De</span><span class="dock__name">Decaf</span></li>
+              <li class="dock__item"><span class="dock__icon dock__icon--mono" style="--hue: 200">Es</span><span class="dock__name">Espresso Cash</span></li>
+              <li class="dock__item"><span class="dock__icon dock__icon--mono" style="--hue: 262">Ul</span><span class="dock__name">Ultimate</span></li>
+              <li class="dock__item"><span class="dock__icon dock__icon--mono" style="--hue: 330">Ot</span><span class="dock__name">Ottr</span></li>
+              <li class="dock__item"><span class="dock__icon dock__icon--mono" style="--hue: 170">Ti</span><span class="dock__name">TipLink</span></li>
+            </ul>
+          </div>
+          <p class="wallets__note">And any other wallet that scans a Solana Pay code.</p>
         </div>
       </section>
 
@@ -249,7 +284,9 @@
               <ul class="pills" aria-label="Customer app features">
                 <li>Pays with no signal</li>
                 <li>Signed by the secure chip</li>
+                <li>Pay a friend</li>
               </ul>
+              <a class="btn btn--small btn--ghost" href="./pay/">Meet nelo Pay <span class="nudge-right" aria-hidden="true">→</span></a>
             </div>
             <figure class="phone phone--card" data-parallax>
               <div class="phone__body">
@@ -273,8 +310,8 @@
             <div class="art art--receipt" aria-hidden="true">
               <span class="receipt"><i></i><i></i><i></i><b>₦2,500</b><em>✓ Paid</em></span>
             </div>
-            <h3>Any phone is the till.</h3>
-            <p>Install the app. Start selling.</p>
+            <h3>Every sale, on the record.</h3>
+            <p>A day-book and close of day, in naira.</p>
           </article>
           <article class="tile" data-glass data-spot>
             <div class="art art--naira" aria-hidden="true"><span class="count" data-count="128481">₦128,481</span></div>
@@ -288,8 +325,8 @@
           </article>
           <article class="tile" data-glass data-spot>
             <div class="art art--gas" aria-hidden="true"><span class="zero">0</span><span class="unit">SOL</span></div>
-            <h3>No gas. No seed phrase.</h3>
-            <p>Sign in with a phone number.</p>
+            <h3>No network fees for you.</h3>
+            <p>nelo pays them.</p>
           </article>
           <article class="tile" data-glass data-spot>
             <div class="art art--freeze" aria-hidden="true"><span class="v v--a"><i></i></span><span class="v v--b"><i></i></span><svg class="lock" viewBox="0 0 24 24" width="40" height="40"><rect x="4.5" y="10.5" width="15" height="10" rx="3" /><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" /></svg></div>
@@ -309,7 +346,7 @@
 
       <!-- Statement -->
       <section class="statement" aria-label="What nelo is for">
-        <p data-words>Every business can now take payments on Solana.</p>
+        <p data-words>Any phone is a point of sale.</p>
       </section>
 
       <!-- Waitlist -->
@@ -330,7 +367,7 @@
             <div class="field" data-glass>
               <label class="visually-hidden" for="email">Email</label>
               <input id="email" name="email" type="email" required autocomplete="email" inputmode="email" placeholder="you@example.com" />
-              <button class="btn" type="submit" data-magnetic><span>Join the waitlist</span></button>
+              <button class="btn btn--glow" type="submit" data-magnetic><span>Join the waitlist</span></button>
             </div>
             <input class="visually-hidden" type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" />
             <p class="form__note" role="status" aria-live="polite"></p>

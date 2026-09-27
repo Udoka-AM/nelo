@@ -18,7 +18,8 @@
 import type Hls from "hls.js";
 import { onTierChange, reducedMotion, reportThroughput, tier } from "./adaptive";
 
-const base = new URL("./media/", document.baseURI).href;
+// Each page says where the site's root is relative to itself ("./" or "../").
+const base = new URL(`${document.documentElement.dataset.root ?? "./"}media/`, document.baseURI).href;
 const master = (clip: string) => `${base}${clip}/master.m3u8`;
 const mp4 = (clip: string) => `${base}${clip}/${clip}.mp4`;
 

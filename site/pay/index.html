@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en" data-tier="standard" data-motion="full" data-root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>nelo Pay — Pay with no signal</title>
+    <meta name="description" content="nelo Pay: pay any nelo till with a code, even with no signal. Signed by your phone's secure chip." />
+    <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+    <meta property="og:title" content="nelo Pay — Pay with no signal" />
+    <meta property="og:description" content="Pay any nelo till with a code, even with no signal." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="%VITE_SITE_URL%og-pay.png" />
+    <meta property="og:url" content="%VITE_SITE_URL%pay/" />
+    <link rel="canonical" href="%VITE_SITE_URL%pay/" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Before first paint: the saved theme, and a first guess at the visitor's
+         network and device, so nothing heavy is even requested on a slow link. -->
+    <script>
+      (function () {
+        var d = document.documentElement;
+        d.classList.add("js");
+        try {
+          var t = localStorage.getItem("nelo-theme");
+          if (t === "light" || t === "dark") d.dataset.theme = t;
+        } catch (e) {}
+        var c = navigator.connection || {};
+        var mm = function (q) { return window.matchMedia && matchMedia(q).matches; };
+        var lite = c.saveData || mm("(prefers-reduced-data: reduce)") || /(^|-)2g$/.test(c.effectiveType || "") || (navigator.deviceMemory && navigator.deviceMemory <= 1);
+        var rich = !lite && (!c.effectiveType || c.effectiveType === "4g") && (!navigator.deviceMemory || navigator.deviceMemory >= 4) && (navigator.hardwareConcurrency || 8) >= 4;
+        d.dataset.tier = lite ? "lite" : rich ? "rich" : "standard";
+        d.dataset.motion = mm("(prefers-reduced-motion: reduce)") ? "reduced" : "full";
+      })();
+    </script>
+    <link rel="stylesheet" href="../src/styles/main.css" />
+    <script type="module" src="../src/main.ts"></script>
+  </head>
+  <body>
+    <a class="skip" href="#waitlist">Skip to the waitlist</a>
+
+    <!-- The Liquid Glass lens. Only Chromium can use an SVG filter as a
+         backdrop filter; everywhere else the glass is blur and saturation. -->
+    <svg class="defs" aria-hidden="true" width="0" height="0">
+      <filter id="lens" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.008 0.012" numOctaves="2" seed="7" result="noise" />
+        <feGaussianBlur in="noise" stdDeviation="2" result="soft" />
+        <feDisplacementMap in="SourceGraphic" in2="soft" scale="26" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </svg>
+
+    <header class="nav" data-glass>
+      <a class="nav__brand" href="../" aria-label="nelo home">
+        <svg viewBox="0 0 32 32" width="26" height="26" aria-hidden="true"><use href="#mark" /></svg>
+        <span>nelo</span>
+      </a>
+      <nav class="nav__links" aria-label="Sections">
+        <a href="../">For business</a>
+        <a href="#how">How it works</a>
+        <a href="#friends">Pay a friend</a>
+        <a href="./" aria-current="page">nelo Pay</a>
+      </nav>
+      <button class="theme" type="button" aria-label="Switch between light and dark" data-theme-toggle>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <mask id="moon-cut"><rect width="24" height="24" fill="#fff" /><circle class="theme__cut" cx="24" cy="2" r="6" fill="#000" /></mask>
+          <circle class="theme__sun" cx="12" cy="12" r="5" mask="url(#moon-cut)" />
+          <path class="theme__rays" d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8" />
+        </svg>
+      </button>
+      <a class="btn btn--small" href="#waitlist" data-magnetic>Join waitlist</a>
+    </header>
+
+    <svg class="defs" aria-hidden="true" width="0" height="0">
+      <symbol id="mark" viewBox="0 0 32 32">
+        <defs>
+          <linearGradient id="mark-g" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#6aa8ff" />
+            <stop offset="1" stop-color="#ffb36b" />
+          </linearGradient>
+        </defs>
+        <rect width="32" height="32" rx="9" fill="url(#mark-g)" />
+        <path d="M9 23V11.5h3.1l.2 1.6c.9-1.3 2.3-2 4-2 2.8 0 4.7 1.9 4.7 5.1V23h-3.3v-6.3c0-1.7-.9-2.7-2.4-2.7s-2.9 1.1-2.9 3V23H9Z" fill="#0b0b0c" />
+      </symbol>
+    </svg>
+
+    <main id="top">
+      <section class="hero hero--pay" aria-labelledby="hero-title">
+        <div class="aurora aurora--warm" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="hero__copy">
+          <p class="eyebrow eyebrow--orange">nelo Pay</p>
+          <h1 id="hero-title" class="hero__title" data-split>Pay with <span class="grad">no signal.</span></h1>
+          <p class="rotator reveal" aria-label="Show a code. That's it. Signed by your phone's secure chip. Works at every nelo till.">
+            <span class="rotator__item is-on" aria-hidden="true">Show a code. That's it.</span>
+            <span class="rotator__item" aria-hidden="true">Signed by your phone's secure chip.</span>
+            <span class="rotator__item rotator__item--edge" aria-hidden="true">Works at every nelo till.</span>
+          </p>
+          <div class="hero__ctas reveal">
+            <a class="btn btn--glow" href="#waitlist" data-magnetic>Get nelo Pay</a>
+            <a class="btn btn--ghost" href="#how">How it works <span class="nudge-down" aria-hidden="true">↓</span></a>
+          </div>
+        </div>
+        <div class="hero__stage" aria-label="nelo Pay, paying a till and receiving from a friend">
+          <figure class="phone phone--back" data-float>
+            <div class="phone__body">
+              <div class="phone__screen">
+                <video data-clip="payer-receive" muted playsinline loop preload="none" poster="../media/payer-receive/poster.webp" aria-label="nelo Pay: asking a friend for $12.50"></video>
+                <i class="phone__cam" aria-hidden="true"></i>
+              </div>
+            </div>
+          </figure>
+          <figure class="phone phone--front" data-float>
+            <div class="phone__body">
+              <div class="phone__screen">
+                <video data-clip="payer-pay" muted playsinline loop preload="none" poster="../media/payer-pay/poster.webp" aria-label="nelo Pay: paying a shop $7.50 by showing a code"></video>
+                <i class="phone__cam" aria-hidden="true"></i>
+              </div>
+            </div>
+          </figure>
+          <div class="chip chip--airplane" data-glass aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5Z" /></svg>
+            <span>Airplane mode</span>
+            <b class="switch"><i></i></b>
+          </div>
+        </div>
+      </section>
+
+      <section id="how" class="steps" aria-labelledby="how-title">
+        <h2 id="how-title" class="section-title reveal">Three taps.<br /><span class="muted">No bars needed.</span></h2>
+        <ol class="steps__row">
+          <li class="step-card" data-glass data-spot>
+            <figure class="phone phone--step" aria-hidden="true">
+              <div class="phone__body"><div class="phone__screen"><img src="../media/stills/payer-home.webp" alt="" loading="lazy" decoding="async" /><i class="phone__cam"></i></div></div>
+            </figure>
+            <span class="step__n">01</span><h3>Scan the till.</h3><p>Point at the shop's code.</p>
+          </li>
+          <li class="step-card" data-glass data-spot>
+            <figure class="phone phone--step" aria-hidden="true">
+              <div class="phone__body"><div class="phone__screen"><img src="../media/stills/payer-confirm.webp" alt="" loading="lazy" decoding="async" /><i class="phone__cam"></i></div></div>
+            </figure>
+            <span class="step__n">02</span><h3>Confirm.</h3><p>See exactly what you pay.</p>
+          </li>
+          <li class="step-card" data-glass data-spot>
+            <figure class="phone phone--step" aria-hidden="true">
+              <div class="phone__body"><div class="phone__screen"><img src="../media/stills/payer-shown.webp" alt="" loading="lazy" decoding="async" /><i class="phone__cam"></i></div></div>
+            </figure>
+            <span class="step__n">03</span><h3>Show your code.</h3><p>They scan it. Done.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="friends" class="apps" aria-labelledby="friends-title">
+        <div class="apps__grid">
+          <article class="app-card app-card--lead" data-glass data-spot>
+            <div class="app-card__copy">
+              <p class="eyebrow eyebrow--blue">Pay a friend</p>
+              <h3 id="friends-title">Phone to phone.<br />No signal on either.</h3>
+              <ul class="pills" aria-label="Paying a friend">
+                <li>Ask for an amount</li>
+                <li>They show a code</li>
+                <li>Settles when you're back online</li>
+              </ul>
+            </div>
+            <figure class="phone phone--card" data-parallax>
+              <div class="phone__body">
+                <div class="phone__screen">
+                  <video data-clip="payer-receive" muted playsinline loop preload="none" poster="../media/stills/payer-receive-form.webp" aria-label="nelo Pay asking a friend for $12.50"></video>
+                  <i class="phone__cam" aria-hidden="true"></i>
+                </div>
+              </div>
+            </figure>
+          </article>
+          <article class="app-card" data-glass data-spot>
+            <div class="app-card__copy">
+              <p class="eyebrow eyebrow--orange">Your money</p>
+              <h3>Set aside. Ready offline.</h3>
+              <ul class="pills" aria-label="Your balance">
+                <li>Dollars, on Solana</li>
+                <li>Add from any wallet</li>
+              </ul>
+            </div>
+            <figure class="phone phone--card" data-parallax>
+              <div class="phone__body">
+                <div class="phone__screen">
+                  <img src="../media/stills/payer-home.webp" alt="nelo Pay's home screen: $42.50 available offline" loading="lazy" decoding="async" />
+                  <i class="phone__cam" aria-hidden="true"></i>
+                </div>
+              </div>
+            </figure>
+          </article>
+        </div>
+      </section>
+
+      <section class="bento" aria-labelledby="pay-why">
+        <h2 id="pay-why" class="section-title reveal">Safe by design.<br /><span class="grad">Simple by default.</span></h2>
+        <div class="bento__grid">
+          <article class="tile tile--wide" data-glass data-spot>
+            <div class="art art--signal" aria-hidden="true"><span class="bars bars--big"><i></i><i></i><i></i><i></i></span><span class="tick">✓</span></div>
+            <h3>Works with no signal.</h3>
+            <p>Your phone signs the payment itself.</p>
+          </article>
+          <article class="tile" data-glass data-spot>
+            <div class="art art--chip" aria-hidden="true"><span class="chip-icon"><i></i></span></div>
+            <h3>In the secure chip.</h3>
+            <p>Your key never leaves the phone.</p>
+          </article>
+          <article class="tile" data-glass data-spot>
+            <div class="art art--gas" aria-hidden="true"><span class="zero">0</span><span class="unit">new words</span></div>
+            <h3>Nothing new to write down.</h3>
+            <p>Use the wallet you have. nelo's key lives in the chip.</p>
+          </article>
+          <article class="tile" data-glass data-spot>
+            <div class="art art--freeze" aria-hidden="true"><span class="v v--a"><i></i></span><span class="v v--b"><i></i></span><svg class="lock" viewBox="0 0 24 24" width="40" height="40"><rect x="4.5" y="10.5" width="15" height="10" rx="3" /><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" /></svg></div>
+            <h3>Can't be copied.</h3>
+            <p>A code works once. Never twice.</p>
+          </article>
+          <article class="tile tile--wide" data-glass data-spot>
+            <div class="art art--orbit" aria-hidden="true"><i></i><i></i><i></i></div>
+            <h3>Dollars on Solana.</h3>
+            <p>Spend at any nelo till, priced in naira.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="statement" aria-label="What nelo Pay is for">
+        <p data-words>Your money should work where your network doesn't.</p>
+      </section>
+
+      <section id="waitlist" class="waitlist" aria-labelledby="waitlist-title">
+        <div class="aurora aurora--soft" aria-hidden="true"><span></span><span></span></div>
+        <div class="waitlist__card" data-glass data-spot>
+          <svg class="waitlist__mark" viewBox="0 0 32 32" width="56" height="56" aria-hidden="true"><use href="#mark" /></svg>
+          <h2 id="waitlist-title">Get nelo Pay first.</h2>
+          <form class="form" method="POST" action="%VITE_WAITLIST_ENDPOINT%" data-waitlist>
+            <fieldset class="segmented">
+              <legend class="visually-hidden">I want to</legend>
+              <input type="radio" name="role" id="role-merchant" value="merchant" />
+              <label for="role-merchant">I sell</label>
+              <input type="radio" name="role" id="role-payer" value="payer" checked />
+              <label for="role-payer">I pay</label>
+              <span class="segmented__thumb" aria-hidden="true"></span>
+            </fieldset>
+            <div class="field" data-glass>
+              <label class="visually-hidden" for="email">Email</label>
+              <input id="email" name="email" type="email" required autocomplete="email" inputmode="email" placeholder="you@example.com" />
+              <button class="btn btn--glow" type="submit" data-magnetic><span>Join the waitlist</span></button>
+            </div>
+            <input class="visually-hidden" type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" />
+            <p class="form__note" role="status" aria-live="polite"></p>
+          </form>
+          <div class="done" hidden>
+            <svg viewBox="0 0 52 52" width="64" height="64" aria-hidden="true"><circle cx="26" cy="26" r="24" /><path d="M15 27l7 7 15-16" /></svg>
+            <h3>You're on the list.</h3>
+            <p>We'll write when nelo Pay is ready for you.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true"><use href="#mark" /></svg> nelo</p>
+      <p class="muted">Screens shown are the real apps, recorded in a browser. © 2026 nelo.</p>
+    </footer>
+  </body>
+</html>

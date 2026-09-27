@@ -11,6 +11,10 @@ export default defineConfig({
   base: "./",
   build: {
     target: "es2022",
+    // Two pages: the business landing page, and nelo Pay for customers.
+    rollupOptions: {
+      input: { main: "index.html", pay: "pay/index.html" },
+    },
     // The motion and streaming code is split out and loaded only when the
     // visitor's device and network can use it.
     modulePreload: { polyfill: false },

@@ -277,18 +277,108 @@ html[data-tier="lite"] [data-glass] {
   letter-spacing: -0.01em;
   text-decoration: none;
   cursor: pointer;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
   transition:
-    transform 0.35s var(--ease-spring),
+    translate 0.35s var(--ease-spring),
+    scale 0.2s var(--ease-out),
     background-color 0.3s,
-    box-shadow 0.3s;
+    box-shadow 0.35s var(--ease-out);
   will-change: transform;
   box-shadow: 0 8px 24px -10px rgb(0 0 0 / 0.35);
 }
+/* Light where the pointer is. */
+.btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(90px circle at var(--bx, 50%) var(--by, 50%), color-mix(in oklab, var(--blue-soft) 55%, transparent), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
 .btn:hover {
-  box-shadow: 0 12px 32px -10px color-mix(in oklab, var(--blue-soft) 60%, transparent);
+  translate: 0 -2px;
+  box-shadow: 0 16px 36px -12px color-mix(in oklab, var(--blue-soft) 70%, transparent);
+}
+.btn:hover::before,
+.btn:focus-visible::before {
+  opacity: 1;
 }
 .btn:active {
-  transform: scale(0.96);
+  scale: 0.95;
+  translate: 0 0;
+  transition-duration: 0.08s;
+}
+.btn:disabled {
+  cursor: default;
+  translate: none;
+  scale: none;
+}
+/* The ripple from the point of touch. */
+.ripple {
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.22;
+  transform: scale(0);
+  pointer-events: none;
+  animation: ripple 0.65s var(--ease-out) forwards;
+}
+@keyframes ripple {
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+/* Arrows that lean the way they point. */
+.nudge-down,
+.nudge-right {
+  display: inline-block;
+  transition: translate 0.35s var(--ease-spring);
+}
+.btn:hover .nudge-down {
+  translate: 0 3px;
+}
+.btn:hover .nudge-right {
+  translate: 4px 0;
+}
+/* The main calls to action wear a slowly turning blue-to-orange ring. */
+@property --angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.btn--glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(from var(--angle), var(--grad-a), var(--grad-b), var(--grad-c), var(--grad-b), var(--grad-a));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: spin-angle 4s linear infinite;
+  pointer-events: none;
+}
+.btn--glow {
+  box-shadow:
+    0 10px 30px -12px color-mix(in oklab, var(--blue-soft) 60%, transparent),
+    0 10px 40px -18px color-mix(in oklab, var(--orange-soft) 60%, transparent);
+}
+@keyframes spin-angle {
+  to {
+    --angle: 360deg;
+  }
+}
+html[data-motion="reduced"] .btn--glow::after,
+html[data-tier="lite"] .btn--glow::after {
+  animation: none;
 }
 .btn--small {
   --h: 36px;
@@ -337,7 +427,31 @@ html[data-tier="lite"] [data-glass] {
   display: none;
   gap: 4px;
 }
+.nav__links {
+  position: relative;
+}
+.nav__pill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--line);
+  opacity: 0;
+  transition:
+    translate 0.4s var(--ease-spring),
+    width 0.4s var(--ease-spring),
+    opacity 0.25s;
+  pointer-events: none;
+}
+.nav__pill.is-on {
+  opacity: 1;
+}
+.nav__links a[aria-current="page"] {
+  color: var(--fg);
+}
 .nav__links a {
+  position: relative;
   padding: 8px 12px;
   border-radius: 999px;
   font-size: 14px;
@@ -347,6 +461,8 @@ html[data-tier="lite"] [data-glass] {
 }
 .nav__links a:hover {
   color: var(--fg);
+}
+html:not(.js) .nav__links a:hover {
   background: var(--line);
 }
 @media (min-width: 760px) {
@@ -359,6 +475,10 @@ html[data-tier="lite"] [data-glass] {
   }
 }
 .theme {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: scale 0.2s var(--ease-out);
   display: grid;
   place-items: center;
   width: 36px;
@@ -371,6 +491,9 @@ html[data-tier="lite"] [data-glass] {
 }
 .theme:hover {
   background: var(--line);
+}
+.theme:active {
+  scale: 0.9;
 }
 .theme svg {
   fill: none;
@@ -493,6 +616,12 @@ html[data-motion="reduced"] .aurora span {
   font-weight: 700;
   text-wrap: balance;
 }
+/* The business headline is longer: a size that keeps it to three lines. */
+.hero__title--long {
+  font-size: clamp(42px, 7vw, 100px);
+  max-width: 16ch;
+  margin-inline: auto;
+}
 /* SplitText's line masks clip at the line box; give descenders room. */
 .hero__title .line-mask,
 .hero__title .line {
@@ -561,19 +690,19 @@ html:not(.js) .rotator__item {
   perspective: 1400px;
 }
 /* The till is the product: front and larger. The customer's phone sits behind. */
-.phone--merchant {
+.phone--front {
   --w: clamp(168px, 29vw, 330px);
   z-index: 2;
   rotate: 2deg;
 }
-.phone--payer {
+.phone--back {
   --w: clamp(128px, 21vw, 236px);
   z-index: 1;
   margin-right: calc(var(--w) * -0.2);
   rotate: -7deg;
   translate: 0 6%;
 }
-.phone--payer .phone__body {
+.phone--back .phone__body {
   filter: brightness(0.94);
 }
 .chip {
@@ -1292,10 +1421,188 @@ html[data-motion="reduced"] .is-live * {
     grid-template-columns: repeat(2, 1fr);
   }
 }
-@media (min-width: 1100px) {
+@media (min-width: 1000px) {
   .till__grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
+}
+/* The edge: the one thing no other terminal does. */
+.till-card--edge {
+  background:
+    linear-gradient(color-mix(in oklab, var(--bg) 90%, transparent), color-mix(in oklab, var(--bg) 90%, transparent)) padding-box,
+    linear-gradient(120deg, var(--grad-a), var(--grad-b) 50%, var(--grad-c)) border-box;
+  border: 1.5px solid transparent;
+}
+.till-card__badge {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #fff;
+  background: linear-gradient(120deg, var(--grad-a), var(--grad-c));
+}
+
+/* ---------------------------------------------------------------- nelo Pay */
+.aurora--warm span:nth-child(1) {
+  background: radial-gradient(closest-side, var(--aurora-2), transparent);
+}
+.aurora--warm span:nth-child(2) {
+  background: radial-gradient(closest-side, var(--aurora-1), transparent);
+}
+.steps {
+  padding: clamp(80px, 14vh, 160px) var(--gutter) 40px;
+  max-width: var(--max);
+  margin: 0 auto;
+  display: grid;
+  gap: clamp(40px, 6vh, 72px);
+}
+.steps__row {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (min-width: 800px) {
+  .steps__row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+.step-card {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 28px 22px 26px;
+  border-radius: var(--r-lg);
+  text-align: center;
+  overflow: hidden;
+}
+.step-card h3 {
+  font-size: 24px;
+  letter-spacing: -0.03em;
+}
+.step-card p {
+  color: var(--fg-2);
+  font-size: 15px;
+}
+.phone--step {
+  --w: clamp(150px, 18vw, 200px);
+  margin-bottom: 18px;
+}
+
+/* ------------------------------------------------------------ wallet dock */
+.wallets {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin-top: clamp(24px, 5vh, 56px);
+  text-align: center;
+}
+.wallets__title {
+  font-size: clamp(26px, 3.4vw, 40px);
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+.wallets__note {
+  font-size: 14px;
+  color: var(--fg-2);
+}
+.dock {
+  width: 100%;
+  overflow: hidden;
+  padding: 44px 0 16px;
+  /* Fade the edges, so logos glide in and out rather than being cut. */
+  mask: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+}
+.dock__track {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  width: max-content;
+  margin: 0;
+  padding: 0 9px;
+  list-style: none;
+  animation: marquee 32s linear infinite;
+}
+.dock:hover .dock__track,
+.dock:focus-within .dock__track {
+  animation-play-state: paused;
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+html[data-motion="reduced"] .dock__track {
+  animation: none;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: auto;
+}
+html[data-motion="reduced"] .dock {
+  mask: none;
+}
+.dock__item {
+  --s: 1;
+  position: relative;
+  display: grid;
+  justify-items: center;
+}
+.dock__icon {
+  display: grid;
+  place-items: center;
+  width: calc(64px * var(--s));
+  height: calc(64px * var(--s));
+  border-radius: 22%;
+  overflow: hidden;
+  box-shadow: 0 10px 24px -10px rgb(0 0 0 / 0.45), 0 0 0 0.5px rgb(0 0 0 / 0.12);
+  transition:
+    width 0.18s var(--ease-out),
+    height 0.18s var(--ease-out);
+}
+.dock__icon img {
+  width: 100%;
+  height: 100%;
+}
+.dock__icon--mono {
+  font-weight: 700;
+  font-size: calc(22px * var(--s));
+  letter-spacing: -0.03em;
+  color: #fff;
+  background: linear-gradient(150deg, hsl(var(--hue) 70% 58%), hsl(calc(var(--hue) + 40) 70% 42%));
+}
+.dock__name {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fg-2);
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+/* The macOS touch: the name floats above the icon under the pointer. */
+.dock.is-magnifying .dock__name {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: var(--fg);
+  box-shadow: var(--shadow);
+  opacity: 0;
+  translate: 0 4px;
+  transition: opacity 0.15s, translate 0.15s;
+  pointer-events: none;
+}
+.dock.is-magnifying .dock__item.is-hot .dock__name {
+  opacity: 1;
+  translate: 0 0;
 }
 .till-card {
   display: grid;
@@ -1633,10 +1940,10 @@ html[data-motion="reduced"] .is-live * {
     bottom: 16%;
     right: 0;
   }
-  .phone--merchant {
+  .phone--front {
     --w: 52vw;
   }
-  .phone--payer {
+  .phone--back {
     --w: 34vw;
     margin-right: -9vw;
   }
@@ -1655,4 +1962,104 @@ html.pre-motion .hero__stage {
 /* On a lite connection, the phone's own font: Inter is ~130 KB it can skip. */
 html[data-tier="lite"] {
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+}
+
+/* ----------------------------------------------------------- interactions */
+/* Cards lean toward the pointer (src/interactions.ts sets --rx, --ry). */
+.tilts {
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.6s var(--ease-out);
+}
+.tilts.is-tilting {
+  transition: transform 0.1s linear;
+}
+.tilts .till-card__icon {
+  transition: scale 0.4s var(--ease-spring), rotate 0.4s var(--ease-spring);
+}
+.tilts:hover .till-card__icon {
+  scale: 1.12;
+  rotate: -6deg;
+}
+/* The hero stage leans with the pointer. */
+.hero__stage {
+  transform: perspective(1600px) rotateX(var(--srx, 0deg)) rotateY(var(--sry, 0deg));
+}
+.cursor-glow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: -1;
+  width: 560px;
+  height: 560px;
+  margin: -280px 0 0 -280px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--blue-soft) 30%, transparent), color-mix(in oklab, var(--orange-soft) 16%, transparent) 55%, transparent);
+  filter: blur(30px);
+  opacity: 0;
+  transition: opacity 0.8s var(--ease-out);
+  pointer-events: none;
+}
+.cursor-glow.is-on {
+  opacity: 1;
+}
+/* The headline's gradient drifts, slowly. */
+.hero .grad {
+  background-image: linear-gradient(100deg, var(--grad-a), var(--grad-b) 25%, var(--grad-c) 50%, var(--grad-b) 75%, var(--grad-a));
+  background-size: 200% 100%;
+  animation: shimmer 9s ease-in-out infinite alternate;
+}
+@keyframes shimmer {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
+}
+html[data-motion="reduced"] .hero .grad,
+html[data-tier="lite"] .hero .grad {
+  animation: none;
+}
+/* The payment notification pings, like a phone does. */
+.chip__dot {
+  position: relative;
+}
+.chip__dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0 color-mix(in oklab, var(--blue-soft) 60%, transparent);
+  animation: ping 2.4s var(--ease-out) infinite;
+}
+@keyframes ping {
+  70%,
+  100% {
+    box-shadow: 0 0 0 12px transparent;
+  }
+}
+html[data-motion="reduced"] .chip__dot::after {
+  animation: none;
+}
+/* Reading progress: a hairline that fills as you scroll. */
+.progress {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 60;
+  height: 2px;
+  transform-origin: left;
+  transform: scaleX(0);
+  background: linear-gradient(90deg, var(--grad-a), var(--grad-b), var(--grad-c));
+  pointer-events: none;
+}
+@supports (animation-timeline: scroll()) {
+  .progress {
+    animation: fill linear both;
+    animation-timeline: scroll(root);
+  }
+}
+@keyframes fill {
+  to {
+    transform: scaleX(1);
+  }
 }
