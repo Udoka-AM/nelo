@@ -37,16 +37,20 @@ function hero() {
   const split = SplitText.create(title, { type: "lines", mask: "lines", linesClass: "line" });
   const phones = $$(".hero__stage .phone");
   const chip = $(".chip--airplane")!;
+  const paid = $(".chip--paid")!;
+  const chips = [chip, paid];
 
   const intro = gsap.timeline({ defaults: { ease: "expo.out" } });
   intro
     .from(split.lines, { yPercent: 110, duration: 1.3, stagger: 0.09 })
     .from(".hero .eyebrow", { opacity: 0, y: 12, duration: 0.8 }, 0)
-    .from(".hero__sub", { opacity: 0, y: 24, filter: "blur(8px)", duration: 1.1 }, 0.35)
+    .from(".rotator", { opacity: 0, y: 24, filter: "blur(8px)", duration: 1.1 }, 0.35)
     .from(".hero__ctas", { opacity: 0, y: 24, duration: 1.1 }, 0.5)
     .from(phones, { opacity: 0, y: 180, rotateX: 28, scale: 0.9, duration: 1.8, stagger: 0.14 }, 0.3)
     .from(chip, { opacity: 0, scale: 0.6, y: 20, duration: 0.9, ease: "back.out(1.8)" }, 1.1)
-    .call(() => chip.classList.add("is-on"), [], 1.7);
+    .call(() => chip.classList.add("is-on"), [], 1.7)
+    // The notification arrives the way a phone's does: a slide and a settle.
+    .from(paid, { opacity: 0, x: 40, scale: 0.9, duration: 1, ease: "back.out(1.6)" }, 2.1);
 
   // The two phones drift together as the hero scrolls away: a handshake.
   const out = gsap.timeline({
@@ -54,9 +58,9 @@ function hero() {
   });
   out
     .to(".hero__copy", { y: -90, opacity: 0.15, scale: 0.94, ease: "none" }, 0)
-    .to(".phone--left", { xPercent: 14, rotate: 0, y: -40, ease: "none" }, 0)
-    .to(".phone--right", { xPercent: -14, rotate: 0, y: -40, ease: "none" }, 0)
-    .to(chip, { y: -60, opacity: 0, ease: "none" }, 0);
+    .to(".phone--payer", { xPercent: 12, rotate: 0, y: -30, ease: "none" }, 0)
+    .to(".phone--merchant", { xPercent: -6, rotate: 0, y: -50, scale: 1.04, ease: "none" }, 0)
+    .to(chips, { y: -60, opacity: 0, ease: "none" }, 0);
 
   // A slow float, on the inner body so it never fights the scroll transform.
   $$(".hero__stage .phone__body").forEach((el, i) =>

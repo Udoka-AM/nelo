@@ -36,3 +36,22 @@ if (tier() !== "lite" && !reducedMotion()) {
   document.querySelectorAll(".tile").forEach((t) => live.observe(t));
   document.querySelector(".chip--airplane")?.classList.add("is-on");
 }
+
+// The hero's three promises, one after another, while the hero is on screen.
+const items = [...document.querySelectorAll<HTMLElement>(".rotator__item")];
+if (items.length > 1) {
+  let i = 0;
+  let timer = 0;
+  const next = () => {
+    items[i].classList.remove("is-on");
+    i = (i + 1) % items.length;
+    items[i].classList.add("is-on");
+  };
+  const start = () => (timer ||= window.setInterval(next, 2800));
+  const stop = () => {
+    clearInterval(timer);
+    timer = 0;
+  };
+  new IntersectionObserver(([e]) => (e.isIntersecting && !document.hidden ? start() : stop())).observe(items[0].parentElement!);
+  document.addEventListener("visibilitychange", () => (document.hidden ? stop() : start()));
+}

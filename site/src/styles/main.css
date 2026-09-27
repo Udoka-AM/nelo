@@ -1,8 +1,8 @@
 /* nelo — landing page.
  *
  * Neutral surfaces, the way Apple's product pages do it: near-white or true
- * black, with colour only where it means something. Two accents, light green
- * and a warm orange, each with a light-mode value dark enough to read.
+ * black, with colour only where it means something. Two accents, blue flowing
+ * into a warm orange, each with a light-mode value dark enough to read.
  *
  * Tiers, set on <html> before first paint and revised by src/adaptive.ts:
  *   data-tier="lite"      posters only, no smooth scroll, CSS-only motion
@@ -19,21 +19,21 @@
   --fg: #1d1d1f;
   --fg-2: #6e6e73;
   --line: rgb(0 0 0 / 0.08);
-  --mint: #0f8a4c;
-  --mint-soft: #5fd394;
+  --blue: #0a62d0;
+  --blue-soft: #5b9dff;
   --orange: #c2560c;
   --orange-soft: #ff9f4a;
-  --grad-a: #0f9d58;
-  --grad-b: #5aa92f;
+  --grad-a: #1a66e0;
+  --grad-b: #9c4fc9;
   --grad-c: #e0700f;
   --glass: rgb(255 255 255 / 0.56);
   --glass-strong: rgb(255 255 255 / 0.72);
   --glass-edge: rgb(255 255 255 / 0.85);
   --glass-line: rgb(0 0 0 / 0.07);
   --shadow: 0 1px 1px rgb(0 0 0 / 0.04), 0 12px 40px -12px rgb(0 0 0 / 0.18);
-  --aurora-1: rgb(95 211 148 / 0.45);
+  --aurora-1: rgb(91 157 255 / 0.42);
   --aurora-2: rgb(255 159 74 / 0.35);
-  --aurora-3: rgb(160 220 255 / 0.3);
+  --aurora-3: rgb(196 165 255 / 0.28);
   --phone-rim: linear-gradient(145deg, #e8e8ec, #b9bbc2 45%, #f5f5f7 60%, #a7a9b0);
   --phone-body: #0b0b0c;
   --spot: rgb(255 255 255 / 0.75);
@@ -48,21 +48,21 @@
     --fg: #f5f5f7;
     --fg-2: #a1a1a6;
     --line: rgb(255 255 255 / 0.1);
-    --mint: #7ee2a8;
-    --mint-soft: #7ee2a8;
+    --blue: #7ab4ff;
+    --blue-soft: #7ab4ff;
     --orange: #ffa45c;
     --orange-soft: #ffb36b;
-    --grad-a: #7ee2a8;
-    --grad-b: #d6f5a0;
+    --grad-a: #7ab4ff;
+    --grad-b: #d7a2f0;
     --grad-c: #ffb36b;
     --glass: rgb(30 30 32 / 0.46);
     --glass-strong: rgb(30 30 32 / 0.66);
     --glass-edge: rgb(255 255 255 / 0.16);
     --glass-line: rgb(255 255 255 / 0.1);
     --shadow: 0 1px 1px rgb(0 0 0 / 0.3), 0 20px 60px -20px rgb(0 0 0 / 0.8);
-    --aurora-1: rgb(94 214 146 / 0.32);
+    --aurora-1: rgb(90 150 255 / 0.34);
     --aurora-2: rgb(255 140 60 / 0.26);
-    --aurora-3: rgb(90 140 255 / 0.18);
+    --aurora-3: rgb(170 120 255 / 0.18);
     --phone-rim: linear-gradient(145deg, #3a3b3f, #1c1d20 45%, #4a4b50 60%, #18191b);
     --spot: rgb(255 255 255 / 0.14);
     --thumb: #5a5a5e;
@@ -75,21 +75,21 @@
   --fg: #f5f5f7;
   --fg-2: #a1a1a6;
   --line: rgb(255 255 255 / 0.1);
-  --mint: #7ee2a8;
-  --mint-soft: #7ee2a8;
+  --blue: #7ab4ff;
+  --blue-soft: #7ab4ff;
   --orange: #ffa45c;
   --orange-soft: #ffb36b;
-  --grad-a: #7ee2a8;
-  --grad-b: #d6f5a0;
+  --grad-a: #7ab4ff;
+  --grad-b: #d7a2f0;
   --grad-c: #ffb36b;
   --glass: rgb(30 30 32 / 0.46);
   --glass-strong: rgb(30 30 32 / 0.66);
   --glass-edge: rgb(255 255 255 / 0.16);
   --glass-line: rgb(255 255 255 / 0.1);
   --shadow: 0 1px 1px rgb(0 0 0 / 0.3), 0 20px 60px -20px rgb(0 0 0 / 0.8);
-  --aurora-1: rgb(94 214 146 / 0.32);
+  --aurora-1: rgb(90 150 255 / 0.34);
   --aurora-2: rgb(255 140 60 / 0.26);
-  --aurora-3: rgb(90 140 255 / 0.18);
+  --aurora-3: rgb(170 120 255 / 0.18);
   --phone-rim: linear-gradient(145deg, #3a3b3f, #1c1d20 45%, #4a4b50 60%, #18191b);
   --spot: rgb(255 255 255 / 0.14);
   --thumb: #5a5a5e;
@@ -149,7 +149,7 @@ p {
   margin: 0;
 }
 :focus-visible {
-  outline: 3px solid var(--mint-soft);
+  outline: 3px solid var(--blue-soft);
   outline-offset: 3px;
   border-radius: 8px;
 }
@@ -203,8 +203,8 @@ p {
   letter-spacing: 0.01em;
   color: var(--fg-2);
 }
-.eyebrow--mint {
-  color: var(--mint);
+.eyebrow--blue {
+  color: var(--blue);
 }
 .eyebrow--orange {
   color: var(--orange);
@@ -285,7 +285,7 @@ html[data-tier="lite"] [data-glass] {
   box-shadow: 0 8px 24px -10px rgb(0 0 0 / 0.35);
 }
 .btn:hover {
-  box-shadow: 0 12px 32px -10px color-mix(in oklab, var(--mint-soft) 60%, transparent);
+  box-shadow: 0 12px 32px -10px color-mix(in oklab, var(--blue-soft) 60%, transparent);
 }
 .btn:active {
   transform: scale(0.96);
@@ -484,10 +484,10 @@ html[data-motion="reduced"] .aurora span {
   justify-items: center;
   gap: 16px;
   text-align: center;
-  max-width: 980px;
+  max-width: 1200px;
 }
 .hero__title {
-  font-size: clamp(52px, 11vw, 148px);
+  font-size: clamp(48px, 9vw, 124px);
   line-height: 0.96;
   letter-spacing: -0.05em;
   font-weight: 700;
@@ -499,13 +499,49 @@ html[data-motion="reduced"] .aurora span {
   padding-bottom: 0.12em;
   margin-bottom: -0.12em;
 }
-.hero__sub {
-  font-size: clamp(19px, 2.2vw, 26px);
-  line-height: 1.3;
-  color: var(--fg-2);
-  letter-spacing: -0.015em;
-  max-width: 30ch;
-  text-wrap: balance;
+/* The three promises, one at a time: the last is the edge. */
+.rotator {
+  display: grid;
+  font-size: clamp(22px, 2.8vw, 34px);
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  min-height: 1.3em;
+}
+.rotator__item {
+  grid-area: 1 / 1;
+  opacity: 0;
+  translate: 0 0.5em;
+  filter: blur(8px);
+  transition:
+    opacity 0.6s var(--ease-out),
+    translate 0.8s var(--ease-out),
+    filter 0.6s var(--ease-out);
+}
+.rotator__item.is-on {
+  opacity: 1;
+  translate: 0 0;
+  filter: none;
+}
+.rotator__item--edge {
+  background: linear-gradient(100deg, var(--grad-a), var(--grad-b) 48%, var(--grad-c));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+html[data-motion="reduced"] .rotator__item {
+  translate: none;
+  filter: none;
+}
+/* No JS: all three, one per line. */
+html:not(.js) .rotator {
+  display: block;
+}
+html:not(.js) .rotator__item {
+  display: block;
+  opacity: 1;
+  translate: none;
+  filter: none;
 }
 .hero__ctas {
   display: flex;
@@ -524,18 +560,24 @@ html[data-motion="reduced"] .aurora span {
   max-width: 900px;
   perspective: 1400px;
 }
-.phone--left {
-  rotate: -5deg;
-  translate: 0 4%;
+/* The till is the product: front and larger. The customer's phone sits behind. */
+.phone--merchant {
+  --w: clamp(168px, 29vw, 330px);
+  z-index: 2;
+  rotate: 2deg;
 }
-.phone--right {
-  rotate: 4deg;
+.phone--payer {
+  --w: clamp(128px, 21vw, 236px);
+  z-index: 1;
+  margin-right: calc(var(--w) * -0.2);
+  rotate: -7deg;
+  translate: 0 6%;
 }
-.chip--airplane {
+.phone--payer .phone__body {
+  filter: brightness(0.94);
+}
+.chip {
   position: absolute;
-  left: 50%;
-  top: 14%;
-  translate: -50% 0;
   z-index: 3;
   display: inline-flex;
   align-items: center;
@@ -545,6 +587,38 @@ html[data-motion="reduced"] .aurora span {
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
+}
+.chip--airplane {
+  left: max(0px, calc(50% - 46%));
+  top: 10%;
+}
+.chip--paid {
+  right: max(0px, calc(50% - 48%));
+  top: 44%;
+  gap: 10px;
+  padding: 10px 16px 10px 10px;
+  border-radius: 20px;
+  white-space: normal;
+  text-align: left;
+}
+.chip--paid span {
+  display: grid;
+  line-height: 1.25;
+}
+.chip--paid small {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg-2);
+}
+.chip__dot {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(140deg, var(--blue-soft), var(--orange-soft));
+  color: #fff;
+  font-size: 15px;
 }
 .chip--airplane svg {
   fill: var(--orange);
@@ -604,7 +678,7 @@ html:not(.js) .switch i {
   box-shadow:
     0 0 0 1px rgb(0 0 0 / 0.25),
     0 30px 60px -25px rgb(0 0 0 / 0.55),
-    0 60px 120px -40px color-mix(in oklab, var(--mint-soft) 35%, transparent);
+    0 60px 120px -40px color-mix(in oklab, var(--blue-soft) 35%, transparent);
 }
 .phone__body::before {
   /* Side buttons. */
@@ -706,6 +780,10 @@ html:not(.js) .switch i {
 }
 .phone--sm {
   --w: clamp(132px, 22vw, 250px);
+}
+.phone--behind {
+  --w: clamp(118px, 19vw, 214px);
+  align-self: flex-end;
 }
 .phone--sm img {
   opacity: 0;
@@ -876,8 +954,14 @@ html:not(.js) .switch i {
 }
 @media (min-width: 900px) {
   .apps__grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1.5fr 1fr;
   }
+}
+.app-card--lead .phone--card {
+  --w: clamp(220px, 30vw, 320px);
+}
+.app-card--lead .btn {
+  margin-top: 10px;
 }
 .app-card {
   display: grid;
@@ -983,8 +1067,8 @@ html:not(.js) .switch i {
   margin-left: 110px;
   margin-top: -40px;
   border-radius: 50%;
-  background: var(--mint-soft);
-  color: #062a16;
+  background: var(--blue-soft);
+  color: #03122b;
   font-weight: 700;
   scale: 0;
 }
@@ -1037,8 +1121,8 @@ html:not(.js) .switch i {
   width: 72px;
   height: 72px;
   border-radius: 18px;
-  background: linear-gradient(145deg, var(--mint-soft), var(--orange-soft));
-  box-shadow: 0 0 0 10px color-mix(in oklab, var(--mint-soft) 18%, transparent);
+  background: linear-gradient(145deg, var(--blue-soft), var(--orange-soft));
+  box-shadow: 0 0 0 10px color-mix(in oklab, var(--blue-soft) 18%, transparent);
 }
 .chip-icon i {
   position: absolute;
@@ -1051,7 +1135,7 @@ html:not(.js) .switch i {
 }
 @keyframes halo {
   50% {
-    box-shadow: 0 0 0 22px color-mix(in oklab, var(--mint-soft) 6%, transparent);
+    box-shadow: 0 0 0 22px color-mix(in oklab, var(--blue-soft) 6%, transparent);
   }
 }
 .art--freeze .v {
@@ -1124,7 +1208,7 @@ html:not(.js) .switch i {
   font-weight: 700;
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
-  color: var(--mint);
+  color: var(--blue);
 }
 .art--gas {
   display: flex;
@@ -1151,8 +1235,8 @@ html:not(.js) .switch i {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: var(--mint-soft);
-  box-shadow: 0 0 20px var(--mint-soft);
+  background: var(--blue-soft);
+  box-shadow: 0 0 20px var(--blue-soft);
   offset-path: path("M -90 0 a 90 36 0 1 0 180 0 a 90 36 0 1 0 -180 0");
   offset-distance: 0%;
 }
@@ -1189,6 +1273,127 @@ html:not(.js) .switch i {
 }
 html[data-motion="reduced"] .is-live * {
   animation: none !important;
+}
+
+/* -------------------------------------------------------------------- till */
+.till {
+  padding: clamp(80px, 14vh, 160px) var(--gutter) 40px;
+  max-width: var(--max);
+  margin: 0 auto;
+  display: grid;
+  gap: clamp(40px, 6vh, 72px);
+}
+.till__grid {
+  display: grid;
+  gap: 16px;
+}
+@media (min-width: 640px) {
+  .till__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1100px) {
+  .till__grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.till-card {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 26px;
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.till-card h3 {
+  margin-top: 14px;
+  font-size: 22px;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+.till-card p {
+  color: var(--fg-2);
+  font-size: 15px;
+}
+.till-card__icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+  background: linear-gradient(145deg, color-mix(in oklab, var(--blue-soft) 26%, transparent), color-mix(in oklab, var(--orange-soft) 22%, transparent));
+  color: var(--fg);
+}
+.till-card__icon svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.till-card__icon .cross {
+  stroke: var(--orange);
+}
+.till-card__icon--naira {
+  font-size: 26px;
+  font-weight: 700;
+}
+
+/* A receipt printing: the till, doing its job. */
+.receipt {
+  position: relative;
+  display: grid;
+  gap: 7px;
+  justify-items: start;
+  width: 168px;
+  padding: 16px 16px 20px;
+  border-radius: 10px 10px 4px 4px;
+  background: var(--bg);
+  box-shadow: var(--shadow), 0 0 0 1px var(--line);
+  mask: linear-gradient(#000 calc(100% - 8px), transparent calc(100% - 8px)), radial-gradient(circle 5px at 8px 100%, transparent 5px, #000 5.5px) 0 100% / 16px 8px repeat-x;
+}
+.receipt i {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  width: 100%;
+}
+.receipt i:nth-child(2) {
+  width: 70%;
+}
+.receipt i:nth-child(3) {
+  width: 84%;
+}
+.receipt b {
+  margin-top: 6px;
+  font-size: 28px;
+  letter-spacing: -0.03em;
+}
+.receipt em {
+  font-style: normal;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--blue);
+}
+.is-live .receipt {
+  animation: print 4s var(--ease-out) infinite;
+}
+@keyframes print {
+  0% {
+    clip-path: inset(0 0 100% 0);
+    translate: 0 -30px;
+  }
+  35%,
+  88% {
+    clip-path: inset(0 0 0 0);
+    translate: 0 0;
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+    translate: 0 0;
+    opacity: 0;
+  }
 }
 
 /* --------------------------------------------------------------- statement */
@@ -1265,7 +1470,7 @@ html[data-motion="reduced"] .is-live * {
   color: var(--fg);
 }
 .segmented input:focus-visible + label {
-  outline: 3px solid var(--mint-soft);
+  outline: 3px solid var(--blue-soft);
   border-radius: 999px;
 }
 .segmented__thumb {
@@ -1302,7 +1507,7 @@ html[data-motion="reduced"] .is-live * {
 }
 .field:focus-within {
   box-shadow:
-    0 0 0 3px color-mix(in oklab, var(--mint-soft) 55%, transparent),
+    0 0 0 3px color-mix(in oklab, var(--blue-soft) 55%, transparent),
     var(--shadow);
 }
 .field input::placeholder {
@@ -1335,7 +1540,7 @@ html[data-motion="reduced"] .is-live * {
 }
 .done svg {
   fill: none;
-  stroke: var(--mint);
+  stroke: var(--blue);
   stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -1416,9 +1621,24 @@ html[data-motion="reduced"] .is-live * {
   .phone--card {
     --w: 58vw;
   }
-  .chip--airplane {
-    top: 6%;
+  .chip {
     font-size: 13px;
+  }
+  .chip--airplane {
+    top: 2%;
+    left: 0;
+  }
+  .chip--paid {
+    top: auto;
+    bottom: 16%;
+    right: 0;
+  }
+  .phone--merchant {
+    --w: 52vw;
+  }
+  .phone--payer {
+    --w: 34vw;
+    margin-right: -9vw;
   }
   .tile {
     min-height: 220px;

@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>nelo — Pay with no signal</title>
-    <meta name="description" content="Stablecoin payments between two phones that work with no network. For the shop counter and for your pocket." />
+    <title>nelo — Any phone is a point of sale</title>
+    <meta name="description" content="Turn any phone into a point of sale. Take payments on Solana, priced in naira, cashed out to your bank. Even where there's no signal." />
     <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <meta property="og:title" content="nelo — Pay with no signal" />
-    <meta property="og:description" content="Stablecoin payments between two phones. No network needed." />
+    <meta property="og:title" content="nelo — Any phone is a point of sale" />
+    <meta property="og:description" content="Take payments on Solana, priced in naira. Even where there's no signal." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="%VITE_SITE_URL%og.png" />
     <meta property="og:url" content="%VITE_SITE_URL%" />
@@ -57,8 +57,8 @@
         <span>nelo</span>
       </a>
       <nav class="nav__links" aria-label="Sections">
+        <a href="#till">For business</a>
         <a href="#story">How it works</a>
-        <a href="#apps">The apps</a>
         <a href="#features">Why nelo</a>
       </nav>
       <button class="theme" type="button" aria-label="Switch between light and dark" data-theme-toggle>
@@ -75,7 +75,7 @@
       <symbol id="mark" viewBox="0 0 32 32">
         <defs>
           <linearGradient id="mark-g" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#7ee2a8" />
+            <stop offset="0" stop-color="#6aa8ff" />
             <stop offset="1" stop-color="#ffb36b" />
           </linearGradient>
         </defs>
@@ -85,70 +85,99 @@
     </svg>
 
     <main id="top">
-      <!-- Hero -->
+      <!-- Hero: the merchant's phone is the product. -->
       <section class="hero" aria-labelledby="hero-title">
         <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
         <div class="hero__copy">
-          <p class="eyebrow">nelo</p>
-          <h1 id="hero-title" class="hero__title" data-split>Pay with <span class="grad">no signal.</span></h1>
-          <p class="hero__sub reveal">Stablecoin payments, phone to phone. Even in airplane mode.</p>
+          <p class="eyebrow">nelo for business</p>
+          <h1 id="hero-title" class="hero__title" data-split>Any phone is&nbsp;a <span class="grad">point of sale.</span></h1>
+          <p class="rotator reveal" aria-label="Take payments on Solana. Crypto in, naira out. Even where there's no signal.">
+            <span class="rotator__item is-on" aria-hidden="true">Take payments on Solana.</span>
+            <span class="rotator__item" aria-hidden="true">Crypto in. Naira out.</span>
+            <span class="rotator__item rotator__item--edge" aria-hidden="true">Even where there's no signal.</span>
+          </p>
           <div class="hero__ctas reveal">
-            <a class="btn" href="#waitlist" data-magnetic>Join the waitlist</a>
+            <a class="btn" href="#waitlist" data-magnetic>Turn your phone into a till</a>
             <a class="btn btn--ghost" href="#story">See it work <span aria-hidden="true">↓</span></a>
           </div>
         </div>
 
-        <div class="hero__stage" aria-label="The two nelo apps, taking a payment">
-          <figure class="phone phone--left" data-float>
+        <div class="hero__stage" aria-label="nelo on two phones: the merchant's till and a customer paying">
+          <figure class="phone phone--payer" data-float>
             <div class="phone__body">
               <div class="phone__screen">
                 <video data-clip="payer-pay" muted playsinline loop preload="none"
                   poster="./media/payer-pay/poster.webp"
-                  aria-label="The payer app: paying $7.50 by showing a code, with no signal"></video>
+                  aria-label="The customer's app: paying $7.50 by showing a code"></video>
                 <i class="phone__cam" aria-hidden="true"></i>
               </div>
             </div>
-            <figcaption>Payer</figcaption>
+            <figcaption>Customer</figcaption>
           </figure>
 
-          <div class="chip chip--airplane" data-glass aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5Z" /></svg>
-            <span>Airplane mode</span>
-            <b class="switch"><i></i></b>
-          </div>
-
-          <figure class="phone phone--right" data-float>
+          <figure class="phone phone--merchant" data-float>
             <div class="phone__body">
               <div class="phone__screen">
                 <video data-clip="merchant-sale" muted playsinline loop preload="none"
                   poster="./media/merchant-sale/poster.webp"
-                  aria-label="The merchant app: charging ₦2,500 and taking the payment offline"></video>
+                  aria-label="The merchant app: charging ₦2,500 and taking the payment"></video>
                 <i class="phone__cam" aria-hidden="true"></i>
               </div>
             </div>
-            <figcaption>Merchant</figcaption>
+            <figcaption>Your till</figcaption>
           </figure>
+
+          <div class="chip chip--airplane" data-glass aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5Z" /></svg>
+            <span>No signal</span>
+            <b class="switch"><i></i></b>
+          </div>
+          <div class="chip chip--paid" data-glass aria-hidden="true">
+            <b class="chip__dot">✓</b>
+            <span><strong>Payment taken</strong><small>₦2,500 · settles in naira</small></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- The market: the counter, not the wallet. -->
+      <section id="till" class="till" aria-labelledby="till-title">
+        <h2 id="till-title" class="section-title reveal">A payment terminal.<br /><span class="muted">With no terminal.</span></h2>
+        <div class="till__grid">
+          <article class="till-card" data-glass data-spot>
+            <span class="till-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="28" height="28"><rect x="6.5" y="2.5" width="11" height="19" rx="3" /><path d="M10.5 18.5h3" /></svg>
+            </span>
+            <h3>The phone you own.</h3>
+            <p>No terminal to buy or rent.</p>
+          </article>
+          <article class="till-card" data-glass data-spot>
+            <span class="till-card__icon till-card__icon--naira" aria-hidden="true">₦</span>
+            <h3>Priced in naira.</h3>
+            <p>Customers pay in dollars on Solana. You see naira.</p>
+          </article>
+          <article class="till-card" data-glass data-spot>
+            <span class="till-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="28" height="28"><path d="M3 10.5 12 5l9 5.5M5 10.5V18M9.5 10.5V18M14.5 10.5V18M19 10.5V18M3 20.5h18" /></svg>
+            </span>
+            <h3>Cash out to your bank.</h3>
+            <p>Your takings, in naira, in your account.</p>
+          </article>
+          <article class="till-card" data-glass data-spot>
+            <span class="till-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="28" height="28"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12a10 10 0 0 1 13 0M9 15.5a5 5 0 0 1 6 0" /><path class="cross" d="M3 3l18 18" /></svg>
+            </span>
+            <h3>Network down? Still selling.</h3>
+            <p>The sale completes with no signal on either phone.</p>
+          </article>
         </div>
       </section>
 
       <!-- The sale, step by step, pinned while you scroll -->
       <section id="story" class="story" aria-labelledby="story-title">
-        <h2 id="story-title" class="visually-hidden">How a sale works with no signal</h2>
+        <h2 id="story-title" class="visually-hidden">How a sale works on nelo</h2>
         <div class="story__stage">
           <div class="story__glow" aria-hidden="true"></div>
           <div class="story__phones" aria-hidden="true">
-            <figure class="phone phone--sm">
-              <div class="phone__body">
-                <div class="phone__screen">
-                  <div class="statusbar"><span class="bars"><i></i><i></i><i></i><i></i></span><svg class="plane" viewBox="0 0 24 24" width="12" height="12"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5Z" /></svg></div>
-                  <img src="./media/stills/payer-home.webp" alt="" loading="lazy" decoding="async" data-step="0" />
-                  <img src="./media/stills/payer-confirm.webp" alt="" loading="lazy" decoding="async" data-step="1" />
-                  <img src="./media/stills/payer-shown.webp" alt="" loading="lazy" decoding="async" data-step="2" />
-                  <img src="./media/stills/payer-shown.webp" alt="" loading="lazy" decoding="async" data-step="3" />
-                  <i class="phone__cam"></i>
-                </div>
-              </div>
-            </figure>
             <figure class="phone phone--sm">
               <div class="phone__body">
                 <div class="phone__screen">
@@ -161,30 +190,45 @@
                 </div>
               </div>
             </figure>
+            <figure class="phone phone--sm phone--behind">
+              <div class="phone__body">
+                <div class="phone__screen">
+                  <div class="statusbar"><span class="bars"><i></i><i></i><i></i><i></i></span><svg class="plane" viewBox="0 0 24 24" width="12" height="12"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5Z" /></svg></div>
+                  <img src="./media/stills/payer-home.webp" alt="" loading="lazy" decoding="async" data-step="0" />
+                  <img src="./media/stills/payer-confirm.webp" alt="" loading="lazy" decoding="async" data-step="1" />
+                  <img src="./media/stills/payer-shown.webp" alt="" loading="lazy" decoding="async" data-step="2" />
+                  <img src="./media/stills/payer-shown.webp" alt="" loading="lazy" decoding="async" data-step="3" />
+                  <i class="phone__cam"></i>
+                </div>
+              </div>
+            </figure>
           </div>
           <ol class="story__steps">
-            <li data-step="0"><span class="step__n">01</span><strong>No signal.</strong><span>Both phones offline.</span></li>
-            <li data-step="1"><span class="step__n">02</span><strong>Charge.</strong><span>₦2,500 on the till.</span></li>
-            <li data-step="2"><span class="step__n">03</span><strong>Show. Scan.</strong><span>Checked on the phone itself.</span></li>
-            <li data-step="3"><span class="step__n">04</span><strong class="grad">Paid.</strong><span>It settles when the till finds signal.</span></li>
+            <li data-step="0"><span class="step__n">01</span><strong>Type the price.</strong><span>₦2,500, in naira.</span></li>
+            <li data-step="1"><span class="step__n">02</span><strong>They pay.</strong><span>Any Solana wallet, or nelo.</span></li>
+            <li data-step="2"><span class="step__n">03</span><strong>Checked.</strong><span>On your phone, in a second.</span></li>
+            <li data-step="3"><span class="step__n">04</span><strong class="grad">Paid.</strong><span>Even where there's no signal.</span></li>
           </ol>
           <div class="story__progress" aria-hidden="true"><i></i></div>
         </div>
       </section>
 
-      <!-- The two apps -->
+      <!-- The two apps: the till first. -->
       <section id="apps" class="apps" aria-labelledby="apps-title">
-        <h2 id="apps-title" class="section-title reveal">Two apps.<br /><span class="muted">One handshake.</span></h2>
+        <h2 id="apps-title" class="section-title reveal">Built for the counter.<br /><span class="muted">Ready for every customer.</span></h2>
         <div class="apps__grid">
-          <article class="app-card" data-glass data-spot>
+          <article class="app-card app-card--lead" data-glass data-spot>
             <div class="app-card__copy">
-              <p class="eyebrow eyebrow--mint">nelo for merchants</p>
-              <h3>For the counter.</h3>
+              <p class="eyebrow eyebrow--blue">nelo for business</p>
+              <h3>Your till, in your pocket.</h3>
               <ul class="pills" aria-label="Merchant app features">
-                <li>Takes payments offline</li>
+                <li>Takes payments on Solana</li>
                 <li>Prices in naira</li>
-                <li>Needs no crypto to run</li>
+                <li>Day-book and close of day</li>
+                <li>Cash out to your bank</li>
+                <li>Works offline</li>
               </ul>
+              <a class="btn btn--small" href="#waitlist">Get the merchant app</a>
             </div>
             <figure class="phone phone--card" data-parallax>
               <div class="phone__body">
@@ -200,12 +244,11 @@
 
           <article class="app-card" data-glass data-spot>
             <div class="app-card__copy">
-              <p class="eyebrow eyebrow--orange">nelo for payers</p>
-              <h3>For your pocket.</h3>
-              <ul class="pills" aria-label="Payer app features">
+              <p class="eyebrow eyebrow--orange">nelo pay</p>
+              <h3>For your customers.</h3>
+              <ul class="pills" aria-label="Customer app features">
                 <li>Pays with no signal</li>
                 <li>Signed by the secure chip</li>
-                <li>Dollars, set aside</li>
               </ul>
             </div>
             <figure class="phone phone--card" data-parallax>
@@ -213,7 +256,7 @@
                 <div class="phone__screen">
                   <video data-clip="payer-pay" muted playsinline loop preload="none"
                     poster="./media/stills/payer-home.webp"
-                    aria-label="The payer app paying a merchant"></video>
+                    aria-label="The customer app paying a merchant"></video>
                   <i class="phone__cam" aria-hidden="true"></i>
                 </div>
               </div>
@@ -224,47 +267,49 @@
 
       <!-- Why -->
       <section id="features" class="bento" aria-labelledby="bento-title">
-        <h2 id="bento-title" class="section-title reveal">Built for the<br /><span class="grad">places networks forget.</span></h2>
+        <h2 id="bento-title" class="section-title reveal">Every business.<br /><span class="grad">Now on Solana.</span></h2>
         <div class="bento__grid">
           <article class="tile tile--wide" data-glass data-spot>
-            <div class="art art--signal" aria-hidden="true">
-              <span class="bars bars--big"><i></i><i></i><i></i><i></i></span>
-              <span class="tick">✓</span>
+            <div class="art art--receipt" aria-hidden="true">
+              <span class="receipt"><i></i><i></i><i></i><b>₦2,500</b><em>✓ Paid</em></span>
             </div>
-            <h3>Works offline.</h3>
-            <p>No bars, no data. The sale still completes.</p>
-          </article>
-          <article class="tile" data-glass data-spot>
-            <div class="art art--chip" aria-hidden="true"><span class="chip-icon"><i></i></span></div>
-            <h3>Signed in the secure chip.</h3>
-            <p>The key never leaves the phone.</p>
-          </article>
-          <article class="tile" data-glass data-spot>
-            <div class="art art--freeze" aria-hidden="true"><span class="v v--a"><i></i></span><span class="v v--b"><i></i></span><svg class="lock" viewBox="0 0 24 24" width="40" height="40"><rect x="4.5" y="10.5" width="15" height="10" rx="3" /><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" /></svg></div>
-            <h3>Spent twice? Frozen.</h3>
-            <p>A double spend locks the payer's money.</p>
+            <h3>Any phone is the till.</h3>
+            <p>Install the app. Start selling.</p>
           </article>
           <article class="tile" data-glass data-spot>
             <div class="art art--naira" aria-hidden="true"><span class="count" data-count="128481">₦128,481</span></div>
-            <h3>Cash out in naira.</h3>
-            <p>Straight to a Nigerian bank account.</p>
+            <h3>Crypto in. Naira out.</h3>
+            <p>Every point of sale, priced in naira.</p>
+          </article>
+          <article class="tile" data-glass data-spot>
+            <div class="art art--orbit" aria-hidden="true"><i></i><i></i><i></i></div>
+            <h3>Settles on Solana.</h3>
+            <p>Fast, final, in dollars.</p>
           </article>
           <article class="tile" data-glass data-spot>
             <div class="art art--gas" aria-hidden="true"><span class="zero">0</span><span class="unit">SOL</span></div>
             <h3>No gas. No seed phrase.</h3>
             <p>Sign in with a phone number.</p>
           </article>
-          <article class="tile tile--wide tile--solana" data-glass data-spot>
-            <div class="art art--orbit" aria-hidden="true"><i></i><i></i><i></i></div>
-            <h3>Settles on Solana.</h3>
-            <p>Fast, final, and in dollars.</p>
+          <article class="tile" data-glass data-spot>
+            <div class="art art--freeze" aria-hidden="true"><span class="v v--a"><i></i></span><span class="v v--b"><i></i></span><svg class="lock" viewBox="0 0 24 24" width="40" height="40"><rect x="4.5" y="10.5" width="15" height="10" rx="3" /><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" /></svg></div>
+            <h3>Can't be spent twice.</h3>
+            <p>Signed in the secure chip. A double spend freezes the payer.</p>
+          </article>
+          <article class="tile tile--wide" data-glass data-spot>
+            <div class="art art--signal" aria-hidden="true">
+              <span class="bars bars--big"><i></i><i></i><i></i><i></i></span>
+              <span class="tick">✓</span>
+            </div>
+            <h3>Even where there's no signal.</h3>
+            <p>When the network drops, the sale doesn't.</p>
           </article>
         </div>
       </section>
 
       <!-- Statement -->
       <section class="statement" aria-label="What nelo is for">
-        <p data-words>Commerce shouldn't stop when the network does.</p>
+        <p data-words>Every business can now take payments on Solana.</p>
       </section>
 
       <!-- Waitlist -->
@@ -272,7 +317,7 @@
         <div class="aurora aurora--soft" aria-hidden="true"><span></span><span></span></div>
         <div class="waitlist__card" data-glass data-spot>
           <svg class="waitlist__mark" viewBox="0 0 32 32" width="56" height="56" aria-hidden="true"><use href="#mark" /></svg>
-          <h2 id="waitlist-title">Be first in line.</h2>
+          <h2 id="waitlist-title">Turn your phone into a till.</h2>
           <form class="form" method="POST" action="%VITE_WAITLIST_ENDPOINT%" data-waitlist>
             <fieldset class="segmented">
               <legend class="visually-hidden">I want to</legend>
