@@ -39,7 +39,7 @@ maker's phone: the apps are for Android, and the page does not suggest otherwise
 
 ## Highlights
 
-One box the three clips take turns in, played at 1.75× so it moves on every six to eight
+One box the three clips take turns in, played at 2.5× so it moves on every four to five
 seconds: the active dot fills as it plays, the next clip moves in when one ends, and it can be paused, swiped or stepped with the arrow keys
 ([`src/highlights.ts`](src/highlights.ts)). On a lite connection nothing plays until tapped.
 

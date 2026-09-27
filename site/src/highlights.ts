@@ -18,9 +18,9 @@ export function initHighlights() {
   const dots = [...section.querySelectorAll<HTMLButtonElement>(".hl__dot")];
   const toggle = section.querySelector<HTMLButtonElement>(".hl__play")!;
   const n = slides.length;
-  // The clips run at this speed here, so the box moves on in about six to
-  // eight seconds instead of ten to thirteen, and each still plays to its end.
-  const SPEED = 1.75;
+  // The clips run at this speed here, so the box moves on every four to five
+  // seconds instead of ten to thirteen, and each still plays to its end.
+  const SPEED = 2.5;
   for (const v of videos) {
     v.defaultPlaybackRate = SPEED;
     v.playbackRate = SPEED;
