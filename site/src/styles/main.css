@@ -1981,7 +1981,6 @@ html[data-motion="reduced"] .dock {
 /* Until the motion code arrives (at most 2.5 s), the hero waits unseen rather
  * than appearing and then jumping into its first frame. */
 html.pre-motion .hero__copy,
-html.pre-motion .hero__stage,
 html.pre-motion .rotator--below {
   opacity: 0;
 }
@@ -2006,10 +2005,6 @@ html[data-tier="lite"] {
 .tilts:hover .till-card__icon {
   scale: 1.12;
   rotate: -6deg;
-}
-/* The hero stage leans with the pointer. */
-.hero__stage {
-  transform: perspective(1600px) rotateX(var(--srx, 0deg)) rotateY(var(--sry, 0deg));
 }
 .cursor-glow {
   position: absolute;
@@ -2088,71 +2083,6 @@ html[data-motion="reduced"] .chip__dot::after {
 @keyframes fill {
   to {
     transform: scaleX(1);
-  }
-}
-
-/* ---------------------------------------------------------------- 3D hero */
-.hero__canvas {
-  display: none;
-}
-html.want-3d .hero__stage {
-  opacity: 0;
-}
-html.has-3d .hero {
-  height: 100svh;
-  min-height: 560px;
-  padding: 0;
-  display: block;
-}
-html.has-3d .hero__canvas {
-  display: block;
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-}
-html.has-3d .hero__stage {
-  display: none;
-}
-html.has-3d .hero__copy {
-  position: absolute;
-  z-index: 1;
-  top: calc(84px + env(safe-area-inset-top));
-  left: 50%;
-  translate: -50% 0;
-  width: min(100% - 32px, 1200px);
-  pointer-events: none;
-}
-html.has-3d .hero .rotator--below {
-  position: absolute;
-  z-index: 1;
-  left: 0;
-  right: 0;
-  bottom: clamp(24px, 6vh, 64px);
-  margin: 0;
-}
-html.has-3d .hero > .chip {
-  z-index: 2;
-}
-html.has-3d .hero > .chip--airplane {
-  left: 14%;
-  top: 30%;
-}
-html.has-3d .hero > .chip--paid {
-  right: 12%;
-  left: auto;
-  top: 56%;
-}
-@media (max-width: 720px) {
-  html.has-3d .hero > .chip--airplane {
-    left: 4%;
-    top: 34%;
-  }
-  html.has-3d .hero > .chip--paid {
-    right: 4%;
-    top: auto;
-    bottom: 18%;
   }
 }
 

@@ -1,8 +1,8 @@
 /**
  * Things that answer the pointer: buttons that light up where you touch them
  * and ripple from the exact point, cards that tilt toward the cursor with a
- * glare, a hero stage that leans with you, a glow that follows the mouse, and
- * a nav pill that slides between links.
+ * glare, a glow in the hero that follows the mouse, and a nav pill that
+ * slides between links.
  *
  * No library: each is a few CSS custom properties set in a requestAnimationFrame.
  * Ripples and button light run everywhere; the rest only with a fine pointer,
@@ -71,28 +71,23 @@ function tilt() {
   }
 }
 
-/** The hero stage leans with the pointer, and a soft glow follows it. */
-function heroParallax() {
+/** A soft glow follows the pointer across the hero. The phones stay still. */
+function heroGlow() {
   const hero = document.querySelector<HTMLElement>(".hero");
-  const stage = hero?.querySelector<HTMLElement>(".hero__stage");
-  if (!hero || !stage) return;
+  if (!hero) return;
   const glow = document.createElement("div");
   glow.className = "cursor-glow";
   glow.setAttribute("aria-hidden", "true");
   hero.appendChild(glow);
 
   // Eased toward the pointer, so it drifts rather than snaps.
-  let tx = 0.5, ty = 0.5, cx = 0.5, cy = 0.5, gx = 0, gy = 0, cgx = 0, cgy = 0;
+  let gx = 0, gy = 0, cgx = 0, cgy = 0;
   let running = false;
   const step = () => {
-    cx += (tx - cx) * 0.08;
-    cy += (ty - cy) * 0.08;
     cgx += (gx - cgx) * 0.12;
     cgy += (gy - cgy) * 0.12;
-    stage.style.setProperty("--sry", `${((cx - 0.5) * 10).toFixed(2)}deg`);
-    stage.style.setProperty("--srx", `${((0.5 - cy) * 6).toFixed(2)}deg`);
     glow.style.translate = `${cgx.toFixed(1)}px ${cgy.toFixed(1)}px`;
-    if (Math.abs(tx - cx) + Math.abs(ty - cy) + Math.abs(gx - cgx) + Math.abs(gy - cgy) > 0.002) {
+    if (Math.abs(gx - cgx) + Math.abs(gy - cgy) > 0.5) {
       requestAnimationFrame(step);
     } else running = false;
   };
@@ -104,18 +99,12 @@ function heroParallax() {
   };
   hero.addEventListener("pointermove", (e) => {
     const r = hero.getBoundingClientRect();
-    tx = (e.clientX - r.left) / r.width;
-    ty = (e.clientY - r.top) / r.height;
     gx = e.clientX - r.left;
     gy = e.clientY - r.top;
     glow.classList.add("is-on");
     kick();
   });
-  hero.addEventListener("pointerleave", () => {
-    tx = ty = 0.5;
-    glow.classList.remove("is-on");
-    kick();
-  });
+  hero.addEventListener("pointerleave", () => glow.classList.remove("is-on"));
 }
 
 /** A pill that slides to whichever nav link is under the pointer. */
@@ -164,6 +153,6 @@ export function initInteractions() {
   scrollProgress();
   if (reducedMotion() || tier() === "lite" || !finePointer()) return;
   tilt();
-  heroParallax();
+  heroGlow();
   navPill();
 }

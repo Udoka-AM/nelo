@@ -30,20 +30,17 @@ segments. Safari and iOS play it natively; Chromium and Firefox get `hls.js` (th
 loaded only when a video is about to be seen; anything else gets one progressive MP4. Videos
 attach near the viewport, play only while on screen, and pause in a background tab.
 
-## The 3D hero
+## The hero
 
-On the rich tier, with full motion and WebGL 2, the hero is a Three.js scene
-([`src/hero3d.ts`](src/hero3d.ts), about 150 KB gzipped, loaded only then): two phones built in
-code, the real app clips playing on their screens, pinned while you scroll. The till turns from
-its back to its face, the customer's phone swings in, and the two meet. The casing is our own
-design (titanium frame, frosted back, a two-lens camera pill, a punch-hole display), deep blue in
-the dark theme and natural in the light. It is deliberately not any maker's phone: the apps are
-for Android, and the page does not suggest otherwise. Everywhere else, the flat hero stays.
+The phones in the hero hold still: only their screens move, playing the real app clips. The
+headline arrives and lifts away as you scroll, and the chips pop in, but the handsets never
+float, tilt or drift. The casing is our own design (titanium frame, punch-hole display), not any
+maker's phone: the apps are for Android, and the page does not suggest otherwise.
 
 ## Highlights
 
-A gallery of the three clips, one playing at a time: the active dot fills as it plays, it moves
-on when the clip ends, and it can be paused, swiped or stepped with the arrow keys
+One box the three clips take turns in, played at 1.75× so it moves on every six to eight
+seconds: the active dot fills as it plays, the next clip moves in when one ends, and it can be paused, swiped or stepped with the arrow keys
 ([`src/highlights.ts`](src/highlights.ts)). On a lite connection nothing plays until tapped.
 
 ## Interaction

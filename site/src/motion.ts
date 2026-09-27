@@ -32,8 +32,11 @@ async function smoothScroll() {
   }
 }
 
-/** The headline and the flat hero's phones arriving. */
-function heroIntro(withPhones: boolean) {
+/**
+ * The hero's headline arriving. The phones themselves hold still: only what
+ * is on their screens moves.
+ */
+function heroIntro() {
   const title = $("[data-split]");
   if (!title) return;
   const split = SplitText.create(title, { type: "lines", mask: "lines", linesClass: "line" });
@@ -41,71 +44,28 @@ function heroIntro(withPhones: boolean) {
   intro.from(split.lines, { yPercent: 110, duration: 1.3, stagger: 0.09 });
   const eyebrow = $(".hero .eyebrow");
   if (eyebrow) intro.from(eyebrow, { opacity: 0, y: 12, duration: 0.8 }, 0);
-  if (!withPhones) return;
 
-  const phones = $$(".hero__stage .phone");
   const chip = $(".chip--airplane");
   const paid = $(".chip--paid");
-  intro.from(phones, { opacity: 0, y: 180, rotateX: 28, scale: 0.9, duration: 1.8, stagger: 0.14 }, 0.3);
   const rotator = $(".hero .rotator");
-  if (rotator) intro.from(rotator, { opacity: 0, y: 30, filter: "blur(8px)", duration: 1.2 }, 0.9);
+  if (rotator) intro.from(rotator, { opacity: 0, y: 30, filter: "blur(8px)", duration: 1.2 }, 0.6);
   if (chip) {
     intro
-      .from(chip, { opacity: 0, scale: 0.6, y: 20, duration: 0.9, ease: "back.out(1.8)" }, 1.1)
-      .call(() => chip.classList.add("is-on"), [], 1.7);
+      .from(chip, { opacity: 0, scale: 0.6, y: 20, duration: 0.9, ease: "back.out(1.8)" }, 0.8)
+      .call(() => chip.classList.add("is-on"), [], 1.4);
   }
   // The notification arrives the way a phone's does: a slide and a settle.
-  if (paid) intro.from(paid, { opacity: 0, x: 40, scale: 0.9, duration: 1, ease: "back.out(1.6)" }, 2.1);
-
-  // A slow float, on the inner body so it never fights the scroll transform.
-  $$(".hero__stage .phone__body").forEach((el, i) =>
-    gsap.to(el, { y: -10, duration: 3 + i * 0.4, ease: "sine.inOut", yoyo: true, repeat: -1, delay: i * 0.6 }),
-  );
+  if (paid) intro.from(paid, { opacity: 0, x: 40, scale: 0.9, duration: 1, ease: "back.out(1.6)" }, 1.8);
 }
 
-/** The flat hero scrolling away: the two phones drift together, a handshake. */
+/** The hero scrolling away: the headline lifts off; the phones stay put. */
 function heroScroll() {
   const chips = [$(".chip--airplane"), $(".chip--paid")].filter((c): c is HTMLElement => c !== null);
   const out = gsap.timeline({
     scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: 0.6 },
   });
-  out
-    .to(".hero__copy", { y: -90, opacity: 0.15, scale: 0.94, ease: "none" }, 0)
-    .to(".phone--back", { xPercent: 12, rotate: 0, y: -30, ease: "none" }, 0)
-    .to(".phone--front", { xPercent: -6, rotate: 0, y: -50, scale: 1.04, ease: "none" }, 0);
-  if (chips.length) out.to(chips, { y: -60, opacity: 0, ease: "none" }, 0);
-}
-
-/** The 3D hero where the device can take it; the flat one everywhere else. */
-async function hero() {
-  const webgl = (() => {
-    try {
-      return !!document.createElement("canvas").getContext("webgl2");
-    } catch {
-      return false;
-    }
-  })();
-  const want3d = tier() === "rich" && webgl && !!$(".hero__canvas");
-  if (!want3d) {
-    heroIntro(true);
-    heroScroll();
-    return;
-  }
-  // Keep the flat phones out of sight while the 3D ones load, so nothing swaps in view.
-  document.documentElement.classList.add("want-3d");
-  heroIntro(false);
-  try {
-    const { initHero3D } = await import("./hero3d");
-    if (await initHero3D()) {
-      $(".chip--airplane")?.classList.add("is-on");
-      return;
-    }
-  } catch {
-    /* fall through to the flat hero */
-  }
-  document.documentElement.classList.remove("has-3d", "want-3d");
-  heroIntro(true);
-  heroScroll();
+  out.to(".hero__copy", { y: -90, opacity: 0.15, scale: 0.94, ease: "none" }, 0);
+  if (chips.length) out.to(chips, { opacity: 0, ease: "none" }, 0);
 }
 
 function story() {
@@ -242,13 +202,13 @@ function magnetic() {
 
 export async function initMotion() {
   document.documentElement.classList.add("gsap");
-  const heroReady = hero();
+  heroIntro();
+  heroScroll();
   story();
   sections();
   nav();
   magnetic();
   await smoothScroll();
-  await heroReady;
   // Fonts and posters change heights; measure again once they have settled.
   document.fonts?.ready.then(() => ScrollTrigger.refresh());
   window.addEventListener("load", () => ScrollTrigger.refresh(), { once: true });

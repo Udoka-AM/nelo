@@ -1,6 +1,6 @@
 /**
- * The highlights: one box, three clips taking turns in it. One plays at a
- * time; the active dot stretches into a pill that fills as its clip plays, and
+ * The highlights: one box, three clips taking turns in it, played a little
+ * faster than life. One plays at a time; the active dot stretches into a pill that fills as its clip plays, and
  * when the clip ends the next one moves in, and after the last, the first.
  * Nothing scrolls sideways: a swipe, the dots, or the arrow keys change the
  * clip by hand, and the button pauses it.
@@ -18,6 +18,15 @@ export function initHighlights() {
   const dots = [...section.querySelectorAll<HTMLButtonElement>(".hl__dot")];
   const toggle = section.querySelector<HTMLButtonElement>(".hl__play")!;
   const n = slides.length;
+  // The clips run at this speed here, so the box moves on in about six to
+  // eight seconds instead of ten to thirteen, and each still plays to its end.
+  const SPEED = 1.75;
+  for (const v of videos) {
+    v.defaultPlaybackRate = SPEED;
+    v.playbackRate = SPEED;
+    // Some players reset the rate when a stream attaches.
+    v.addEventListener("loadedmetadata", () => (v.playbackRate = SPEED));
+  }
 
   // On a lite connection nothing plays unless asked, so there is nothing to run.
   const auto = tier() !== "lite";

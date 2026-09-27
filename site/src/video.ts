@@ -153,19 +153,6 @@ export function initVideos() {
   });
 }
 
-/**
- * Stream a clip into a video element that is not on the page, such as the one
- * the 3D hero paints onto a phone's screen. Same adaptive player, same rules.
- */
-export async function streamInto(video: HTMLVideoElement, clip: string): Promise<void> {
-  video.dataset.clip = clip;
-  video.muted = true;
-  video.loop = true;
-  video.playsInline = true;
-  visible.add(video);
-  await attach(video, false);
-}
-
 /** Attach a page video's stream now, for a controller that plays it itself. */
 export function prepare(video: HTMLVideoElement): Promise<void> {
   return attach(video, false);
