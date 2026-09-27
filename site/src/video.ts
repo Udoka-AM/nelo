@@ -112,6 +112,8 @@ export function initVideos() {
     (entries) => {
       for (const e of entries) {
         const v = e.target as HTMLVideoElement;
+        // A gallery plays its own videos, one at a time.
+        if (v.dataset.managed) continue;
         if (e.isIntersecting) {
           visible.add(v);
           if (attached.has(v)) play(v);
@@ -144,9 +146,27 @@ export function initVideos() {
 
   // A backgrounded tab plays nothing.
   document.addEventListener("visibilitychange", () => {
-    for (const v of videos) {
+    for (const v of videos.filter((v) => !v.dataset.managed)) {
       if (document.hidden) v.pause();
       else if (visible.has(v) && attached.has(v)) play(v);
     }
   });
+}
+
+/**
+ * Stream a clip into a video element that is not on the page, such as the one
+ * the 3D hero paints onto a phone's screen. Same adaptive player, same rules.
+ */
+export async function streamInto(video: HTMLVideoElement, clip: string): Promise<void> {
+  video.dataset.clip = clip;
+  video.muted = true;
+  video.loop = true;
+  video.playsInline = true;
+  visible.add(video);
+  await attach(video, false);
+}
+
+/** Attach a page video's stream now, for a controller that plays it itself. */
+export function prepare(video: HTMLVideoElement): Promise<void> {
+  return attach(video, false);
 }

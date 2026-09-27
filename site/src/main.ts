@@ -5,6 +5,7 @@
 import { reducedMotion, tier, watch } from "./adaptive";
 import { initDock } from "./dock";
 import { initGlass } from "./glass";
+import { initHighlights } from "./highlights";
 import { initInteractions } from "./interactions";
 import { initTheme } from "./theme";
 import { initVideos } from "./video";
@@ -17,6 +18,7 @@ initWaitlist();
 initGlass();
 initVideos();
 initDock();
+initHighlights();
 initInteractions();
 
 if (tier() !== "lite" && !reducedMotion()) {

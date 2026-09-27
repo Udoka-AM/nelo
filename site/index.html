@@ -88,6 +88,7 @@
     <main id="top">
       <!-- Hero: the merchant's phone is the product. -->
       <section class="hero" aria-labelledby="hero-title">
+        <canvas class="hero__canvas" aria-hidden="true"></canvas>
         <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
         <div class="hero__copy">
           <h1 id="hero-title" class="hero__title hero__title--long" data-split>Every business can now take payments <span class="grad">on&nbsp;Solana.</span></h1>
@@ -235,6 +236,59 @@
             <li data-step="3"><span class="step__n">04</span><strong class="grad">Paid.</strong><span>Even where there's no signal.</span></li>
           </ol>
           <div class="story__progress" aria-hidden="true"><i></i></div>
+        </div>
+      </section>
+
+      <!-- Highlights: one clip at a time, the way a product page shows its best moments. -->
+      <section id="highlights" class="highlights" aria-labelledby="hl-title" aria-roledescription="carousel">
+        <h2 id="hl-title" class="section-title reveal">Get the highlights.</h2>
+        <div class="hl" data-highlights>
+          <ul class="hl__track">
+          <li class="hl__slide" id="hl-1" aria-roledescription="slide" aria-label="1 of 3">
+            <figure class="phone phone--hl">
+              <div class="phone__body">
+                <div class="phone__screen">
+                  <video data-clip="merchant-sale" data-managed="gallery" muted playsinline preload="none" poster="./media/merchant-sale/poster.webp" aria-label="The till charging ₦2,500 and taking the payment"></video>
+                  <i class="phone__cam" aria-hidden="true"></i>
+                </div>
+              </div>
+            </figure>
+            <p class="hl__caption"><strong>Charge in naira.</strong> Type the price. They pay with any Solana wallet, or with nelo.</p>
+          </li>
+          <li class="hl__slide" id="hl-2" aria-roledescription="slide" aria-label="2 of 3">
+            <figure class="phone phone--hl">
+              <div class="phone__body">
+                <div class="phone__screen">
+                  <video data-clip="payer-pay" data-managed="gallery" muted playsinline preload="none" poster="./media/payer-pay/poster.webp" aria-label="A customer paying $7.50 by showing a code"></video>
+                  <i class="phone__cam" aria-hidden="true"></i>
+                </div>
+              </div>
+            </figure>
+            <p class="hl__caption"><strong>They pay with no signal.</strong> Their phone signs the payment. Yours checks it.</p>
+          </li>
+          <li class="hl__slide" id="hl-3" aria-roledescription="slide" aria-label="3 of 3">
+            <figure class="phone phone--hl">
+              <div class="phone__body">
+                <div class="phone__screen">
+                  <video data-clip="payer-receive" data-managed="gallery" muted playsinline preload="none" poster="./media/payer-receive/poster.webp" aria-label="Asking a friend for $12.50"></video>
+                  <i class="phone__cam" aria-hidden="true"></i>
+                </div>
+              </div>
+            </figure>
+            <p class="hl__caption"><strong>Pay anyone.</strong> Phone to phone. Settles when either finds signal.</p>
+          </li>
+          </ul>
+        </div>
+        <div class="hl__controls">
+          <div class="hl__dots" data-glass>
+            <button type="button" class="hl__dot" aria-controls="hl-1" aria-label="Highlight 1"><i></i></button>
+            <button type="button" class="hl__dot" aria-controls="hl-2" aria-label="Highlight 2"><i></i></button>
+            <button type="button" class="hl__dot" aria-controls="hl-3" aria-label="Highlight 3"><i></i></button>
+          </div>
+          <button type="button" class="hl__play" data-glass aria-label="Pause">
+            <svg class="i-pause" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg>
+            <svg class="i-play" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+          </button>
         </div>
       </section>
 
