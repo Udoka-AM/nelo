@@ -3,10 +3,11 @@
 # One-time setup, in the repository's settings:
 #   Pages → Build and deployment → Source: GitHub Actions
 #   Secrets and variables → Actions → Variables:
-#     WAITLIST_ENDPOINT  a Formspree form URL (https://formspree.io/f/…). Until
-#                        it is set, the page says the waitlist opens soon and
-#                        collects nothing.
-#     SITE_URL           optional; defaults to https://udoka-am.github.io/nelo/
+#     SUPABASE_PUBLISHABLE_KEY  the nelo project's publishable key (sb_publishable_…).
+#                               Public by design, but kept out of the repository.
+#                               Until it is set, the waitlist says it opens soon.
+#     SUPABASE_URL              optional; defaults to the nelo project
+#     SITE_URL                  optional; defaults to https://udoka-am.github.io/nelo/
 name: Site
 
 on:
@@ -38,7 +39,8 @@ jobs:
       - run: pnpm install --frozen-lockfile --filter @nelo/site
       - run: pnpm --filter @nelo/site build
         env:
-          VITE_WAITLIST_ENDPOINT: ${{ vars.WAITLIST_ENDPOINT }}
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
           VITE_SITE_URL: ${{ vars.SITE_URL || 'https://udoka-am.github.io/nelo/' }}
       - uses: actions/upload-pages-artifact@v3
         with:

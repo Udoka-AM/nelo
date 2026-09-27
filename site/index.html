@@ -90,17 +90,7 @@
       <section class="hero" aria-labelledby="hero-title">
         <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
         <div class="hero__copy">
-          <p class="eyebrow">nelo for business</p>
           <h1 id="hero-title" class="hero__title hero__title--long" data-split>Every business can now take payments <span class="grad">on&nbsp;Solana.</span></h1>
-          <p class="rotator reveal" aria-label="Any phone becomes a terminal. Everything in naira. Even where there's no signal.">
-            <span class="rotator__item is-on" aria-hidden="true">Any phone becomes a terminal.</span>
-            <span class="rotator__item" aria-hidden="true">Everything in naira.</span>
-            <span class="rotator__item rotator__item--edge" aria-hidden="true">Even where there's no signal.</span>
-          </p>
-          <div class="hero__ctas reveal">
-            <a class="btn btn--glow" href="#waitlist" data-magnetic>Turn your phone into a till</a>
-            <a class="btn btn--ghost" href="#story">See it work <span class="nudge-down" aria-hidden="true">↓</span></a>
-          </div>
         </div>
 
         <div class="hero__stage" aria-label="nelo on two phones: the merchant's till and a customer paying">
@@ -138,6 +128,11 @@
             <span><strong>Payment taken</strong><small>₦2,500 · settles in naira</small></span>
           </div>
         </div>
+          <p class="rotator rotator--below reveal" aria-label="Any phone becomes a terminal. Everything in naira. Even where there's no signal.">
+            <span class="rotator__item is-on" aria-hidden="true">Any phone becomes a terminal.</span>
+            <span class="rotator__item" aria-hidden="true">Everything in naira.</span>
+            <span class="rotator__item rotator__item--edge" aria-hidden="true">Even where there's no signal.</span>
+          </p>
       </section>
 
       <!-- Easy: what the seller never has to deal with. -->
@@ -196,11 +191,6 @@
               <li class="dock__item"><span class="dock__icon"><img src="./wallets/solflare.svg" alt="" width="64" height="64" loading="lazy" /></span><span class="dock__name">Solflare</span></li>
               <li class="dock__item"><span class="dock__icon"><img src="./wallets/backpack.svg" alt="" width="64" height="64" loading="lazy" /></span><span class="dock__name">Backpack</span></li>
               <li class="dock__item"><span class="dock__icon"><img src="./wallets/glow.svg" alt="" width="64" height="64" loading="lazy" /></span><span class="dock__name">Glow</span></li>
-              <li class="dock__item"><span class="dock__icon dock__icon--mono" style="--hue: 28">De</span><span class="dock__name">Decaf</span></li>
-              <li class="dock__item"><span class="dock__icon dock__icon--mono" style="--hue: 200">Es</span><span class="dock__name">Espresso Cash</span></li>
-              <li class="dock__item"><span class="dock__icon dock__icon--mono" style="--hue: 262">Ul</span><span class="dock__name">Ultimate</span></li>
-              <li class="dock__item"><span class="dock__icon dock__icon--mono" style="--hue: 330">Ot</span><span class="dock__name">Ottr</span></li>
-              <li class="dock__item"><span class="dock__icon dock__icon--mono" style="--hue: 170">Ti</span><span class="dock__name">TipLink</span></li>
             </ul>
           </div>
           <p class="wallets__note">And any other wallet that scans a Solana Pay code.</p>
@@ -355,7 +345,7 @@
         <div class="waitlist__card" data-glass data-spot>
           <svg class="waitlist__mark" viewBox="0 0 32 32" width="56" height="56" aria-hidden="true"><use href="#mark" /></svg>
           <h2 id="waitlist-title">Turn your phone into a till.</h2>
-          <form class="form" method="POST" action="%VITE_WAITLIST_ENDPOINT%" data-waitlist>
+          <form class="form" data-waitlist data-page="business">
             <fieldset class="segmented">
               <legend class="visually-hidden">I want to</legend>
               <input type="radio" name="role" id="role-merchant" value="merchant" checked />
@@ -371,6 +361,7 @@
             </div>
             <input class="visually-hidden" type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" />
             <p class="form__note" role="status" aria-live="polite"></p>
+            <noscript><p class="form__note">Joining needs JavaScript. Turn it on, or come back from another browser.</p></noscript>
           </form>
           <div class="done" hidden>
             <svg viewBox="0 0 52 52" width="64" height="64" aria-hidden="true"><circle cx="26" cy="26" r="24" /><path d="M15 27l7 7 15-16" /></svg>

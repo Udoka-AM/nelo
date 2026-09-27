@@ -658,6 +658,13 @@ html[data-motion="reduced"] .aurora span {
   background-clip: text;
   color: transparent;
 }
+/* Below the phones, it closes the hero rather than crowding the headline. */
+.rotator--below {
+  justify-items: center;
+  text-align: center;
+  font-size: clamp(24px, 3.2vw, 40px);
+  margin-top: clamp(8px, 3vh, 32px);
+}
 html[data-motion="reduced"] .rotator__item {
   translate: none;
   filter: none;
@@ -1568,13 +1575,6 @@ html[data-motion="reduced"] .dock {
   width: 100%;
   height: 100%;
 }
-.dock__icon--mono {
-  font-weight: 700;
-  font-size: calc(22px * var(--s));
-  letter-spacing: -0.03em;
-  color: #fff;
-  background: linear-gradient(150deg, hsl(var(--hue) 70% 58%), hsl(calc(var(--hue) + 40) 70% 42%));
-}
 .dock__name {
   margin-top: 8px;
   font-size: 13px;
@@ -1955,7 +1955,8 @@ html[data-motion="reduced"] .dock {
 /* Until the motion code arrives (at most 2.5 s), the hero waits unseen rather
  * than appearing and then jumping into its first frame. */
 html.pre-motion .hero__copy,
-html.pre-motion .hero__stage {
+html.pre-motion .hero__stage,
+html.pre-motion .rotator--below {
   opacity: 0;
 }
 

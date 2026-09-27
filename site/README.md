@@ -54,14 +54,27 @@ FFMPEG=/path/to/ffmpeg site/scripts/encode-video.sh
 
 ## The waitlist
 
-Set the repository variable `WAITLIST_ENDPOINT` to a [Formspree](https://formspree.io) form URL
-(or anything that accepts the same POST and answers JSON). Until then the form says the waitlist
-opens soon and sends nothing.
+Sign-ups go straight into the `waitlist` table of the **nelo** Supabase project (London). The
+page holds only the publishable key, and the table allows that key to insert a row and nothing
+else: it cannot read, change or delete the list, cannot backdate a row, and the database itself
+rejects a malformed email or an unknown role. The schema and its rules are in
+[`supabase/waitlist.sql`](supabase/waitlist.sql).
+
+- **Reading the list:** Supabase dashboard → Table Editor → `waitlist`, or export it as CSV.
+- **Duplicates** are refused by the database; the page tells that person they are already on it.
+- **Offline:** a sign-up made with no signal is kept on the device and sent when it reconnects.
+- **No JavaScript:** the form cannot post without it, and says so.
+- **Spam:** a hidden honeypot field catches simple bots. There is no rate limit; if the list
+  fills with junk, put a CAPTCHA or an Edge Function in front of it.
+
+The build needs one repository variable, `SUPABASE_PUBLISHABLE_KEY`. It is public by design,
+but the repository keeps no keys, so it is not committed.
 
 ## Wallet logos
 
-The Solana Pay strip lists wallets that Solana Pay's documentation names as supporting it,
-plus Backpack, whose own documentation does. The Phantom, Solflare, Backpack and Glow logos are
-from [web3icons](https://github.com/0xa3k5/web3icons) (MIT); the others are shown by name, as
-monograms, rather than with a logo we would have had to redraw. Each belongs to its owner and
-is shown only to say the wallet can pay a nelo till.
+The Solana Pay strip shows only wallets whose exact logo we have from a sourced, licensed
+package: Phantom, Solflare, Backpack and Glow, from [web3icons](https://github.com/0xa3k5/web3icons)
+(MIT). Each is documented as supporting Solana Pay. Other wallets that do (Decaf, Espresso Cash,
+Ultimate, Ottr, TipLink) are left off until we have their official brand assets, rather than
+shown with a redrawn or guessed mark; the line under the strip covers them. Each logo belongs
+to its owner and is shown only to say the wallet can pay a nelo till.

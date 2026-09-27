@@ -89,17 +89,7 @@
       <section class="hero hero--pay" aria-labelledby="hero-title">
         <div class="aurora aurora--warm" aria-hidden="true"><span></span><span></span><span></span></div>
         <div class="hero__copy">
-          <p class="eyebrow eyebrow--orange">nelo Pay</p>
           <h1 id="hero-title" class="hero__title" data-split>Pay with <span class="grad">no signal.</span></h1>
-          <p class="rotator reveal" aria-label="Show a code. That's it. Signed by your phone's secure chip. Works at every nelo till.">
-            <span class="rotator__item is-on" aria-hidden="true">Show a code. That's it.</span>
-            <span class="rotator__item" aria-hidden="true">Signed by your phone's secure chip.</span>
-            <span class="rotator__item rotator__item--edge" aria-hidden="true">Works at every nelo till.</span>
-          </p>
-          <div class="hero__ctas reveal">
-            <a class="btn btn--glow" href="#waitlist" data-magnetic>Get nelo Pay</a>
-            <a class="btn btn--ghost" href="#how">How it works <span class="nudge-down" aria-hidden="true">↓</span></a>
-          </div>
         </div>
         <div class="hero__stage" aria-label="nelo Pay, paying a till and receiving from a friend">
           <figure class="phone phone--back" data-float>
@@ -124,6 +114,11 @@
             <b class="switch"><i></i></b>
           </div>
         </div>
+          <p class="rotator rotator--below reveal" aria-label="Show a code. That's it. Signed by your phone's secure chip. Works at every nelo till.">
+            <span class="rotator__item is-on" aria-hidden="true">Show a code. That's it.</span>
+            <span class="rotator__item" aria-hidden="true">Signed by your phone's secure chip.</span>
+            <span class="rotator__item rotator__item--edge" aria-hidden="true">Works at every nelo till.</span>
+          </p>
       </section>
 
       <section id="how" class="steps" aria-labelledby="how-title">
@@ -232,7 +227,7 @@
         <div class="waitlist__card" data-glass data-spot>
           <svg class="waitlist__mark" viewBox="0 0 32 32" width="56" height="56" aria-hidden="true"><use href="#mark" /></svg>
           <h2 id="waitlist-title">Get nelo Pay first.</h2>
-          <form class="form" method="POST" action="%VITE_WAITLIST_ENDPOINT%" data-waitlist>
+          <form class="form" data-waitlist data-page="pay">
             <fieldset class="segmented">
               <legend class="visually-hidden">I want to</legend>
               <input type="radio" name="role" id="role-merchant" value="merchant" />
@@ -248,6 +243,7 @@
             </div>
             <input class="visually-hidden" type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" />
             <p class="form__note" role="status" aria-live="polite"></p>
+            <noscript><p class="form__note">Joining needs JavaScript. Turn it on, or come back from another browser.</p></noscript>
           </form>
           <div class="done" hidden>
             <svg viewBox="0 0 52 52" width="64" height="64" aria-hidden="true"><circle cx="26" cy="26" r="24" /><path d="M15 27l7 7 15-16" /></svg>

@@ -13,13 +13,22 @@ export function initDock() {
   if (!dock) return;
   const track = dock.querySelector<HTMLElement>(".dock__track")!;
 
-  // One copy for the eye to loop into; hidden from assistive tech and from the tab order.
+  // The marquee scrolls half its track and jumps back, so each half must be at
+  // least as wide as the dock. Repeat the wallets until it is, then double it.
+  // The copies are hidden from assistive tech: the originals say it once.
   if (!reducedMotion()) {
-    const copy = track.cloneNode(true) as HTMLElement;
-    [...copy.children].forEach((li) => {
-      li.setAttribute("aria-hidden", "true");
-      track.appendChild(li);
-    });
+    const originals = [...track.children] as HTMLElement[];
+    const copyOf = (li: HTMLElement) => {
+      const c = li.cloneNode(true) as HTMLElement;
+      c.setAttribute("aria-hidden", "true");
+      return c;
+    };
+    let guard = 0;
+    while (track.scrollWidth < dock.clientWidth && guard++ < 12) originals.forEach((li) => track.appendChild(copyOf(li)));
+    const half = [...track.children] as HTMLElement[];
+    half.forEach((li) => track.appendChild(copyOf(li)));
+    // A constant speed, whatever the length: about 40 px a second.
+    track.style.animationDuration = `${Math.max(12, track.scrollWidth / 2 / 40)}s`;
   }
 
   if (!finePointer() || reducedMotion()) return;
