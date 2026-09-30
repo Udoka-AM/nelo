@@ -21,13 +21,16 @@
     "@solana-mobile/mobile-wallet-adapter-protocol": "^2.3.0",
     "@solana/kit": "^7.1.1",
     "expo": "~57.0.21",
+    "expo-apple-authentication": "~57.0.2",
     "expo-application": "~57.0.3",
     "expo-camera": "~57.0.5",
     "expo-crypto": "~57.0.2",
     "expo-dev-client": "~57.0.18",
+    "expo-linking": "~57.0.11",
     "expo-secure-store": "~57.0.3",
     "expo-sqlite": "~57.0.2",
     "expo-status-bar": "~57.0.1",
+    "expo-web-browser": "~57.0.3",
     "fast-text-encoding": "^1.0.6",
     "react": "19.2.3",
     "react-native": "0.86.3",
@@ -47,5 +50,5 @@
     "build:dev": "eas build -p android --profile development"
   },
   "private": true,
-  "description": "Expo app \u2014 the merchant terminal. Local-currency amount entry, Solana Pay, day-book, and onboarding behind an embedded wallet."
+  "description": "Expo app — the merchant terminal. Local-currency amount entry, Solana Pay, day-book, and onboarding behind an embedded wallet."
 }

@@ -14,4 +14,14 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, "node_modules"),
 ];
 
+// Privy's SDK depends on `jose`, whose package exports send Metro to its Node
+// build (which imports `crypto`). Resolve it with the browser condition, as
+// Privy's Expo setup guide does.
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === "jose") {
+    return context.resolveRequest({ ...context, unstable_conditionNames: ["browser"] }, moduleName, platform);
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 module.exports = config;
