@@ -171,11 +171,24 @@ export function Card({ children, onPress, accessibilityLabel, selected = false, 
 }
 
 /** Something the merchant should know. The tone says how much it matters. */
-export function Notice({ tone = "caution", children, action }: { tone?: "caution" | "danger" | "positive"; children: ReactNode; action?: Action }) {
+export function Notice({
+  tone = "caution",
+  children,
+  action,
+  lines,
+}: {
+  tone?: "caution" | "danger" | "positive";
+  children: ReactNode;
+  action?: Action;
+  /** Cap the text, for a notice on a screen that cannot scroll. */
+  lines?: number;
+}) {
   const surface = { caution: color.cautionSurface, danger: color.dangerSurface, positive: color.positiveSurface }[tone];
   return (
     <View style={[styles.notice, { backgroundColor: surface }]} accessibilityRole="alert">
-      <Text style={[styles.noticeText, { color: toneColor[tone] }]}>{children}</Text>
+      <Text style={[styles.noticeText, { color: toneColor[tone] }]} {...(lines ? { numberOfLines: lines } : {})}>
+        {children}
+      </Text>
       {action ? <TextButton {...action} tone="positive" /> : null}
     </View>
   );

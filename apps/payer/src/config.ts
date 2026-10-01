@@ -39,5 +39,26 @@ export const KEY_ALIAS = "nelo.payer.device.v1";
  * customer: it submits them and pays the fees. See services/relay. The token
  * is not a secret from anyone holding the APK.
  */
-export const relayUrl = process.env.EXPO_PUBLIC_NELO_RELAY_URL?.trim().replace(/\/+$/, "") || null;
+
+/**
+ * A service address from configuration, checked. A quick tunnel's address is
+ * pasted by hand, and the docs' "…" placeholder copied in place of it reaches
+ * Android's HTTP client as "....trycloudflare.com", which it rejects with a
+ * stack trace. Anything that is not a plain https address is refused here,
+ * with a sentence saying what to do, instead of failing later on the network.
+ */
+function serviceAddress(raw: string | undefined, name: string): { url: string | null; problem: string | null } {
+  const v = raw?.trim().replace(/^["']|["']$/g, "").replace(/\/+$/, "");
+  if (!v) return { url: null, problem: null };
+  if (/^https?:\/\/[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d+)?(\/\S*)?$/.test(v)) return { url: v, problem: null };
+  return {
+    url: null,
+    problem: `${name} in this app's .env is not a real address ("${v.slice(0, 60)}"). Put the https address cloudflared printed there, then restart Metro with --clear.`,
+  };
+}
+
+const relay = serviceAddress(process.env.EXPO_PUBLIC_NELO_RELAY_URL, "EXPO_PUBLIC_NELO_RELAY_URL");
+export const relayUrl = relay.url;
+/** Set when a relay address was given but is not usable. */
+export const relayProblem = relay.problem;
 export const relayToken = process.env.EXPO_PUBLIC_NELO_RELAY_TOKEN?.trim() || null;

@@ -18,7 +18,7 @@
  * done-when true: setup completed without ever seeing a key.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import {
   Button,
   Card,
@@ -118,6 +118,9 @@ function Till() {
   const [owed, setOwed] = useState(0);
   const [settling, setSettling] = useState(false);
   const [settleNote, setSettleNote] = useState<string | null>(null);
+  /** Height left for the price on the keypad screen, measured. */
+  const [priceHeight, setPriceHeight] = useState<number | null>(null);
+  const { height: windowHeight } = useWindowDimensions();
 
   // The merchant's own clock decides which day a sale belongs to.
   const tz = useMemo(() => -new Date().getTimezoneOffset(), []);
@@ -225,7 +228,7 @@ function Till() {
       setSales(await recent());
       void refreshBalance();
     } catch (e) {
-      setSettleNote(e instanceof Error ? e.message : "Could not settle.");
+      setSettleNote(settleFailure(e));
     } finally {
       setSettling(false);
       void refreshOwed();
@@ -566,8 +569,15 @@ function Till() {
   }
 
   const canCharge = minor > 0n && !!quoted;
+  // A short phone cannot fit the keypad screen at all; there it scrolls
+  // rather than push Charge off the bottom.
+  const short = windowHeight < 700;
+  const compact = owed > 0 || settleNote !== null;
+  // The price area is whatever height is left. Below this, there is room for
+  // the figure only; the dollar line and the hint wait for a taller screen.
+  const roomy = priceHeight === null || priceHeight >= 84;
   return (
-    <Screen scroll={false}>
+    <Screen scroll={short}>
       <StatusBar style="light" />
       <Card>
         <View style={styles.balanceTop}>
@@ -599,29 +609,56 @@ function Till() {
         </View>
       </Card>
 
-      {owed > 0 || settleNote ? (
-        <Notice
-          tone={owed > 0 ? "caution" : "positive"}
-          {...(owed > 0 ? { action: { label: settling ? "Settling…" : "Settle now", onPress: () => void onSettle(), accessibilityLabel: "Settle offline payments" } } : {})}
+      {/* One slim bar, not a full notice: this screen cannot scroll, and the
+          keypad and the price need the room. */}
+      {compact ? (
+        <View
+          style={[styles.owedBar, { backgroundColor: owed > 0 ? color.cautionSurface : color.positiveSurface }]}
+          accessibilityRole="alert"
         >
-          {owed > 0 ? `${owed} offline ${owed === 1 ? "payment" : "payments"} to settle` : "All offline payments settled"}
-          {settleNote ? `\n${settleNote}` : ""}
-        </Notice>
+          <Text style={[styles.owedText, { color: owed > 0 ? color.caution : color.positive }]} numberOfLines={2}>
+            {owed > 0 ? `${owed} offline ${owed === 1 ? "payment" : "payments"} to settle` : "All offline payments settled"}
+            {settleNote ? ` · ${settleNote}` : ""}
+          </Text>
+          {owed > 0 ? (
+            <TextButton
+              label={settling ? "Settling…" : "Settle now"}
+              tone="positive"
+              onPress={() => void onSettle()}
+              accessibilityLabel="Settle offline payments"
+            />
+          ) : (
+            <TextButton label="OK" onPress={() => setSettleNote(null)} accessibilityLabel="Dismiss" />
+          )}
+        </View>
       ) : null}
 
-      <View style={styles.amountBox}>
-        <Text style={styles.amount} numberOfLines={1} adjustsFontSizeToFit accessibilityLabel={`Amount ${money(minor)}`}>
+      {/* The screen does not scroll, so the price gives up room when the
+          offline notice is showing: a smaller figure and one line under it,
+          never text drawn over the keypad. */}
+      <View style={styles.amountBox} onLayout={(e) => setPriceHeight(Math.round(e.nativeEvent.layout.height))}>
+        <Text
+          style={[styles.amount, (compact || !roomy) && styles.amountCompact]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          accessibilityLabel={`Amount ${money(minor)}`}
+        >
           {money(minor)}
         </Text>
-        {minor === 0n ? <Muted>Type the price</Muted> : <Small>{dollarsFor(minor)}</Small>}
-        {quoted && !quoted.live ? <Small tone="caution">{quoted.note ?? "Rate is fixed, not live"}</Small> : null}
+        {!roomy ? null : minor > 0n ? (
+          <Small>{dollarsFor(minor)}</Small>
+        ) : quoted && !quoted.live ? (
+          <Small tone="caution">{quoted.note ?? "Rate is fixed, not live"}</Small>
+        ) : compact ? null : (
+          <Muted>Type the price</Muted>
+        )}
       </View>
 
       <View style={styles.keypad}>
         {KEYS.map((key) => (
           <Pressable
             key={key}
-            style={({ pressed }) => [styles.key, pressed && styles.keyPressed]}
+            style={({ pressed }) => [styles.key, compact && styles.keyCompact, pressed && styles.keyPressed]}
             onPress={() => press(key)}
             accessibilityRole="button"
             accessibilityLabel={key === "⌫" ? "Delete" : key === "00" ? "Double zero" : key}
@@ -642,6 +679,21 @@ function Till() {
  * failover names each host and what it said (never an API key), which is what
  * turns "cannot reach the network" into something a person can fix.
  */
+/**
+ * A failed settle, as one line a merchant can act on. A network library's
+ * error can be a whole Java stack trace; only its first line says anything.
+ */
+function settleFailure(error: unknown): string {
+  const first = (error instanceof Error ? error.message : String(error)).split("\n")[0]!.trim();
+  if (/unexpected host|UnknownHost|Unable to resolve host/i.test(first)) {
+    return "Cannot reach the relay: its address in the app's .env is wrong, or its tunnel has stopped.";
+  }
+  if (/Network request failed|timed out|ECONN|Failed to connect/i.test(first)) {
+    return "Cannot reach the relay. Check it is running and its tunnel is up, then try again.";
+  }
+  return `Could not settle: ${first.slice(0, 140)}`;
+}
+
 function reasonOf(error: unknown): string {
   const text = error instanceof Error ? error.message : String(error);
   const listed = /every RPC endpoint failed \((.*)\)/.exec(text);
@@ -692,11 +744,24 @@ const styles = StyleSheet.create({
   balanceTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: -space.sm, marginBottom: -space.sm },
   today: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   todayRight: { alignItems: "flex-end" },
-  amountBox: { flex: 1, justifyContent: "center", alignItems: "center", gap: space.sm },
+  amountBox: { flex: 1, minHeight: 44, justifyContent: "center", alignItems: "center", gap: space.xs },
+  amountCompact: { fontSize: type.display * 0.72, lineHeight: type.display * 0.8, letterSpacing: -1 },
   amount: { color: color.text, fontSize: type.display, fontWeight: "700", letterSpacing: -1.5, fontVariant: ["tabular-nums"] },
   keypad: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: space.sm },
   key: { width: "31.5%", height: 56, alignItems: "center", justifyContent: "center", borderRadius: radius.md, backgroundColor: color.surface },
   keyPressed: { backgroundColor: color.surfaceHigh },
+  // Never below the minimum touch target.
+  keyCompact: { height: touch },
+  owedBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm,
+    borderRadius: radius.md,
+    paddingLeft: space.md,
+    paddingRight: space.xs,
+    minHeight: touch,
+  },
+  owedText: { flex: 1, fontSize: type.small, lineHeight: 18, fontWeight: "600" },
   keyText: { color: color.text, fontSize: type.title, fontWeight: "500" },
   day: { gap: 0 },
   sale: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", minHeight: touch, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: color.border },

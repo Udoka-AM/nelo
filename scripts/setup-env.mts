@@ -3,7 +3,9 @@
  * in one go on the machine that runs them.
  *
  *   pnpm setup:env
- *   pnpm setup:env --relay-url https://….trycloudflare.com --settle-url https://….trycloudflare.com
+ *   pnpm setup:env --relay-url <relay tunnel address> --settle-url <settle tunnel address>
+ *
+ * Each address is the https://….trycloudflare.com line cloudflared printed.
  *
  * It writes:
  *

@@ -55,11 +55,11 @@ A refusal on budget or the per-vault cap tells the till to retry later; any othe
     brew install cloudflared                        # once
     cloudflared tunnel --url http://127.0.0.1:8787
     ```
-    It listens on `127.0.0.1:8787` and needs Node 22.18 or later. Keep the ledger file it writes: it is how a retried voucher gets the same answer, so it must survive restarts. Check the tunnel from a phone's browser: `https://…trycloudflare.com/v1/health` should show the fee payer's address.
+    It listens on `127.0.0.1:8787` and needs Node 22.18 or later. Keep the ledger file it writes: it is how a retried voucher gets the same answer, so it must survive restarts. Check the tunnel from a phone's browser: open the address cloudflared printed, with `/v1/health` on the end. It should show the fee payer's address.
   </Step>
   <Step title="Point the apps at it">
     ```bash
-    cd ~/nelo && pnpm setup:env --relay-url https://….trycloudflare.com
+    cd ~/nelo && pnpm setup:env --relay-url <the https address cloudflared printed>
     ```
     This writes the address into both apps' `.env`. A quick tunnel's address changes whenever `cloudflared` restarts, so run this again each time. Then restart Metro with `npx expo start --dev-client --clear`; no new native build is needed.
   </Step>
@@ -83,7 +83,7 @@ The settlement service (`services/settle`) opens payout orders with paj.cash, an
   <Step title="Start a tunnel for it, and tell the setup">
     ```bash
     cloudflared tunnel --url http://127.0.0.1:8788
-    cd ~/nelo && pnpm setup:env --settle-url https://….trycloudflare.com
+    cd ~/nelo && pnpm setup:env --settle-url <the https address cloudflared printed>
     ```
     This writes the address to `SETTLE_PUBLIC_URL`, which paj.cash's webhook uses, and to the merchant app's `.env`. `PAJ_API_KEY` must be in `~/.config/nelo/settle.env` by now.
   </Step>

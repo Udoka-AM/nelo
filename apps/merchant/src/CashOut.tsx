@@ -24,7 +24,7 @@ import {
   type TransactionSigner,
 } from "@nelo/cashout";
 import { formatDollars, formatMoney, localToTokenBaseUnits, tokenBaseUnitsToLocalMinor, type Rate } from "@nelo/pay";
-import { relayToken, relayUrl, settleToken, settleUrl } from "./config";
+import { relayProblem, relayToken, relayUrl, settleProblem, settleToken, settleUrl } from "./config";
 import { loadSetting, saveSetting } from "./daybook";
 import { usePrivySigner } from "./privySigner";
 
@@ -205,7 +205,7 @@ export default function CashOut(props: CashOutProps) {
   if (!configured) {
     return (
       <Shell onDone={props.onDone}>
-        <Muted>Cash-out is not set up in this build. Your money is safe in your account.</Muted>
+        <Muted>{settleProblem ?? relayProblem ?? "Cash-out is not set up in this build. Your money is safe in your account."}</Muted>
       </Shell>
     );
   }

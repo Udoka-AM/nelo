@@ -72,7 +72,28 @@ export const rpc = failover(
  * The token is not a secret from anyone holding the APK. It keeps casual
  * traffic off the endpoint; the relayer's own policy is what bounds its spend.
  */
-export const relayUrl = process.env.EXPO_PUBLIC_NELO_RELAY_URL?.trim().replace(/\/+$/, "") || null;
+
+/**
+ * A service address from configuration, checked. A quick tunnel's address is
+ * pasted by hand, and the docs' "…" placeholder copied in place of it reaches
+ * Android's HTTP client as "....trycloudflare.com", which it rejects with a
+ * stack trace. Anything that is not a plain https address is refused here,
+ * with a sentence saying what to do, instead of failing later on the network.
+ */
+function serviceAddress(raw: string | undefined, name: string): { url: string | null; problem: string | null } {
+  const v = raw?.trim().replace(/^["']|["']$/g, "").replace(/\/+$/, "");
+  if (!v) return { url: null, problem: null };
+  if (/^https?:\/\/[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d+)?(\/\S*)?$/.test(v)) return { url: v, problem: null };
+  return {
+    url: null,
+    problem: `${name} in this app's .env is not a real address ("${v.slice(0, 60)}"). Put the https address cloudflared printed there, then restart Metro with --clear.`,
+  };
+}
+
+const relay = serviceAddress(process.env.EXPO_PUBLIC_NELO_RELAY_URL, "EXPO_PUBLIC_NELO_RELAY_URL");
+export const relayUrl = relay.url;
+/** Set when a relay address was given but is not usable; settling says so. */
+export const relayProblem = relay.problem;
 export const relayToken = process.env.EXPO_PUBLIC_NELO_RELAY_TOKEN?.trim() || null;
 
 /**
@@ -81,5 +102,7 @@ export const relayToken = process.env.EXPO_PUBLIC_NELO_RELAY_TOKEN?.trim() || nu
  * not a secret from anyone holding the APK; paj.cash's own key never leaves
  * the server.
  */
-export const settleUrl = process.env.EXPO_PUBLIC_NELO_SETTLE_URL?.trim().replace(/\/+$/, "") || null;
+const settleService = serviceAddress(process.env.EXPO_PUBLIC_NELO_SETTLE_URL, "EXPO_PUBLIC_NELO_SETTLE_URL");
+export const settleUrl = settleService.url;
+export const settleProblem = settleService.problem;
 export const settleToken = process.env.EXPO_PUBLIC_NELO_SETTLE_TOKEN?.trim() || null;

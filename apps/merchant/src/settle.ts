@@ -34,12 +34,12 @@ import {
 } from "@nelo/queue";
 import { buildRedemption, checkSigned, TOKEN_PROGRAM_ID } from "@nelo/redeem";
 import { record } from "./daybook";
-import { relayToken, relayUrl, rpc } from "./config";
+import { relayProblem, relayToken, relayUrl, rpc } from "./config";
 import { markBooked, markReported, unbooked, unreported, voucherStore } from "./offline";
 import { signTransactions } from "./wallet";
 import type { MerchantAccount } from "./account";
 
-const relayer: Relayer = { url: relayUrl, ...(relayToken ? { token: relayToken } : {}) };
+const relayer: Relayer = { url: relayUrl ?? "", ...(relayToken ? { token: relayToken } : {}) };
 
 type Rpc = { result?: unknown; error?: { message?: string; data?: { err?: unknown } } };
 
@@ -82,6 +82,7 @@ async function reportConflicts(): Promise<number> {
 }
 
 export async function settleVouchers(merchant: MerchantAccount, mint: string): Promise<Settled> {
+  if (relayProblem) return { kind: "unsupported", reason: relayProblem };
   if (relayUrl) {
     const report = await settleOnce(voucherStore, { now: () => Date.now(), prepare: relayPrepare(relayer), statuses });
     await bookSettled(mint);

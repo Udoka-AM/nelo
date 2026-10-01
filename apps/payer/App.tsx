@@ -45,7 +45,7 @@ import { formatDollars } from "@nelo/pay";
 import { toQr } from "@nelo/voucher";
 import { describeRisk, type Scan } from "@nelo/till";
 import Probe from "./src/Probe";
-import { KEY_ALIAS, USDC_DEVNET } from "./src/config";
+import { KEY_ALIAS, relayProblem, USDC_DEVNET } from "./src/config";
 import { issuerStore } from "./src/storage";
 import { deposit, enrol, loadProfile, sync, type Profile } from "./src/vault";
 import { connect } from "./src/wallet";
@@ -116,7 +116,7 @@ export default function App() {
       if (lost) notes.push(`${lost} received ${lost === 1 ? "payment" : "payments"} will not arrive.`);
       if (settled.conflictsReported) notes.push("A payer who spent the same money twice was reported.");
     } else if (settled?.kind === "no-relay" && incoming.count) {
-      notes.push("This build has no relayer set, so received payments wait on the phone.");
+      notes.push(relayProblem ?? "This build has no relayer set, so received payments wait on the phone.");
     }
     setIncoming(await waiting().catch(() => incoming));
     if (notes.length) setNote(notes.join(" "));
