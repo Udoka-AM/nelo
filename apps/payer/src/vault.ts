@@ -32,6 +32,7 @@ import { FLOOR_LIMIT, KEY_ALIAS, rpc, USDC_DEVNET } from "./config";
 import { accountExists, latestBlockhash, waitForAccount } from "./rpc";
 import { issuerStore } from "./storage";
 import { signAndSend } from "./wallet";
+import { checkFunds, simulate } from "./preflight";
 
 const PROFILE_KEY = "nelo.payer.profile";
 
@@ -88,6 +89,11 @@ export async function enrol(owner: string, firstDeposit: bigint): Promise<Enroll
     };
   }
 
+  // Before a key is made or the wallet is asked: can this wallet pay? The
+  // checks only advise; if the RPC cannot answer them, the wallet still decides.
+  const short = await checkFunds(owner, { opening: true, usdc: firstDeposit }).catch(() => null);
+  if (short) return { ok: false, reason: short };
+
   // Step 1. Nothing on chain knows any key yet, so a leftover one is replaced.
   if (attest.hasKey(KEY_ALIAS)) await attest.deleteKey(KEY_ALIAS);
   const key = await attest.generateAttestedKey(KEY_ALIAS, Crypto.getRandomBytes(32));
@@ -117,6 +123,10 @@ export async function enrol(owner: string, firstDeposit: bigint): Promise<Enroll
       : []),
   ];
   const unsigned = buildTransaction(instructions, owner, await latestBlockhash());
+  // The wallet would simulate this and say only "simulation failed"; the
+  // chain's own reason is more use to the payer.
+  const refused = await simulate(unsigned.wire).catch(() => null);
+  if (refused) return { ok: false, reason: refused };
   await signAndSend([unsigned.wire]);
   if (!(await waitForAccount(vault))) {
     return { ok: false, reason: "The vault did not appear on chain in time. Check your wallet, then try again." };
@@ -140,11 +150,15 @@ async function finish(profile: Profile): Promise<Enrolled> {
 
 /** Lock more collateral. Returns once the wallet has sent it. */
 export async function deposit(owner: string, amount: bigint): Promise<void> {
+  const short = await checkFunds(owner, { opening: false, usdc: amount }).catch(() => null);
+  if (short) throw new Error(short);
   const unsigned = buildTransaction(
     [depositInstruction({ owner, mint: USDC_DEVNET, tokenProgram: TOKEN_PROGRAM_ID, amount })],
     owner,
     await latestBlockhash(),
   );
+  const refused = await simulate(unsigned.wire).catch(() => null);
+  if (refused) throw new Error(refused);
   await signAndSend([unsigned.wire]);
 }
 
