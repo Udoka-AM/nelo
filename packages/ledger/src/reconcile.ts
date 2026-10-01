@@ -13,7 +13,7 @@
  * day-book has a row for it. When they disagree, one of them is wrong, and
  * the close says so instead of picking one.
  */
-import { localDayKey, type Sale } from "./index.ts";
+import { localDayKey, type Sale } from "./sales.ts";
 
 export interface OfflinePayment {
   /** `${vault}:${seq}`. Also its day-book reference, once it settles. */

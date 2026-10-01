@@ -17,7 +17,7 @@ import { getTransactionDecoder, getTransactionEncoder } from "@solana/kit";
 import { ed25519 } from "@noble/curves/ed25519";
 import { decodeBase58, encodeBase58 } from "@nelo/voucher";
 import { addressBytes, associatedTokenAddress, ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "./address.ts";
-import { AccountRole, SYSTEM_PROGRAM_ID, type Instruction } from "./index.ts";
+import { AccountRole, SYSTEM_PROGRAM_ID, type Instruction } from "./instructions.ts";
 import { buildTransaction, type Lifetime, type Unsigned } from "./transaction.ts";
 
 /** The token program's `TransferChecked`. */

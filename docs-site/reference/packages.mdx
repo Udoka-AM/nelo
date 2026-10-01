@@ -288,7 +288,7 @@ jsonRpc(rpc.url, rpc.fetch)          // anything that takes a fetch
 fetchTokenBalance(rpc, owner, mint)  // @nelo/pay takes the endpoint itself
 ```
 
-**It moves on only when an endpoint did not answer:** a network error, a timeout (8 s), HTTP 429 or 5xx, or a JSON-RPC error about the node (`-32005`, or a rate limit). Everything else is an answer and is returned as it is. A simulation failure asked of a second node gets the same answer and hides the bug.
+**It moves on only when an endpoint did not answer:** a network error, a timeout (8 s), HTTP 401 or 403 (the endpoint refused its own API key), HTTP 429 or 5xx, or a JSON-RPC error about the node (`-32005`, or a rate limit). Everything else is an answer and is returned as it is. A simulation failure asked of a second node gets the same answer and hides the bug.
 
 **Resending a transaction is safe.** It carries the same signed bytes, so it is the same transaction, and the chain runs it at most once.
 

@@ -101,9 +101,13 @@ function Till() {
   const [outcome, setOutcome] = useState<PaymentOutcome | null>(null);
   /** Set when polling has failed repeatedly — the terminal cannot see the chain. */
   const [pollTrouble, setPollTrouble] = useState(false);
+  /** Why the last read of the chain failed, in a form the merchant can pass on. */
+  const [networkReason, setNetworkReason] = useState<string | null>(null);
   const [sales, setSales] = useState<Sale[]>([]);
   const [quoted, setQuoted] = useState<Quoted | null>(null);
   const [balance, setBalance] = useState<Balance | null>(null);
+  /** The balance could not be read; shown instead of an endless "Checking…". */
+  const [balanceFailed, setBalanceFailed] = useState(false);
   const [showDaybook, setShowDaybook] = useState(false);
   const [showClose, setShowClose] = useState(false);
   const [showRebate, setShowRebate] = useState(false);
@@ -161,9 +165,14 @@ function Till() {
       setBalance(
         await currentBalance(RPC_URL, merchant.address, USDC_DEVNET, quoted.rate, quoted.live),
       );
-    } catch {
+      setBalanceFailed(false);
+      setNetworkReason(null);
+    } catch (e) {
       // Leave the last known figure on screen. Replacing it with a confident
-      // zero because the network blinked is worse than showing it stale.
+      // zero because the network blinked is worse than showing it stale. But
+      // say it failed: "Checking…" forever reads as patience, not as broken.
+      setBalanceFailed(true);
+      setNetworkReason(reasonOf(e));
     }
   }, [merchant, quoted]);
 
@@ -248,6 +257,10 @@ function Till() {
     const controller = new AbortController();
     setOutcome(null);
     setPollTrouble(false);
+    // For whoever is debugging from Metro: the request in the QR, and the
+    // reference the till is watching for. Not on screen; a merchant has no use
+    // for either.
+    if (__DEV__) console.log(`[till] watching reference ${reference}\n[till] request ${url}`);
     awaitPayment(
       RPC_URL,
       reference,
@@ -266,8 +279,10 @@ function Till() {
         // Three consecutive failures is not a blink. Saying so beats a spinner
         // that means "no payment yet" and "I have been broken this whole time"
         // with the same pixels.
-        onPollError: (_error, consecutive) => {
-          if (!controller.signal.aborted) setPollTrouble(consecutive >= 3);
+        onPollError: (error, consecutive) => {
+          if (controller.signal.aborted) return;
+          setPollTrouble(consecutive >= 3);
+          setNetworkReason(reasonOf(error));
         },
       },
     )
@@ -293,7 +308,7 @@ function Till() {
       })
       .catch(() => {});
     return () => controller.abort();
-  }, [charging, merchant, reference, minor, quoted, refreshBalance]);
+  }, [charging, merchant, reference, minor, quoted, refreshBalance, url]);
 
   function startCharge() {
     // A fresh reference per sale, or two customers paying the same price would
@@ -517,7 +532,10 @@ function Till() {
         <View style={styles.status} accessibilityLiveRegion="polite">
           {outcome === null ? (
             pollTrouble ? (
-              <Notice tone="danger">Cannot reach the network. A payment may not show here yet.</Notice>
+              <Notice tone="danger">
+                Cannot reach the network. A payment may not show here yet.
+                {networkReason ? `\n${networkReason}` : ""}
+              </Notice>
             ) : (
               <>
                 <ActivityIndicator color={color.textMuted} size="small" />
@@ -530,27 +548,12 @@ function Till() {
             <Notice tone="caution">No payment yet. The code is still valid.</Notice>
           ) : null}
         </View>
-        {/* The other way to be paid: the customer's phone has no signal, so
-            it shows a code and this till reads it. */}
-        <Button kind="secondary" label="No signal? Scan the customer's code" onPress={() => setScanning(true)} />
+        {/* The other way to be paid. A customer using nelo Pay with no signal
+            scans this code too, signs the payment on their phone, and shows a
+            code back; the till reads it. Nothing goes over the network. */}
+        <Button kind="secondary" label="Paying with nelo Pay offline? Scan their code" onPress={() => setScanning(true)} />
         <TextButton label="Cancel" onPress={endCharge} />
 
-        {/* Development builds only. Two debugging sessions have now turned on
-            "what was actually in that QR" and "which key is the terminal
-            watching", and both were unanswerable from the outside — the URL
-            lives in a QR nobody can read back, and the reference is a random
-            key that exists only in memory. A merchant never sees this; it is
-            gated on __DEV__. Long-press to copy, or look the reference up on
-            an explorer: if no transaction names it, the customer's wallet
-            never attached it. */}
-        {__DEV__ ? (
-          <View style={styles.debug}>
-            <Label>Reference</Label>
-            <Small selectable>{reference}</Small>
-            <Label>Request</Label>
-            <Small selectable>{url}</Small>
-          </View>
-        ) : null}
       </Screen>
     );
   }
@@ -568,7 +571,11 @@ function Till() {
             familiar number is the point, and so is what is underneath it. */}
         <Hero>{balance ? money(balance.localMinor) : "—"}</Hero>
         <Small>
-          {balance ? `${formatDollars(balance.baseUnits)} held in US dollars` : "Checking…"}
+          {balance
+            ? `${formatDollars(balance.baseUnits)} held in US dollars`
+            : balanceFailed
+              ? "Can't reach the network"
+              : "Checking…"}
           {balance && !balance.liveRate ? " · at a fixed rate" : ""}
         </Small>
       </Card>
@@ -623,6 +630,17 @@ function Till() {
 }
 
 /** A row that opens another screen. */
+/**
+ * Why a read of the chain failed, short enough for the till's screen. The RPC
+ * failover names each host and what it said (never an API key), which is what
+ * turns "cannot reach the network" into something a person can fix.
+ */
+function reasonOf(error: unknown): string {
+  const text = error instanceof Error ? error.message : String(error);
+  const listed = /every RPC endpoint failed \((.*)\)/.exec(text);
+  return (listed ? listed[1]! : text).slice(0, 200);
+}
+
 function NavCard({ title, sub, onPress }: { title: string; sub: string; onPress: () => void }) {
   return (
     <Card onPress={onPress} accessibilityLabel={`${title}. ${sub}`}>
@@ -664,7 +682,6 @@ const styles = StyleSheet.create({
   mark: { color: color.positive, fontSize: 64, textAlign: "center" },
   qrFrame: { backgroundColor: color.qrBackground, padding: space.lg, borderRadius: radius.lg, alignSelf: "center" },
   status: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.sm, minHeight: touch },
-  debug: { marginTop: space.lg, borderTopWidth: 1, borderTopColor: color.border, paddingTop: space.md, gap: space.xs, alignSelf: "stretch" },
   balanceTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: -space.sm, marginBottom: -space.sm },
   today: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   todayRight: { alignItems: "flex-end" },

@@ -42,9 +42,12 @@ test("a healthy first endpoint is the only one asked", async () => {
   assert.deepEqual(n.asked.map((x) => x.url), [A]);
 });
 
-test("down, rate-limited, failing or behind: the next endpoint answers", async () => {
+test("down, key refused, rate-limited, failing or behind: the next endpoint answers", async () => {
   const cases: Script[] = [
     (u) => (u === A ? new Error("ECONNREFUSED") : {}),
+    // An expired or wrong API key: the till must not go dark over it.
+    (u) => (u === A ? { status: 401 } : {}),
+    (u) => (u === A ? { status: 403 } : {}),
     (u) => (u === A ? { status: 429 } : {}),
     (u) => (u === A ? { status: 503 } : {}),
     (u) => (u === A ? { body: { jsonrpc: "2.0", id: 1, error: { code: -32005, message: "Node is behind by 90 slots" } } } : {}),

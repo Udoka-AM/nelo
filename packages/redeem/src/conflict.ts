@@ -28,7 +28,7 @@ import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
   type Instruction,
-} from "./index.ts";
+} from "./instructions.ts";
 
 const discriminator = (name: string) => sha256(new TextEncoder().encode(`global:${name}`)).slice(0, 8);
 

@@ -123,7 +123,13 @@ export default function ScanPayment(props: ScanProps) {
             onBarcodeScanned={stage.step === "scanning" ? ({ data }) => void onScanned(data) : undefined}
           />
         </View>
-        {stage.step === "checking" ? <Spinner label="Checking…" /> : <Muted center>Works with no signal.</Muted>}
+        {stage.step === "checking" ? (
+          <Spinner label="Checking…" />
+        ) : (
+          <Muted center>
+            In nelo Pay the customer taps Pay, scans your code, and shows you the code their phone makes. Hold it up here. Works with no signal.
+          </Muted>
+        )}
         {cancel}
       </Screen>
     );

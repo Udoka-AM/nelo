@@ -11,6 +11,9 @@
  * asked did not answer:
  *
  * - the request failed or timed out,
+ * - HTTP 401 or 403: the endpoint refused its own key (an expired or wrong
+ *   API key is a fact about the endpoint, not about the request, and every
+ *   other node would have answered),
  * - HTTP 429 or any 5xx,
  * - a JSON-RPC error that says the node, not the request, is the problem
  *   (`-32005`, node behind; or a rate-limit message).
@@ -82,6 +85,7 @@ export function failover(urls: readonly string[], options: FailoverOptions = {})
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const response = await base(url, { ...init, signal: controller.signal });
+      if (response.status === 401 || response.status === 403) return { ok: false, reason: `HTTP ${response.status}, key refused` };
       if (response.status === 429 || response.status >= 500) return { ok: false, reason: `HTTP ${response.status}` };
       const text = await response.text();
       if (response.ok) {

@@ -12,7 +12,7 @@ import {
   NELO_VAULT_PROGRAM_ID,
   SYSTEM_PROGRAM_ID,
   type Instruction,
-} from "./index.ts";
+} from "./instructions.ts";
 import { ASSOCIATED_TOKEN_PROGRAM_ID } from "./address.ts";
 
 function discriminator(name: string): Uint8Array {

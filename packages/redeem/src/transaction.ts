@@ -28,7 +28,7 @@ import {
 } from "@solana/kit";
 import { ed25519 } from "@noble/curves/ed25519";
 import { decodeBase58, encodeBase58 } from "@nelo/voucher";
-import { redeemInstructions, type Instruction, type RedeemInput } from "./index.ts";
+import { redeemInstructions, type Instruction, type RedeemInput } from "./instructions.ts";
 
 /** Solana's packet limit for a whole transaction. */
 export const PACKET_LIMIT = 1232;
