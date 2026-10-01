@@ -162,6 +162,34 @@ async function settleWithWallet(merchant: MerchantAccount, mint: string): Promis
 
 const statuses = rpcStatuses(rpc.url, rpc.fetch);
 
+/** Resolve false after `ms` instead of waiting out a dead connection. */
+async function answers(probe: () => Promise<boolean>, ms = 6_000): Promise<boolean> {
+  return Promise.race([probe().catch(() => false), new Promise<boolean>((r) => setTimeout(() => r(false), ms))]);
+}
+
+/**
+ * A round came back "offline". That can mean the phone has no signal, or that
+ * the phone is fine and Nelo's relay (or its tunnel) is not answering. Saying
+ * "no signal" to a merchant looking at four bars is wrong, so ask each one.
+ */
+export async function whyOffline(): Promise<string> {
+  const chain = await answers(async () => {
+    const r = await rpc.fetch(rpc.url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getSlot", params: [] }),
+    });
+    return r.ok;
+  });
+  if (!relayUrl) return chain ? "Could not settle. Try again in a moment." : "No signal — try again when you are online.";
+  const relay = await answers(async () => (await fetch(`${relayUrl}/v1/health`)).ok);
+  if (relay) return "The relay answered but did not settle. Try again in a moment.";
+  const host = relayUrl.replace(/^https?:\/\//, "").split("/")[0];
+  return chain
+    ? `Cannot reach Nelo's relay (${host}). Check it is running and its tunnel is up.`
+    : "No signal — try again when you are online.";
+}
+
 /**
  * Settled vouchers go into the day-book, once each. Keyed on the voucher's id,
  * so a second round cannot book the same takings twice.

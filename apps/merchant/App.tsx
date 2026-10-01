@@ -65,7 +65,7 @@ import CloseOfDay from "./src/CloseOfDay";
 import Rebate from "./src/Rebate";
 import CashOut, { PrivyCashOut } from "./src/CashOut";
 import { syncPayers } from "./src/sync";
-import { settleVouchers } from "./src/settle";
+import { settleVouchers, whyOffline } from "./src/settle";
 import { voucherStore } from "./src/offline";
 import {
   awaitPayment,
@@ -221,9 +221,7 @@ function Till() {
           r.expired.length ? `${r.expired.length} expired` : "",
           settled.conflictsReported ? `${settled.conflictsReported} double spend reported` : "",
         ].filter(Boolean);
-        setSettleNote(
-          r.offline ? "No signal — try again when you are online." : parts.join(" · ") || "Nothing due yet.",
-        );
+        setSettleNote(r.offline ? await whyOffline() : parts.join(" · ") || "Nothing due yet.");
       }
       setSales(await recent());
       void refreshBalance();

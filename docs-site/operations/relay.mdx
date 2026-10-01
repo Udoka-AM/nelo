@@ -53,9 +53,9 @@ A refusal on budget or the per-vault cap tells the till to retry later; any othe
     cd ~/nelo/services/relay && pnpm start          # reads ~/.config/nelo/relay.env
     # in another terminal:
     brew install cloudflared                        # once
-    cloudflared tunnel --url http://127.0.0.1:8787
+    cloudflared tunnel --protocol http2 --url http://127.0.0.1:8787
     ```
-    It listens on `127.0.0.1:8787` and needs Node 22.18 or later. Keep the ledger file it writes: it is how a retried voucher gets the same answer, so it must survive restarts. Check the tunnel from a phone's browser: open the address cloudflared printed, with `/v1/health` on the end. It should show the fee payer's address.
+    It listens on `127.0.0.1:8787` and needs Node 22.18 or later. Keep the ledger file it writes: it is how a retried voucher gets the same answer, so it must survive restarts. Check the tunnel from a phone's browser: open the address cloudflared printed, with `/v1/health` on the end. It should show the fee payer's address. `--protocol http2` keeps the tunnel on ordinary HTTPS (TCP 443): cloudflared's default, QUIC over UDP 7844, is blocked on many home and office networks, and then the tunnel never comes up.
   </Step>
   <Step title="Point the apps at it">
     ```bash
@@ -82,7 +82,7 @@ The settlement service (`services/settle`) opens payout orders with paj.cash, an
 <Steps>
   <Step title="Start a tunnel for it, and tell the setup">
     ```bash
-    cloudflared tunnel --url http://127.0.0.1:8788
+    cloudflared tunnel --protocol http2 --url http://127.0.0.1:8788
     cd ~/nelo && pnpm setup:env --settle-url <the https address cloudflared printed>
     ```
     This writes the address to `SETTLE_PUBLIC_URL`, which paj.cash's webhook uses, and to the merchant app's `.env`. `PAJ_API_KEY` must be in `~/.config/nelo/settle.env` by now.

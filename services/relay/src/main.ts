@@ -35,9 +35,12 @@ const now = () => Math.floor(Date.now() / 1000);
 const feePayer = loadFeePayer(required("RELAY_KEYPAIR"));
 const mint = process.env.RELAY_MINT?.trim() || USDC_DEVNET;
 const budgetSol = Number(process.env.RELAY_DAILY_BUDGET_SOL ?? "0.5");
-// No public endpoint is added as a last resort here: the relayer's cluster is
-// whatever these URLs say, and guessing one would be guessing a network.
-const endpoint = failover(endpointsFrom(required("RELAY_RPC_URL"), process.env.RELAY_RPC_FALLBACK_URLS), {
+// A public endpoint is added as the last resort only when the mint pins the
+// cluster: devnet USDC exists on devnet and nowhere else, so falling back to
+// devnet's public RPC is not a guess. For any other mint the cluster is
+// whatever the configured URLs say, and nothing is added.
+const lastResort = mint === USDC_DEVNET ? "https://api.devnet.solana.com" : undefined;
+const endpoint = failover(endpointsFrom(required("RELAY_RPC_URL"), process.env.RELAY_RPC_FALLBACK_URLS, lastResort), {
   onFailover: (url, reason) => console.warn(`rpc ${new URL(url).host}: ${reason}, trying the next`),
 });
 
