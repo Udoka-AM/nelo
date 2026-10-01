@@ -410,13 +410,15 @@ export default function App() {
     return (
       <Screen center>
         <StatusBar style="light" />
-        <Label center>Show this to whoever you are paying</Label>
+        <Label center>Hold this up to their till</Label>
         <Hero center>{formatDollars(screen.amount)}</Hero>
         <View style={styles.qrFrame} accessible accessibilityLabel={`Payment code for ${formatDollars(screen.amount)}`}>
           <QRCode value={toQr(screen.packet)} size={280} ecl="M" backgroundColor={color.qrBackground} color={color.qrForeground} />
         </View>
-        <Muted center>No signal needed. They are paid when their phone next connects.</Muted>
-        <Button label="Done" onPress={() => setScreen({ name: "home" })} />
+        <Muted center>
+          Keep it on screen until their till has scanned it: the shop taps "Scan their code". No signal needed; they are paid when their phone next connects.
+        </Muted>
+        <Button label="They've scanned it" onPress={() => setScreen({ name: "home" })} />
       </Screen>
     );
   }

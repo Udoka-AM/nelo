@@ -512,6 +512,10 @@ function Till() {
             if (took) {
               setMinor(0n);
               endCharge();
+              // With signal, settle now: the payment lands on chain and the
+              // balance moves within seconds. With none, this says so and the
+              // payment waits in the queue for the orange bar, as before.
+              void onSettle();
             }
           }}
         />
@@ -551,7 +555,10 @@ function Till() {
         {/* The other way to be paid. A customer using nelo Pay with no signal
             scans this code too, signs the payment on their phone, and shows a
             code back; the till reads it. Nothing goes over the network. */}
-        <Button kind="secondary" label="Paying with nelo Pay offline? Scan their code" onPress={() => setScanning(true)} />
+        {outcome === null ? (
+          <Small center>A nelo Pay customer pays from their phone and shows you a code: scan it below.</Small>
+        ) : null}
+        <Button kind="secondary" label="Paying with nelo Pay? Scan their code" onPress={() => setScanning(true)} />
         <TextButton label="Cancel" onPress={endCharge} />
 
       </Screen>
