@@ -39,10 +39,15 @@ const args = process.argv.slice(2);
 const flag = (name: string) => {
   const i = args.indexOf(name);
   const v = i >= 0 ? args[i + 1] : undefined;
-  // A real address: plain ASCII host, not the "…" placeholder copied from the docs.
-  if (i >= 0 && (!v || !/^https:\/\/[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d+)?(\/\S*)?$/.test(v))) {
+  // A real address: plain ASCII host, not the "…" placeholder copied from the
+  // docs. https for a tunnel; plain http only for this Mac's address on the
+  // local network, for when the network blocks the tunnel (cloudflared needs
+  // outbound port 7844) and the phones share the Mac's Wi-Fi.
+  const tunnel = /^https:\/\/[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+(:\d+)?(\/\S*)?$/;
+  const lan = /^http:\/\/(10|192\.168|172\.(1[6-9]|2\d|3[01]))(\.\d{1,3}){2,3}:\d+$/;
+  if (i >= 0 && (!v || !(tunnel.test(v) || lan.test(v)))) {
     console.error(
-      `${name} needs the real https:// address cloudflared printed, e.g. https://blue-sky-1234.trycloudflare.com, not "${v ?? ""}".`,
+      `${name} needs the real https:// address cloudflared printed (e.g. https://blue-sky-1234.trycloudflare.com), or this Mac's local address with the port (e.g. http://192.168.1.20:8787), not "${v ?? ""}".`,
     );
     process.exit(1);
   }

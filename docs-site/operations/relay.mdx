@@ -55,7 +55,7 @@ A refusal on budget or the per-vault cap tells the till to retry later; any othe
     brew install cloudflared                        # once
     cloudflared tunnel --protocol http2 --url http://127.0.0.1:8787
     ```
-    It listens on `127.0.0.1:8787` and needs Node 22.18 or later. Keep the ledger file it writes: it is how a retried voucher gets the same answer, so it must survive restarts. Check the tunnel from a phone's browser: open the address cloudflared printed, with `/v1/health` on the end. It should show the fee payer's address. `--protocol http2` keeps the tunnel on ordinary HTTPS (TCP 443): cloudflared's default, QUIC over UDP 7844, is blocked on many home and office networks, and then the tunnel never comes up.
+    It listens on `127.0.0.1:8787` and needs Node 22.18 or later. Keep the ledger file it writes: it is how a retried voucher gets the same answer, so it must survive restarts. Check the tunnel from a phone's browser: open the address cloudflared printed, with `/v1/health` on the end. It should show the fee payer's address. If cloudflared's precheck says `Allow outbound TCP on port 7844`, the network blocks tunnels altogether. With the phones on the Mac's Wi-Fi, skip the tunnel: add `export RELAY_HOST=0.0.0.0` to `relay.env`, restart the relay, and run `pnpm setup:env --relay-url http://<the Mac's Wi-Fi address>:8787` (System Settings → Wi-Fi → Details shows it). A development build allows plain http, as it does for Metro.
   </Step>
   <Step title="Point the apps at it">
     ```bash
