@@ -286,10 +286,11 @@ Order matters here; each step feeds the next.
    idempotency under replay, the rounding (fee plus net always adds back to the sale;
    the spread is a difference, never a percentage, so rounding cannot invent a minor
    unit), the reversal, and reconciliation drift in both directions.
-   **The partner is paj.cash, and the cash-out is built** against their published API
-   reference, tested against a fake of it. Nothing has called paj.cash yet: the staging
-   key and several answers from their team are still to come, and this environment
-   cannot reach their API. paj.cash is paid by a transfer, not from funds it holds: an
+   **The partner is paj.cash, and the cash-out is built on their v2 API**, with their
+   team's answers of 5 Oct, and tested against a fake of the documented API. Nothing has
+   called paj.cash yet: v2 is production only, so the first run is a real payout in
+   mainnet USDC, and this environment cannot reach their API. Offline payments stay on
+   devnet; cash-outs alone run on mainnet. paj.cash is paid by a transfer, not from funds it holds: an
    order gives a deposit address, and the bank is paid once the USDC arrives. Nelo never
    holds the merchant's money, so a cash-out is:
    1. the settlement service opens the order (`services/settle`, `PajPartner`);
@@ -301,16 +302,17 @@ Order matters here; each step feeds the next.
 
    One cash-out id is one order and one transfer. The record is on disk before paj.cash
    is asked, and every step answers a repeat with the same result, so the phone resumes
-   after a crash without sending the USDC twice. paj.cash's webhook is only a prompt to
-   ask its API; nothing documents a signature on it. The till's naira rate now comes from
+   after a crash without sending the USDC twice. paj.cash's webhook is HMAC-signed and
+   verified, and is still only a prompt to ask its API. The till's naira rate now comes from
    paj.cash's off-ramp rate, the rate the merchant is actually paid at. The merchant app
    opens Cash out from the balance, with the account holder's name shown before anything
    moves. A Privy merchant signs through Privy's message signing, checked against their
-   key before use. 36 settlement tests, 9 relayer, 4 builder and 6 client-flow tests.
-   **Open until paj.cash answers:** whose account runs the session (Nelo's, or each
-   merchant's with their own KYC); how long a session lasts; whether staging takes devnet
-   USDC; whether a deposit address has a token account; and the full list of failure
-   states. The Nelo-business model is assumed. The double-entry journal is not yet posted
+   key before use. 45 settlement tests, 10 relayer, 4 builder and 6 client-flow tests.
+   **Answered by paj.cash (5 Oct):** no staging; $0.50 to $10,000 per payout; a failed
+   payout is refunded or retried on request; USDC deposit addresses already have token
+   accounts; NIBSS bank codes now, CBN codes later; Nelo's fee is added on top; payouts
+   take about 20 seconds, 24/7; webhooks are retried; BVN optional for now. Orders are
+   used rather than v2's standing bank-account address, which has no webhook or record. The double-entry journal is not yet posted
    to by cash-outs: it was modelled on Nelo holding the money, and with non-custodial
    cash-outs only Nelo's fee belongs in it.
 9. **Trust Stake: staking and the floor-limit curve.** `offline_limit = min(base × (1 +

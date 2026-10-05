@@ -58,7 +58,7 @@ import { currentRate, type Quoted } from "./src/rate";
 import { connect, signTransactions } from "./src/wallet";
 import { remember, restore, type MerchantAccount } from "./src/account";
 import { PrivyProvider } from "@privy-io/expo";
-import { canOnboardWithPhone, privy, rpc } from "./src/config";
+import { canOnboardWithPhone, cashoutChain, privy, rpc } from "./src/config";
 import Onboarding from "./src/Onboarding";
 import ScanPayment from "./src/Scan";
 import CloseOfDay from "./src/CloseOfDay";
@@ -401,7 +401,6 @@ function Till() {
     const common = {
       owner: merchant.address,
       payout: merchant.payout,
-      balanceBaseUnits: balance?.baseUnits ?? null,
       rate: quoted?.rate ?? null,
       currency: CURRENCY,
       onPayoutSaved: (payout: string) => {
@@ -420,7 +419,7 @@ function Till() {
         {merchant.kind === "embedded" && privy ? (
           <PrivyCashOut {...common} />
         ) : (
-          <CashOut {...common} sign={async (wire) => (await signTransactions([wire]))[0]!} />
+          <CashOut {...common} sign={async (wire) => (await signTransactions([wire], cashoutChain))[0]!} />
         )}
       </>
     );

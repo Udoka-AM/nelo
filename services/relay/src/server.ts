@@ -17,7 +17,7 @@
  * per-vault cap, and one funded token account per merchant.
  */
 import Fastify, { type FastifyInstance } from "fastify";
-import { redeem, type RedeemDeps } from "./redeem.ts";
+import { redeem, type RedeemDeps, type RelayRpc } from "./redeem.ts";
 import { reportConflict, sweep, type ConflictRpc } from "./conflict.ts";
 import { prepareCashout, submitCashout, type CashoutLimits } from "./cashout.ts";
 
@@ -27,8 +27,18 @@ export interface ServerOptions {
   now: () => number;
   /** When set, requests must carry `authorization: Bearer <token>`. */
   token?: string;
-  /** Cash-out transfers. Omitted: the endpoints answer 404. */
-  cashout?: { limits: Omit<CashoutLimits, "budgetLamports">; decimals: number };
+  /**
+   * Cash-out transfers. Omitted: the endpoints answer 404. paj.cash settles
+   * on mainnet while offline payments run on devnet, so a cash-out may name
+   * its own cluster and mint; without them it uses the vaults' own.
+   */
+  cashout?: {
+    limits: Omit<CashoutLimits, "budgetLamports">;
+    decimals: number;
+    rpc?: RelayRpc;
+    mint?: string;
+    tokenProgram?: string;
+  };
 }
 
 /** Run async work one at a time, in arrival order. */
@@ -73,6 +83,7 @@ export function buildRelay(options: ServerOptions): Relay {
   app.get("/v1/health", async () => ({
     feePayer: options.deps.feePayer.address,
     mint: options.deps.config.mint,
+    ...(options.cashout?.mint && options.cashout.mint !== options.deps.config.mint ? { cashoutMint: options.cashout.mint } : {}),
   }));
 
   app.post("/v1/redeem", async (request, reply) => {
@@ -119,16 +130,21 @@ export function buildRelay(options: ServerOptions): Relay {
     }
   });
 
-  const cashoutDeps = () => ({
-    rpc: options.deps.rpc,
-    feePayer: options.deps.feePayer,
-    ledger: options.deps.ledger,
-    mint: options.deps.config.mint,
-    decimals: options.cashout!.decimals,
-    ...(options.deps.config.tokenProgram ? { tokenProgram: options.deps.config.tokenProgram } : {}),
-    limits: { ...options.cashout!.limits, budgetLamports: options.deps.config.limits.budgetLamports },
-    now: options.now(),
-  });
+  const cashoutDeps = () => {
+    const own = options.cashout!;
+    // A mint of its own brings its own token program, never the vaults'.
+    const tokenProgram = own.mint ? own.tokenProgram : options.deps.config.tokenProgram;
+    return {
+      rpc: own.rpc ?? options.deps.rpc,
+      feePayer: options.deps.feePayer,
+      ledger: options.deps.ledger,
+      mint: own.mint ?? options.deps.config.mint,
+      decimals: own.decimals,
+      ...(tokenProgram ? { tokenProgram } : {}),
+      limits: { ...own.limits, budgetLamports: options.deps.config.limits.budgetLamports },
+      now: options.now(),
+    };
+  };
 
   app.post("/v1/cashout/prepare", async (request, reply) => {
     if (!options.cashout) return reply.code(404).send({ error: "cash-outs are not enabled" });

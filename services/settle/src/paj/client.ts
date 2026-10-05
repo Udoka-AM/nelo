@@ -1,88 +1,100 @@
 /**
- * A client for paj.cash's HTTP API, as its own reference describes it:
- * https://github.com/paj-cash/paj_ramp/blob/main/lib/API_REFERENCE.md
+ * A client for paj.cash's public API, version 2: https://docs.paj.cash
  *
- * Not their SDK. It is axios, a Solana SDK, jest and dotenv as runtime
- * dependencies, and it logs to the console on every error; the calls
- * themselves are a dozen JSON requests. `fetch` is injected so every request
- * is tested for what it puts on the wire.
+ * One credential: the business API key, sent as `x-api-key` on every request.
+ * There is no session and no per-user login in v2, and the key never leaves
+ * this service: anyone holding it can register bank accounts and open orders
+ * as Nelo. It is never logged.
  *
- * Two credentials. The business API key opens a session: paj.cash sends a
- * one-time code to an email or phone, and verifying it returns a session
- * token that expires. The session token authorises everything else. Neither
- * is ever logged, and neither belongs anywhere near the apps.
+ * Production only. paj.cash has no staging environment for v2 (confirmed by
+ * them, 5 Oct), so every order is real and settles in mainnet USDC.
+ *
+ * What it uses:
+ *
+ *   GET  /pub/v2/rate?currency=NGN     the off-ramp rate, Nelo's fee applied
+ *   GET  /pub/v2/bank                  banks paj.cash pays, by code
+ *   POST /pub/v2/bank-account          register an account: the bank's name
+ *                                      for it, and paj.cash keeps it. Slow
+ *                                      (a live bank call), idempotent
+ *   POST /pub/v2/offramp               an order: one-off deposit address
+ *   GET  /pub/v2/transaction/:id       where an order stands
+ *
+ * paj.cash rejects unknown body fields, so every body is built field by field
+ * from the documented schema and nothing else is sent. Amounts are decimals
+ * in whole tokens; they are read and written through their text, exact both
+ * ways (see ./decimal.ts). `fetch` is injected so every request is tested for
+ * what it puts on the wire.
  */
 import { toJsonNumber, toMinor } from "./decimal.ts";
 
-type Fetch = (url: string, init?: { method?: string; headers?: Record<string, string>; body?: string }) => Promise<{
+type Fetch = (
+  url: string,
+  init?: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal },
+) => Promise<{
   ok: boolean;
   status: number;
   text(): Promise<string>;
 }>;
 
-export const PAJ_STAGING = "https://api-staging.paj.cash";
-export const PAJ_PRODUCTION = "https://api.paj.cash";
+export const PAJ_API = "https://api.paj.cash";
+
+/** Mainnet USDC: what paj.cash settles in on Solana. */
+export const USDC_MAINNET = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
 export class PajError extends Error {
   readonly status: number;
-  /** The session token was refused or has expired: log in again. */
-  readonly session: boolean;
-  constructor(message: string, status: number, session: boolean) {
+  /** The API key was refused: a credential problem, not the merchant's. */
+  readonly auth: boolean;
+  constructor(message: string, status: number) {
     super(message);
     this.status = status;
-    this.session = session;
+    this.auth = status === 401;
   }
 }
 
-export interface Session {
-  token: string;
-  /** Unix milliseconds. */
-  expiresAt: number;
-}
-
 export interface PajRate {
-  /** Local currency per US dollar, as paj.cash sent it. */
+  /** Local currency per US dollar, as paj.cash sent it, Nelo's fee applied. */
   rate: number;
   currency: string;
-  active: boolean;
 }
 
 export interface PajBank {
   id: string;
-  /** The central bank's code: `058` for GTBank. What onboarding stores. */
+  /** What the rest of the API names the bank by. */
   code: string;
   name: string;
   country: string;
 }
 
-/** A bank account saved to the paj.cash account the session belongs to. */
-export interface PajSavedAccount {
+/** A bank account registered with paj.cash. */
+export interface PajBankAccount {
   id: string;
+  /** From the bank, not from the request: the name enquiry. */
   accountName: string;
   accountNumber: string;
-  /** paj.cash's bank id. */
+  /** The bank's name. */
   bank: string;
+  /** The standing Solana address that pays this account. Not used for cash-outs: see partner.ts. */
+  address: string;
 }
 
-export type KycIdType = "BVN" | "NIN";
-
 export interface OfframpRequest {
-  bankId: string;
+  bankCode: string;
   accountNumber: string;
   currency: string;
   /** Token base units. */
   tokenMinor: bigint;
   tokenDecimals: number;
   mint: string;
-  webhookURL: string;
+  webhookURL?: string;
   description?: string;
-  /** Nelo's fee on top, in token base units. */
+  /** Nelo's fee in USDC base units, added on top of the payout by paj.cash. */
   businessFeeMinor?: bigint;
 }
 
 export interface OfframpOrder {
   id: string;
-  /** Where the tokens go. */
+  /** Where the tokens go. A one-off address, valid for this order only. */
   address: string;
   mint: string;
   currency: string;
@@ -92,9 +104,10 @@ export interface OfframpOrder {
   fiatMinor: bigint;
   rate: number;
   feeMinor: bigint;
+  status: PajStatus;
 }
 
-export type PajStatus = "INIT" | "PAID" | "COMPLETED" | "FAILED" | "CANCELLED" | (string & {});
+export type PajStatus = "INIT" | "PROCESSING" | "COMPLETED" | "ERROR" | (string & {});
 
 export interface PajTransaction {
   id: string;
@@ -107,24 +120,43 @@ export interface PajTransaction {
 }
 
 export interface PajClientOptions {
-  baseUrl: string;
   apiKey: string;
+  baseUrl?: string;
   fetch?: Fetch;
   /** Minor-unit digits of the local currency. Naira: 2. */
   localDigits?: number;
+  /** Per request. Registration makes a live bank call, so the default is generous: 35 s. */
+  timeoutMs?: number;
+}
+
+/** paj.cash's error message: a string, or an array when validation failed. */
+function messageOf(body: unknown, status: number): string {
+  const m = (body as { message?: unknown } | null)?.message;
+  if (Array.isArray(m)) return m.map(String).join(", ");
+  if (typeof m === "string" && m) return m;
+  return `paj.cash answered HTTP ${status}`;
 }
 
 export function pajClient(options: PajClientOptions) {
-  const base = options.baseUrl.replace(/\/+$/, "");
+  const base = (options.baseUrl ?? PAJ_API).replace(/\/+$/, "");
   const send = options.fetch ?? (fetch as unknown as Fetch);
   const localDigits = options.localDigits ?? 2;
+  const timeoutMs = options.timeoutMs ?? 35_000;
 
-  async function call<T>(method: "GET" | "POST", path: string, headers: Record<string, string>, body?: unknown): Promise<T> {
-    const response = await send(`${base}${path}`, {
-      method,
-      headers: { "content-type": "application/json", ...headers },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    });
+  async function call<T>(method: "GET" | "POST", path: string, body?: Record<string, unknown>): Promise<T> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let response: Awaited<ReturnType<Fetch>>;
+    try {
+      response = await send(`${base}${path}`, {
+        method,
+        headers: { "content-type": "application/json", "x-api-key": options.apiKey },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
     const text = await response.text();
     let parsed: unknown = null;
     try {
@@ -132,89 +164,58 @@ export function pajClient(options: PajClientOptions) {
     } catch {
       parsed = null;
     }
-    if (!response.ok) {
-      const message =
-        (parsed && typeof parsed === "object" && "message" in parsed && typeof parsed.message === "string" && parsed.message) ||
-        `HTTP ${response.status}`;
-      throw new PajError(`paj.cash ${method} ${path.split("?")[0]}: ${message}`, response.status, response.status === 401 || response.status === 403);
-    }
+    if (!response.ok) throw new PajError(messageOf(parsed, response.status), response.status);
     return parsed as T;
   }
 
-  const withKey = () => ({ "x-api-key": options.apiKey });
-  const bearer = (session: Session) => ({ authorization: `Bearer ${session.token}` });
-
   return {
-    /** Send a one-time code to an email or an E.164 phone number. */
-    async initiate(recipient: string): Promise<void> {
-      await call("POST", "/pub/initiate", withKey(), recipient.includes("@") ? { email: recipient } : { phone: recipient });
-    },
-
-    /** Exchange the code for a session token. */
-    async verify(recipient: string, otp: string, device: { uuid: string; device: string }): Promise<Session> {
-      const r = await call<{ token: string; expiresAt: string }>(
-        "POST",
-        "/pub/verify",
-        withKey(),
-        { ...(recipient.includes("@") ? { email: recipient } : { phone: recipient }), otp, device },
+    /** The off-ramp rate for a currency. 404 means paj.cash has no live rate for it. */
+    async offrampRate(currency: string): Promise<PajRate> {
+      const r = await call<{ offRampRate?: { rate?: number; targetCurrency?: string } }>(
+        "GET",
+        `/pub/v2/rate?currency=${encodeURIComponent(currency)}`,
       );
-      const expiresAt = Date.parse(r.expiresAt);
-      if (!r.token || !Number.isFinite(expiresAt)) throw new PajError("paj.cash returned no usable session", 200, true);
-      return { token: r.token, expiresAt };
+      const rate = r?.offRampRate?.rate;
+      if (typeof rate !== "number" || !(rate > 0)) throw new PajError("paj.cash returned no off-ramp rate", 502);
+      return { rate, currency: String(r.offRampRate?.targetCurrency ?? currency) };
     },
 
-    /** The off-ramp rate. Public. */
-    async offrampRate(): Promise<PajRate> {
-      const r = await call<{ offRampRate?: { rate: number; targetCurrency: string; isActive: boolean } }>("GET", "/pub/rate", {});
-      if (!r?.offRampRate || typeof r.offRampRate.rate !== "number") throw new PajError("paj.cash returned no off-ramp rate", 200, false);
-      return { rate: r.offRampRate.rate, currency: r.offRampRate.targetCurrency, active: r.offRampRate.isActive === true };
-    },
-
-    async banks(session: Session): Promise<PajBank[]> {
-      const r = await call<PajBank[]>("GET", "/pub/bank", bearer(session));
+    async banks(country?: string): Promise<PajBank[]> {
+      const q = country ? `?country=${encodeURIComponent(country)}` : "";
+      const r = await call<PajBank[]>("GET", `/pub/v2/bank${q}`);
       return (r ?? []).map((b) => ({ id: String(b.id), code: String(b.code), name: String(b.name), country: String(b.country) }));
     },
 
-    /** Name enquiry: who holds this account. */
-    async resolveAccount(session: Session, bankId: string, accountNumber: string): Promise<{ accountName: string }> {
-      const q = `bankId=${encodeURIComponent(bankId)}&accountNumber=${encodeURIComponent(accountNumber)}`;
-      const r = await call<{ accountName: string }>("GET", `/pub/bank-account/confirm?${q}`, bearer(session));
-      return { accountName: String(r.accountName) };
-    },
-
-    /** Bank accounts saved to this session's paj.cash account. */
-    async savedAccounts(session: Session): Promise<PajSavedAccount[]> {
-      const r = await call<PajSavedAccount[]>("GET", "/pub/bank-account", bearer(session));
-      return (r ?? []).map((a) => ({
-        id: String(a.id),
-        accountName: String(a.accountName),
-        accountNumber: String(a.accountNumber),
-        bank: String(a.bank),
-      }));
-    },
-
     /**
-     * Save a bank account to the session's paj.cash account. Their off-ramp
-     * flow saves the account before an order pays it (API reference §14,
-     * step 5); paj.cash runs the name enquiry itself and returns the holder.
+     * Register a bank account: paj.cash confirms it with the bank and returns
+     * the holder's name. Idempotent, so it is also the name enquiry. A 400 is
+     * an unknown bank code or an account the bank could not confirm.
      */
-    async saveAccount(session: Session, bankId: string, accountNumber: string): Promise<PajSavedAccount> {
-      const r = await call<PajSavedAccount>("POST", "/pub/bank-account", bearer(session), { bankId, accountNumber });
-      if (!r?.id) throw new PajError("paj.cash saved the account but returned no id", 200, false);
-      return { id: String(r.id), accountName: String(r.accountName), accountNumber: String(r.accountNumber), bank: String(r.bank) };
+    async registerAccount(bankCode: string, accountNumber: string): Promise<PajBankAccount> {
+      const r = await call<PajBankAccount>("POST", "/pub/v2/bank-account", { bankCode, accountNumber });
+      if (!r?.accountName) throw new PajError("paj.cash registered the account but returned no name", 502);
+      return {
+        id: String(r.id),
+        accountName: String(r.accountName),
+        accountNumber: String(r.accountNumber),
+        bank: String(r.bank),
+        address: String(r.address),
+      };
     },
 
-    /**
-     * Government-ID KYC for the person the session belongs to: once, by the
-     * operator, for Nelo's own account. An id already linked to another
-     * paj.cash user is refused with 400 "IdNumber already used".
-     */
-    async submitKyc(session: Session, idNumber: string, idType: KycIdType, country: string): Promise<string> {
-      const r = await call<{ message?: string }>("POST", "/pub/kyc", bearer(session), { idNumber, idType, country });
-      return String(r?.message ?? "KYC submitted");
-    },
-
-    async createOfframp(session: Session, order: OfframpRequest): Promise<OfframpOrder> {
+    async createOfframp(order: OfframpRequest): Promise<OfframpOrder> {
+      // Exactly the documented fields: paj.cash rejects anything else.
+      const body: Record<string, unknown> = {
+        bankCode: order.bankCode,
+        accountNumber: order.accountNumber,
+        currency: order.currency,
+        amount: toJsonNumber(order.tokenMinor, order.tokenDecimals),
+        mint: order.mint,
+        chain: "SOLANA",
+      };
+      if (order.webhookURL) body.webhookURL = order.webhookURL;
+      if (order.description) body.description = order.description;
+      if (order.businessFeeMinor) body.businessUSDCFee = toJsonNumber(order.businessFeeMinor, order.tokenDecimals);
       const r = await call<{
         id: string;
         address: string;
@@ -224,18 +225,9 @@ export function pajClient(options: PajClientOptions) {
         fiatAmount: number;
         rate: number;
         fee?: number;
-      }>("POST", "/pub/offramp", bearer(session), {
-        bank: order.bankId,
-        accountNumber: order.accountNumber,
-        currency: order.currency,
-        amount: toJsonNumber(order.tokenMinor, order.tokenDecimals),
-        mint: order.mint,
-        chain: "SOLANA",
-        webhookURL: order.webhookURL,
-        ...(order.description ? { description: order.description } : {}),
-        ...(order.businessFeeMinor ? { businessUSDCFee: toJsonNumber(order.businessFeeMinor, order.tokenDecimals) } : {}),
-      });
-      if (!r?.id || !r.address) throw new PajError("paj.cash returned an order with no id or deposit address", 200, false);
+        status?: string;
+      }>("POST", "/pub/v2/offramp", body);
+      if (!r?.id || !r.address) throw new PajError("paj.cash returned an order with no id or deposit address", 502);
       return {
         id: String(r.id),
         address: String(r.address),
@@ -245,11 +237,13 @@ export function pajClient(options: PajClientOptions) {
         // What reaches the bank: never rounded up.
         fiatMinor: toMinor(r.fiatAmount, localDigits, "down"),
         rate: r.rate,
-        feeMinor: r.fee === undefined ? 0n : toMinor(r.fee, order.tokenDecimals),
+        feeMinor: typeof r.fee === "number" ? toMinor(r.fee, order.tokenDecimals) : 0n,
+        status: String(r.status ?? "INIT"),
       };
     },
 
-    async transaction(session: Session, id: string, tokenDecimals: number): Promise<PajTransaction> {
+    /** An order, at any stage. 404: not ours, or unpaid and deleted after 72 h. */
+    async transaction(id: string, tokenDecimals: number): Promise<PajTransaction> {
       const r = await call<{
         id: string;
         status: string;
@@ -257,7 +251,7 @@ export function pajClient(options: PajClientOptions) {
         signature?: string | null;
         amount?: number;
         fiatAmount?: number;
-      }>("GET", `/pub/transactions/${encodeURIComponent(id)}`, bearer(session));
+      }>("GET", `/pub/v2/transaction/${encodeURIComponent(id)}`);
       return {
         id: String(r.id),
         status: String(r.status),

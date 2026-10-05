@@ -13,8 +13,10 @@
  *
  * A bearer token keeps drive-by traffic out, as on the relayer; it ships in
  * the app, so it is not a secret from anyone holding the APK. The webhook
- * cannot carry it, so its path carries a secret of its own instead, and its
- * body is never believed: it only says which order to ask about.
+ * cannot carry it, so its path carries a secret of its own, and paj.cash
+ * signs every delivery (HMAC over the raw body, ./paj/webhook.ts): an
+ * unsigned or wrongly signed one is refused. Even a verified body only says
+ * which order to ask about; paj.cash's own record is what is believed.
  *
  * Writes are handled one at a time: two requests for one cash-out id must
  * not both open an order.
@@ -23,6 +25,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { byReference, markFunded, openCashout, refresh, type CashoutDeps, type CashoutStore } from "./cashout.ts";
 import { PajError } from "./paj/client.ts";
 import type { PajPartner } from "./paj/partner.ts";
+import { verifyPajWebhook } from "./paj/webhook.ts";
 
 export interface SettleOptions {
   partner: PajPartner;
@@ -31,6 +34,8 @@ export interface SettleOptions {
   now: () => number;
   token?: string;
   webhookSecret: string;
+  /** paj.cash's signing secret for this API key (`whsec_…`). Set: deliveries must verify. */
+  pajSigningSecret?: string;
   tokenCurrency: string;
   localCurrency: string;
   limits: CashoutDeps["limits"];
@@ -48,12 +53,23 @@ function serial(): <T>(work: () => Promise<T>) => Promise<T> {
 }
 
 export function buildSettle(options: SettleOptions): FastifyInstance {
-  const app = Fastify({ logger: false, bodyLimit: 4096 });
+  const app = Fastify({ logger: false, bodyLimit: 16_384 });
+  // Keep the raw body: a webhook's signature is over the bytes as received.
+  app.addContentTypeParser("application/json", { parseAs: "string" }, (request, body, done) => {
+    (request as unknown as { rawBody: string }).rawBody = body as string;
+    try {
+      done(null, body ? JSON.parse(body as string) : {});
+    } catch (e) {
+      (e as { statusCode?: number }).statusCode = 400;
+      done(e as Error, undefined);
+    }
+  });
   const serially = serial();
   let rate: { at: number; body: unknown } | null = null;
 
   const failed = (reply: { code(n: number): { send(b: unknown): unknown } }, e: unknown) => {
-    if (e instanceof PajError && e.session) return reply.code(503).send({ error: e.message, login: true });
+    // A refused API key: Nelo's to fix, so the app says cash-outs are paused.
+    if (e instanceof PajError && e.auth) return reply.code(503).send({ error: e.message, login: true });
     return reply.code(503).send({ error: e instanceof Error ? e.message : "unavailable" });
   };
 
@@ -101,7 +117,7 @@ export function buildSettle(options: SettleOptions): FastifyInstance {
       if (!r) return reply.code(404).send({ error: "paj.cash does not list that bank" });
       return { accountName: r.accountName, bank: r.bank.name };
     } catch (e) {
-      if (e instanceof PajError && !e.session && e.status >= 400 && e.status < 500) {
+      if (e instanceof PajError && !e.auth && e.status >= 400 && e.status < 500) {
         return reply.code(404).send({ error: "that account could not be found" });
       }
       return failed(reply, e);
@@ -161,6 +177,19 @@ export function buildSettle(options: SettleOptions): FastifyInstance {
   app.post("/v1/paj/webhook/:secret", async (request, reply) => {
     const { secret } = request.params as { secret: string };
     if (secret !== options.webhookSecret) return reply.code(404).send({ error: "not found" });
+    if (options.pajSigningSecret) {
+      const header = (name: string) => {
+        const v = request.headers[name];
+        return Array.isArray(v) ? v.join(",") : v;
+      };
+      const check = verifyPajWebhook(
+        (request as unknown as { rawBody?: string }).rawBody ?? "",
+        { timestamp: header("x-paj-timestamp"), signature: header("x-paj-signature") },
+        options.pajSigningSecret,
+        Math.floor(options.now() / 1000),
+      );
+      if (!check.ok) return reply.code(401).send({ error: `webhook refused: ${check.reason}` });
+    }
     const b = request.body as { id?: unknown } | null;
     const c = b && typeof b.id === "string" ? byReference(options.store, b.id) : null;
     // Acknowledged either way, quickly; the order is asked about, not believed.

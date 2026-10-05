@@ -1,16 +1,11 @@
 /**
  * nelo settle — the double-entry ledger and the payout leg.
  *
- * What is real: the ledger, the money splits, the payout lifecycle and the
- * reconciliation against the chain. All of it is pure and tested off-device.
- *
- * What is not: the partner. Nobody has answered yet, so the only implementation
- * is `DeclaredStubPartner`, which moves no money and labels every quote and
- * result `"stub"` so that nothing downstream — a log, a ledger memo, a
- * screenshot in the video — can imply otherwise. Swapping it for a real one is
- * a constructor change.
- *
- * See docs/DELIVERABLES.md, week 2 step 8.
+ * The ledger, the money splits, the payout lifecycle and the reconciliation
+ * against the chain are pure and tested off-device. The payout partner is
+ * paj.cash on its v2 API (./paj): production only, in mainnet USDC, so a
+ * cash-out moves real money. `DeclaredStubPartner` remains for tests and
+ * demos without a key, and labels everything it does `"stub"`.
  */
 export * from "./accounts.ts";
 export * from "./ledger.ts";
@@ -21,7 +16,7 @@ export * from "./cashout.ts";
 export * from "./paj/client.ts";
 export * from "./paj/decimal.ts";
 export * from "./paj/partner.ts";
-export * from "./paj/session.ts";
+export * from "./paj/webhook.ts";
 export * from "./server.ts";
 
 import { CHART } from "./accounts.ts";

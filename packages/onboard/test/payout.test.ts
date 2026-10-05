@@ -55,6 +55,8 @@ test("a wrong-length Nigerian account is refused, with the expected shape named"
 test("a missing or malformed bank code sends the merchant back to the list", () => {
   assert.match(bad(validateBankAccount("NG", "", "0123456789")).reason, /from the list/);
   assert.match(bad(validateBankAccount("NG", "58", "0123456789")).reason, /from the list/);
+  assert.match(bad(validateBankAccount("NG", "0580", "0123456789")).reason, /from the list/);
+  assert.match(bad(validateBankAccount("NG", "0000013", "0123456789")).reason, /from the list/);
   assert.match(bad(validateBankAccount("NG", "abc", "0123456789")).reason, /from the list/);
 });
 
@@ -224,4 +226,14 @@ test("a destination shown to a merchant does not print the whole account", () =>
     describeDestination({ method: "mobile_money", market: "NG", e164: "+2348031234567" }),
     "Mobile money ••••4567",
   );
+});
+
+test("fintech and NIBSS bank codes are accepted, with no check-digit warning they cannot support", () => {
+  // OPay and Moniepoint style 5- and 6-digit codes, and a 6-digit NIBSS code.
+  for (const code of ["50515", "999992", "000013"]) {
+    const r = good(validateBankAccount("NG", code, "0123456789"));
+    assert.ok(r.destination.method === "bank" && r.destination.institution === code);
+    assert.deepEqual(r.warnings, []);
+  }
+  assert.equal(parseCanonical("bank:NG:000013:0123456789").ok, true);
 });

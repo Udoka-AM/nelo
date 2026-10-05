@@ -1,128 +1,119 @@
 /**
- * The paj.cash client against a fake that answers from a script and records
- * the method, path, headers and body of every request. The expected wire
- * shapes are the ones paj.cash's own API reference documents.
+ * The paj.cash v2 client against a fake that records what went on the wire.
+ * Every shape here is from https://docs.paj.cash (API v2, 5 Oct 2026).
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { pajClient, PajError, PAJ_STAGING } from "../src/paj/client.ts";
+import { PAJ_API, PajError, pajClient } from "../src/paj/client.ts";
 
 const USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
-const SESSION = { token: "tok-123", expiresAt: Date.parse("2026-10-01T00:00:00Z") };
 
-function fake(answer: (path: string, body: any) => { status?: number; body: unknown }) {
-  const asked: { method: string; url: string; headers: Record<string, string>; body: any }[] = [];
+function wire(answer: (path: string, body: any) => { status?: number; body: unknown }) {
+  const asked: { url: string; method: string; headers: Record<string, string>; body: any }[] = [];
   const f = async (url: string, init?: { method?: string; headers?: Record<string, string>; body?: string }) => {
     const body = init?.body ? JSON.parse(init.body) : undefined;
-    asked.push({ method: init?.method ?? "GET", url, headers: init?.headers ?? {}, body });
-    const a = answer(url.slice(PAJ_STAGING.length), body);
-    const status = a.status ?? 200;
-    return { ok: status < 300, status, text: async () => JSON.stringify(a.body) };
+    asked.push({ url, method: init?.method ?? "GET", headers: init?.headers ?? {}, body });
+    const a = answer(url.slice(PAJ_API.length), body);
+    return { ok: (a.status ?? 200) < 300, status: a.status ?? 200, text: async () => JSON.stringify(a.body) };
   };
-  return { client: pajClient({ baseUrl: PAJ_STAGING, apiKey: "key-abc", fetch: f }), asked };
+  return { client: pajClient({ apiKey: "k_live", fetch: f }), asked };
 }
 
-test("a session: the code goes to a phone or an email, with the API key; the token comes back", async () => {
-  const { client, asked } = fake((path) =>
-    path === "/pub/verify"
-      ? { body: { recipient: "+2348031234567", isActive: "true", expiresAt: "2026-10-01T00:00:00.000Z", token: "tok-123" } }
-      : { body: { phone: "+2348031234567" } },
-  );
-  await client.initiate("+2348031234567");
-  await client.initiate("ops@nelo.app");
-  const s = await client.verify("+2348031234567", "123456", { uuid: "relay-mac", device: "Server" });
-  assert.deepEqual(s, SESSION);
-  assert.deepEqual(asked[0], {
-    method: "POST",
-    url: `${PAJ_STAGING}/pub/initiate`,
-    headers: { "content-type": "application/json", "x-api-key": "key-abc" },
-    body: { phone: "+2348031234567" },
-  });
-  assert.deepEqual(asked[1]!.body, { email: "ops@nelo.app" });
-  assert.deepEqual(asked[2]!.body, { phone: "+2348031234567", otp: "123456", device: { uuid: "relay-mac", device: "Server" } });
+test("every request carries the API key, and only on the v2 paths of the production API", async () => {
+  const { client, asked } = wire(() => ({ body: { offRampRate: { rate: 1610, targetCurrency: "NGN" } } }));
+  await client.offrampRate("NGN");
+  assert.equal(asked[0]!.url, `${PAJ_API}/pub/v2/rate?currency=NGN`);
+  assert.equal(asked[0]!.headers["x-api-key"], "k_live");
+  assert.equal(PAJ_API, "https://api.paj.cash");
 });
 
-test("the off-ramp rate is public and read as it was sent", async () => {
-  const { client, asked } = fake(() => ({
-    body: {
-      onRampRate: { baseCurrency: "USD", targetCurrency: "NGN", isActive: true, rate: 1510, type: "onRamp" },
-      offRampRate: { baseCurrency: "USD", targetCurrency: "NGN", isActive: true, rate: 1525, type: "offRamp" },
-    },
+test("the off-ramp rate is read from offRampRate, never derived from the on-ramp one", async () => {
+  const { client } = wire(() => ({
+    body: { onRampRate: { rate: 1650, targetCurrency: "NGN" }, offRampRate: { rate: 1610, targetCurrency: "NGN" } },
   }));
-  assert.deepEqual(await client.offrampRate(), { rate: 1525, currency: "NGN", active: true });
-  assert.equal(asked[0]!.url, `${PAJ_STAGING}/pub/rate`);
-  assert.equal(asked[0]!.headers.authorization, undefined, "no credentials on a public call");
-  assert.equal(asked[0]!.headers["x-api-key"], undefined);
+  assert.deepEqual(await client.offrampRate("NGN"), { rate: 1610, currency: "NGN" });
 });
 
-test("banks and the name enquiry carry the session token", async () => {
-  const { client, asked } = fake((path) =>
-    path === "/pub/bank"
-      ? { body: [{ id: "b1", code: "058", name: "GTBank", logo: "x", country: "NG" }] }
-      : { body: { accountName: "ADAEZE OKAFOR", accountNumber: "0123456789", bank: { id: "b1" } } },
-  );
-  assert.deepEqual(await client.banks(SESSION), [{ id: "b1", code: "058", name: "GTBank", country: "NG" }]);
-  assert.deepEqual(await client.resolveAccount(SESSION, "b1", "0123456789"), { accountName: "ADAEZE OKAFOR" });
-  assert.equal(asked[0]!.headers.authorization, "Bearer tok-123");
-  assert.equal(asked[1]!.url, `${PAJ_STAGING}/pub/bank-account/confirm?bankId=b1&accountNumber=0123456789`);
+test("a currency with no live rate is a 404 from paj.cash, surfaced as such", async () => {
+  const { client } = wire(() => ({ status: 404, body: { statusCode: 404, message: "Rate not found", error: "Not Found" } }));
+  await assert.rejects(client.offrampRate("GHS"), (e: unknown) => e instanceof PajError && e.status === 404 && !e.auth);
 });
 
-test("an off-ramp order is sent in paj.cash's decimals and read back in minor units", async () => {
-  const { client, asked } = fake(() => ({
-    body: { id: "ord_1", address: "Dep0sit", mint: USDC, currency: "NGN", amount: 25.5, fiatAmount: 38887.5, rate: 1525, fee: 0.05 },
+test("registration sends exactly bankCode and accountNumber, and returns the bank's name for the account", async () => {
+  const { client, asked } = wire(() => ({
+    body: { id: "68ff", accountName: "John Doe", accountNumber: "0025635480", bank: "First Bank", address: "FsXp" },
   }));
-  const order = await client.createOfframp(SESSION, {
-    bankId: "b1",
-    accountNumber: "0123456789",
+  const r = await client.registerAccount("000016", "0025635480");
+  assert.equal(asked[0]!.method, "POST");
+  assert.equal(asked[0]!.url, `${PAJ_API}/pub/v2/bank-account`);
+  assert.deepEqual(asked[0]!.body, { bankCode: "000016", accountNumber: "0025635480" });
+  assert.equal(r.accountName, "John Doe");
+  assert.equal(r.address, "FsXp");
+});
+
+test("an offramp order sends only documented fields, on Solana, in whole tokens", async () => {
+  const { client, asked } = wire(() => ({
+    body: { id: "ord_1", address: "Dep", mint: USDC, currency: "NGN", amount: 25.5, fiatAmount: 41055, rate: 1610, fee: 0, status: "INIT" },
+  }));
+  const o = await client.createOfframp({
+    bankCode: "000016",
+    accountNumber: "0025635480",
     currency: "NGN",
     tokenMinor: 25_500_000n,
     tokenDecimals: 6,
     mint: USDC,
-    webhookURL: "https://settle.example/v1/paj/webhook/s3cret",
-    businessFeeMinor: 50_000n,
+    webhookURL: "https://x.ngrok-free.app/settle/v1/paj/webhook/s",
+    description: "Nelo payout co_1",
   });
+  assert.equal(asked[0]!.url, `${PAJ_API}/pub/v2/offramp`);
   assert.deepEqual(asked[0]!.body, {
-    bank: "b1",
-    accountNumber: "0123456789",
+    bankCode: "000016",
+    accountNumber: "0025635480",
     currency: "NGN",
     amount: 25.5,
     mint: USDC,
     chain: "SOLANA",
-    webhookURL: "https://settle.example/v1/paj/webhook/s3cret",
-    // The SDK calls this `fee`; the wire field is `businessUSDCFee`.
-    businessUSDCFee: 0.05,
+    webhookURL: "https://x.ngrok-free.app/settle/v1/paj/webhook/s",
+    description: "Nelo payout co_1",
   });
-  assert.deepEqual(order, {
-    id: "ord_1",
-    address: "Dep0sit",
-    mint: USDC,
-    currency: "NGN",
-    tokenMinor: 25_500_000n,
-    fiatMinor: 3_888_750n,
-    rate: 1525,
-    feeMinor: 50_000n,
-  });
+  // No fiatAmount alongside amount (paj.cash refuses both), no undocumented field.
+  assert.equal("fiatAmount" in asked[0]!.body, false);
+  assert.equal(o.tokenMinor, 25_500_000n);
+  assert.equal(o.fiatMinor, 4_105_500n);
+  assert.equal(o.status, "INIT");
 });
 
-test("a transaction's status is read, including states the reference does not list", async () => {
-  const { client } = fake(() => ({
-    body: { id: "ord_1", status: "FAILED", transactionType: "OFF_RAMP", signature: "5ig", amount: 25.5, fiatAmount: 38887.5 },
+test("Nelo's fee goes as businessUSDCFee, and only when there is one", async () => {
+  const { client, asked } = wire(() => ({ body: { id: "o", address: "D", mint: USDC, currency: "NGN", amount: 10, fiatAmount: 16100, rate: 1610, fee: 0.5 } }));
+  await client.createOfframp({ bankCode: "000016", accountNumber: "0025635480", currency: "NGN", tokenMinor: 10_000_000n, tokenDecimals: 6, mint: USDC, businessFeeMinor: 500_000n });
+  assert.equal(asked[0]!.body.businessUSDCFee, 0.5);
+  assert.equal("webhookURL" in asked[0]!.body, false);
+});
+
+test("a transaction is looked up by id; amounts never round up", async () => {
+  const { client, asked } = wire(() => ({
+    body: { id: "ord_1", status: "PROCESSING", transactionType: "OFF_RAMP", signature: "5sig", amount: 25.5, fiatAmount: 41055.555 },
   }));
-  const t = await client.transaction(SESSION, "ord_1", 6);
-  assert.deepEqual(t, { id: "ord_1", status: "FAILED", type: "OFF_RAMP", signature: "5ig", tokenMinor: 25_500_000n, fiatMinor: 3_888_750n });
+  const t = await client.transaction("ord_1", 6);
+  assert.equal(asked[0]!.url, `${PAJ_API}/pub/v2/transaction/ord_1`);
+  assert.equal(t.status, "PROCESSING");
+  assert.equal(t.fiatMinor, 4_105_555n);
+  assert.equal(t.signature, "5sig");
 });
 
-test("errors carry paj.cash's message, and say when the session is the problem", async () => {
-  const expired = fake(() => ({ status: 401, body: { message: "Session expired" } })).client;
-  await assert.rejects(expired.banks(SESSION), (e: unknown) => {
-    assert.ok(e instanceof PajError);
-    assert.equal(e.session, true);
-    assert.match(e.message, /Session expired/);
-    assert.doesNotMatch(e.message, /tok-123|key-abc/, "never a credential in an error");
-    return true;
-  });
-  const bad = fake(() => ({ status: 400, body: { message: "IdNumber already used" } })).client;
-  await assert.rejects(bad.createOfframp(SESSION, { bankId: "b", accountNumber: "1", currency: "NGN", tokenMinor: 1n, tokenDecimals: 6, mint: USDC, webhookURL: "x" }), (e: unknown) => e instanceof PajError && !e.session);
-  const noOrder = fake(() => ({ body: { id: "", address: "" } })).client;
-  await assert.rejects(noOrder.createOfframp(SESSION, { bankId: "b", accountNumber: "1", currency: "NGN", tokenMinor: 1n, tokenDecimals: 6, mint: USDC, webhookURL: "x" }));
+test("errors carry paj.cash's message, joined when validation returns an array; 401 is a key problem", async () => {
+  const { client } = wire(() => ({
+    status: 400,
+    body: { statusCode: 400, message: ["bankCode must be a string", "property foo should not exist"], error: "Bad Request" },
+  }));
+  await assert.rejects(client.registerAccount("x", "y"), (e: unknown) => e instanceof PajError && /bankCode must be a string, property foo/.test(e.message) && !e.auth);
+  const refused = wire(() => ({ status: 401, body: { statusCode: 401, message: "Invalid API key", error: "Unauthorized" } })).client;
+  await assert.rejects(refused.banks(), (e: unknown) => e instanceof PajError && e.auth && e.message === "Invalid API key");
+});
+
+test("banks are fetched for one country and keep paj.cash's code as given", async () => {
+  const { client, asked } = wire(() => ({ body: [{ id: "b1", code: "000016", name: "First Bank", country: "NG", logo: null }] }));
+  const list = await client.banks("NG");
+  assert.equal(asked[0]!.url, `${PAJ_API}/pub/v2/bank?country=NG`);
+  assert.deepEqual(list, [{ id: "b1", code: "000016", name: "First Bank", country: "NG" }]);
 });

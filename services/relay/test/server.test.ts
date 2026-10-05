@@ -9,7 +9,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { p256 } from "@noble/curves/p256";
 import { ed25519 } from "@noble/curves/ed25519";
-import { encode, encodeBase58, signedMessage } from "@nelo/voucher";
+import { decodeBase58, encode, encodeBase58, signedMessage } from "@nelo/voucher";
+import { associatedTokenAddress, TOKEN_PROGRAM_ID } from "@nelo/redeem";
 import { buildServer, emptyLedger, feePayerFromSecret, fileLedger, memoryLedger, redeem, serial, type ConflictRpc } from "../src/index.ts";
 
 const NOW = 1_789_000_000;
@@ -152,4 +153,42 @@ test("the file ledger survives a restart", () => {
   first.write(state);
   assert.deepEqual(fileLedger(path, "2026-09-25").read(), state);
   assert.ok(readFileSync(path, "utf8").includes('"spentLamports": 42'));
+});
+
+test("cash-outs can run on their own cluster and mint, while redemptions stay on the vaults'", async () => {
+  const MAINNET_USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+  const used: string[] = [];
+  const rpcFor = (name: string): ConflictRpc => ({
+    accountData: async () => null,
+    latestBlockhash: async () => (used.push(name), { blockhash: encodeBase58(new Uint8Array(32).fill(3)), lastValidBlockHeight: 1_000 }),
+    blockHeight: async () => (used.push(name), 900),
+    accountExists: async () => (used.push(name), true),
+    signatureKnown: async () => false,
+    send: async () => ({ ok: true }),
+  });
+  const app = buildServer({
+    now: () => NOW,
+    cashout: { decimals: 6, rpc: rpcFor("mainnet"), mint: MAINNET_USDC, limits: { perOwnerPerDay: 5, sponsorDepositAccounts: false } },
+    deps: {
+      rpc: rpcFor("devnet"),
+      feePayer: FEE_PAYER,
+      ledger: memoryLedger(emptyLedger("2026-09-24")),
+      config: { mint: USDC, limits: { budgetLamports: 1e9, maxPerVault: 10, allowedMints: [USDC], sponsorNewAccounts: true } },
+    },
+  });
+  const health = await app.inject({ method: "GET", url: "/v1/health" });
+  assert.deepEqual(health.json(), { feePayer: FEE_PAYER.address, mint: USDC, cashoutMint: MAINNET_USDC });
+  const owner = encodeBase58(new Uint8Array(32).fill(0x44));
+  const r = await app.inject({
+    method: "POST",
+    url: "/v1/cashout/prepare",
+    payload: { order: "ord_1", owner, deposit: encodeBase58(new Uint8Array(32).fill(0x55)), amount: "25000000" },
+  });
+  assert.equal(r.json().status, "prepared");
+  assert.ok(used.length > 0 && used.every((n) => n === "mainnet"), `asked ${used.join(", ")}`);
+  // The transfer moves the mainnet mint, from the merchant's mainnet token account.
+  const wire = Buffer.from(r.json().wire, "base64");
+  const has = (address: string) => wire.includes(Buffer.from(decodeBase58(address)));
+  assert.ok(has(MAINNET_USDC) && !has(USDC));
+  assert.ok(has(associatedTokenAddress(owner, MAINNET_USDC, TOKEN_PROGRAM_ID)));
 });

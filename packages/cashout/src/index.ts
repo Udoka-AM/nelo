@@ -49,7 +49,7 @@ export interface CashoutRecord {
 
 export class ServiceError extends Error {
   readonly status: number;
-  /** The settlement service needs its operator to log in to paj.cash again. */
+  /** paj.cash refused the settlement service's API key: the operator's to fix, not the merchant's. */
   readonly login: boolean;
   constructor(message: string, status: number, login: boolean) {
     super(message);

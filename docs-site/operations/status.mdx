@@ -30,7 +30,7 @@ Three states are kept apart, because conflating them is how a demo ends up claim
     **Proven, on devnet.** 17 curve tests off chain, ~19 on chain in LiteSVM, and `RiskConfig` now live on a real validator with `redeem_voucher` exercised against its new account struct.
   </Card>
   <Card title="Settlement" icon="book">
-    **Ledger proven**: double-entry, idempotent, reversible, reconcilable. **Cash-out through paj.cash built** against their API reference; never called paj.cash yet.
+    **Ledger proven**: double-entry, idempotent, reversible, reconcilable. **Cash-out through paj.cash rebuilt on their v2 API** with their answers of 5 Oct: production only, mainnet USDC, signed webhooks. Not yet run against paj.cash.
   </Card>
 </CardGroup>
 
@@ -54,7 +54,7 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | `packages/till` | ✅ The till's scan decision and voucher store, shared by the till and customer-to-customer receiving (17 tests) |
 | `packages/redeem` | ✅ Matches the program's own builders byte for byte, for redemption, conflict reports and slashing, and the SPL crates for the cash-out transfer (45 tests); ⚠️ never broadcast to a cluster |
 | `services/settle` — ledger | ✅ Proven (39 tests) |
-| `services/settle` — paj.cash cash-out | ⚠️ Client, partner, cash-out records and HTTP built and tested against a fake paj.cash (36 tests); never called paj.cash: waiting on the staging key and their answers |
+| `services/settle` — paj.cash cash-out | ⚠️ On paj.cash v2: client, partner, cash-out records, signed webhooks and HTTP tested against a fake of the documented API (45 tests). Mainnet only, so the first real run is a real payout: needs the production key, its `whsec_` secret, mainnet USDC in the merchant's wallet and mainnet SOL on the fee payer |
 | `packages/cashout` | ✅ The phone's side of a cash-out, resumable at every step (6 tests) |
 | `packages/attest` | ⚠️ Compiles (EAS build); never run on hardware |
 | `apps/merchant` | ⚠️ Typechecks; native side builds; screens rendered in a browser with native modules stubbed, never on a handset |
@@ -75,8 +75,8 @@ Three states are kept apart, because conflating them is how a demo ends up claim
   <Step title="Settle an offline sale on the handsets">
     The last step of the gate on real phones. Blocked only by the till reaching the relayer from the network in use; the fix is the stable ngrok address and `pnpm gateway` in [Release builds](/operations/release).
   </Step>
-  <Step title="paj.cash: staging key and answers">
-    The cash-out is built against paj.cash's published API and tested against a fake. Their staging key and answers (session, staging mint, failure states, deposit addresses, fees) are being settled in a meeting on 5 Oct.
+  <Step title="paj.cash: a first real payout">
+    paj.cash answered on 5 Oct: no staging, $0.50 to $10,000 per payout, about 20 seconds, failures refunded or retried on request, signed webhooks. The cash-out now runs on their v2 API in mainnet USDC, with the relayer's cash-out transfers on mainnet and offline payments still on devnet. Left: the production key and `whsec_` secret in `settle.env`, a mainnet RPC in `relay.env`, ~0.01 SOL on the fee payer and at least $0.50 of mainnet USDC in the merchant's wallet, then one small cash-out. See [the relayer runbook](/operations/relay).
   </Step>
   <Step title="Signed release APKs">
     Configured: `production` EAS profile, `pnpm release:env` to put the apps' public values on EAS, `build:release` per app. Not yet built. See [Release builds](/operations/release).

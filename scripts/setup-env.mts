@@ -102,11 +102,18 @@ RELAY_KEYPAIR=
 RELAY_LEDGER=
 RELAY_TOKEN=
 
+# Cash-outs: paj.cash settles in mainnet USDC, so cash-out transfers go to
+# mainnet while redemptions stay on devnet. A mainnet RPC with a real quota,
+# e.g. https://mainnet.helius-rpc.com/?api-key=…  The fee payer then needs a
+# little mainnet SOL (about 0.000005 SOL per cash-out).
+RELAY_CASHOUT_RPC_URL=
+# Optional: RELAY_CASHOUT_RPC_FALLBACK_URLS=, and RELAY_CASHOUT_MINT (default mainnet USDC)
+
 # Optional, shown with their defaults:
 # RELAY_DAILY_BUDGET_SOL=0.5
 # RELAY_MAX_PER_VAULT=200
 # RELAY_CASHOUTS_PER_DAY=5
-# Only if paj.cash's deposit addresses have no USDC token account (~0.002 SOL each):
+# paj.cash's USDC deposit addresses already have token accounts; only for another mint:
 # RELAY_SPONSOR_DEPOSIT_ACCOUNTS=true
 # RELAY_MINT=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
 # RELAY_MINT_DECIMALS=6
@@ -114,24 +121,25 @@ RELAY_TOKEN=
 # RELAY_HOST=127.0.0.1
 `;
 
-const SETTLE_TEMPLATE = `# The settlement service's settings, loaded by \`pnpm start\` and
-# \`pnpm paj:login\` in services/settle. Written by \`pnpm setup:env\`.
-# Owner-only: PAJ_API_KEY is Nelo's paj.cash business key and never leaves this machine.
+const SETTLE_TEMPLATE = `# The settlement service's settings, loaded by \`pnpm start\` in services/settle.
+# Written by \`pnpm setup:env\`. Owner-only: PAJ_API_KEY and PAJ_WEBHOOK_SECRET are
+# Nelo's paj.cash credentials and never leave this machine.
+#
+# paj.cash v2 is production only: every cash-out is real, in mainnet USDC.
 
 PAJ_API_KEY=
-PAJ_ENV=staging
-# This service's public https address (its own tunnel, port 8788).
+# The key's webhook signing secret (whsec_…), from paj.cash. Set: unsigned
+# deliveries are refused.
+PAJ_WEBHOOK_SECRET=
+# This service's public https address: the gateway's, with /settle on the end.
 SETTLE_PUBLIC_URL=
 SETTLE_WEBHOOK_SECRET=
 SETTLE_TOKEN=
 
 # Optional:
-# The email or +234… number paj.cash sends the login code to; skips the prompt.
-# PAJ_LOGIN=
-# If paj.cash staging wants a mint other than devnet USDC:
-# SETTLE_MINT=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
-# Nelo's fee per cash-out, in USDC:
+# Nelo's fee per cash-out, in USDC, added on top by paj.cash:
 # NELO_FEE_USDC=
+# SETTLE_MINT=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
 # SETTLE_PORT=8788
 # SETTLE_HOST=127.0.0.1
 `;
@@ -139,11 +147,35 @@ SETTLE_TOKEN=
 // ---- the services ----
 
 const relay = new EnvFile(join(configDir, "relay.env"), RELAY_TEMPLATE);
+if (!relay.lines.some((l) => l.startsWith("RELAY_CASHOUT_RPC_URL="))) {
+  relay.lines.push("", "# Cash-outs to paj.cash run on mainnet: a mainnet RPC with a real quota.", "RELAY_CASHOUT_RPC_URL=");
+  relay.changed.push("RELAY_CASHOUT_RPC_URL");
+}
 relay.set("RELAY_KEYPAIR", join(solanaDir, "relay-fee-payer.json"));
 relay.set("RELAY_LEDGER", join(solanaDir, "relay-ledger.json"));
 relay.set("RELAY_TOKEN", secret(24));
 
 const settle = new EnvFile(join(configDir, "settle.env"), SETTLE_TEMPLATE);
+// paj.cash v1 settings, from before 5 Oct: v2 has no staging, no login and no
+// session, so these are dropped, and the v2 secret is asked for.
+const v1 = settle.lines.filter(
+  (l) => /^#?\s*(PAJ_ENV|PAJ_LOGIN)=/.test(l) || /paj:login|login code|staging wants|^# SETTLE_MINT=4zMM/.test(l),
+);
+if (v1.length) {
+  settle.lines = settle.lines
+    .filter((l) => !v1.includes(l))
+    .map((l) => (l === "# The settlement service's settings, loaded by `pnpm start` and" ? "# The settlement service's settings, loaded by `pnpm start` in services/settle." : l));
+  settle.changed.push("removed v1 PAJ_ENV/PAJ_LOGIN");
+}
+if (/^SETTLE_MINT=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU$/m.test(settle.lines.join("\n"))) {
+  settle.lines = settle.lines.filter((l) => l !== "SETTLE_MINT=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
+  settle.changed.push("SETTLE_MINT (devnet; paj.cash is mainnet only)");
+}
+if (!settle.lines.some((l) => l.startsWith("PAJ_WEBHOOK_SECRET="))) {
+  const i = settle.lines.findIndex((l) => l.startsWith("PAJ_API_KEY="));
+  settle.lines.splice(i + 1, 0, "PAJ_WEBHOOK_SECRET=");
+  settle.changed.push("PAJ_WEBHOOK_SECRET");
+}
 settle.set("SETTLE_WEBHOOK_SECRET", secret(16));
 settle.set("SETTLE_TOKEN", secret(24));
 if (settleUrl) settle.set("SETTLE_PUBLIC_URL", settleUrl, true);
@@ -179,6 +211,13 @@ if (relayUrl) {
 }
 if (settleUrl) merchant.set("EXPO_PUBLIC_NELO_SETTLE_URL", settleUrl, true);
 
+// Cash-outs read the merchant's mainnet USDC: the relayer's mainnet RPC serves the till too.
+const cashoutRpc = relay.get("RELAY_CASHOUT_RPC_URL") || merchant.get("EXPO_PUBLIC_CASHOUT_RPC_URL");
+if (cashoutRpc) {
+  relay.set("RELAY_CASHOUT_RPC_URL", cashoutRpc);
+  merchant.set("EXPO_PUBLIC_CASHOUT_RPC_URL", cashoutRpc);
+}
+
 // One RPC for everything is fine for a demo: fill blanks from whichever has one.
 const rpc = relay.get("RELAY_RPC_URL") || merchant.get("EXPO_PUBLIC_SOLANA_RPC_URL") || payer.get("EXPO_PUBLIC_SOLANA_RPC_URL");
 if (rpc) {
@@ -204,7 +243,9 @@ const need = (f: EnvFile, key: string, what: string) => {
   if (!f.get(key)) todo.push(`  ${show(f)}  ${key}  — ${what}`);
 };
 need(relay, "RELAY_RPC_URL", "your Helius devnet URL");
-need(settle, "PAJ_API_KEY", "from paj.cash (staging)");
+need(settle, "PAJ_API_KEY", "Nelo's paj.cash business key (production; there is no staging)");
+need(settle, "PAJ_WEBHOOK_SECRET", "the key's whsec_… signing secret, from paj.cash");
+need(relay, "RELAY_CASHOUT_RPC_URL", "a mainnet RPC for cash-outs, e.g. your Helius mainnet URL");
 need(settle, "SETTLE_PUBLIC_URL", "the settle tunnel: pnpm setup:env --settle-url https://…");
 need(merchant, "EXPO_PUBLIC_NELO_RELAY_URL", "the relay tunnel: pnpm setup:env --relay-url https://…");
 need(merchant, "EXPO_PUBLIC_NELO_SETTLE_URL", "the settle tunnel: pnpm setup:env --settle-url https://…");
@@ -216,6 +257,11 @@ if (!existsSync(relay.get("RELAY_KEYPAIR"))) {
     `  the relayer's fee-payer key does not exist yet:\n` +
       `    solana-keygen new -o ${relay.get("RELAY_KEYPAIR").replace(home, "~")}\n` +
       `    solana airdrop 2 $(solana address -k ${relay.get("RELAY_KEYPAIR").replace(home, "~")}) -u devnet`,
+  );
+} else if (relay.get("RELAY_CASHOUT_RPC_URL")) {
+  console.log(
+    `Cash-outs: the fee payer signs on mainnet too, so it needs ~0.01 SOL there (no airdrop on mainnet):\n` +
+      `  solana balance $(solana address -k ${relay.get("RELAY_KEYPAIR").replace(home, "~")}) -u mainnet-beta`,
   );
 }
 

@@ -12,6 +12,16 @@
  *   RELAY_CASHOUTS_PER_DAY  cash-out transfers per merchant per day, default 5
  *   RELAY_SPONSOR_DEPOSIT_ACCOUNTS  "true" to pay rent for a deposit address with no token account
  *
+ * Cash-outs go to paj.cash, which settles in mainnet USDC only, while offline
+ * payments stay on devnet. So cash-out transfers have a cluster of their own:
+ *
+ *   RELAY_CASHOUT_RPC_URL           mainnet RPC. Unset: cash-outs use RELAY_RPC_URL (devnet), which paj.cash cannot see
+ *   RELAY_CASHOUT_RPC_FALLBACK_URLS comma-separated, as above
+ *   RELAY_CASHOUT_MINT              default mainnet USDC when RELAY_CASHOUT_RPC_URL is set
+ *
+ * The same fee payer signs on both clusters, so its address needs mainnet SOL
+ * for cash-outs. The daily budget is shared.
+ *
  * See docs-site/operations/relay.mdx for running it on a Mac behind a tunnel.
  */
 import { loadFeePayer } from "./feePayer.ts";
@@ -21,6 +31,7 @@ import { createRelayRpc } from "./rpc.ts";
 import { buildRelay } from "./server.ts";
 
 const USDC_DEVNET = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
+const USDC_MAINNET = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
 function required(name: string): string {
   const value = process.env[name]?.trim();
@@ -44,10 +55,27 @@ const endpoint = failover(endpointsFrom(required("RELAY_RPC_URL"), process.env.R
   onFailover: (url, reason) => console.warn(`rpc ${new URL(url).host}: ${reason}, trying the next`),
 });
 
+// Cash-outs on mainnet, when configured. Mainnet USDC pins mainnet as surely
+// as devnet USDC pins devnet, so its public RPC is the last resort there.
+const cashoutRpcUrl = process.env.RELAY_CASHOUT_RPC_URL?.trim();
+const cashoutMint = process.env.RELAY_CASHOUT_MINT?.trim() || (cashoutRpcUrl ? USDC_MAINNET : undefined);
+const cashoutEndpoint = cashoutRpcUrl
+  ? failover(
+      endpointsFrom(
+        cashoutRpcUrl,
+        process.env.RELAY_CASHOUT_RPC_FALLBACK_URLS,
+        cashoutMint === USDC_MAINNET ? "https://api.mainnet-beta.solana.com" : undefined,
+      ),
+      { onFailover: (url, reason) => console.warn(`cash-out rpc ${new URL(url).host}: ${reason}, trying the next`) },
+    )
+  : null;
+
 const relay = buildRelay({
   now,
   cashout: {
     decimals: Number(process.env.RELAY_MINT_DECIMALS ?? "6"),
+    ...(cashoutEndpoint ? { rpc: createRelayRpc(cashoutEndpoint.url, cashoutEndpoint.fetch) } : {}),
+    ...(cashoutMint ? { mint: cashoutMint } : {}),
     limits: {
       perOwnerPerDay: Number(process.env.RELAY_CASHOUTS_PER_DAY ?? "5"),
       sponsorDepositAccounts: process.env.RELAY_SPONSOR_DEPOSIT_ACCOUNTS === "true",
@@ -85,5 +113,10 @@ setInterval(() => {
 }, 60_000);
 console.log(
   `nelo relay on http://${host}:${port} · fee payer ${feePayer.address} · mint ${mint} · ${endpoint.urls.length} RPC endpoint(s)`,
+);
+console.log(
+  cashoutEndpoint
+    ? `cash-outs: mint ${cashoutMint} · ${cashoutEndpoint.urls.length} RPC endpoint(s) · the fee payer needs SOL there too`
+    : "cash-outs: on the vaults' cluster. paj.cash settles on mainnet: set RELAY_CASHOUT_RPC_URL for real payouts",
 );
 if (!process.env.RELAY_TOKEN) console.warn("RELAY_TOKEN is not set: anyone who finds the URL can submit vouchers.");

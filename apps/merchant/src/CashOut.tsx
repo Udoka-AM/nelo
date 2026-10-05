@@ -3,8 +3,12 @@
  *
  * The merchant says how much, in naira, and to which account; paj.cash's name
  * enquiry shows whose account it is before anything moves. Then one approval
- * in their wallet, and paj.cash pays the bank. The merchant needs no SOL: the
- * relayer pays the transfer's fee.
+ * in their wallet, and paj.cash pays the bank, in about 20 seconds. The
+ * merchant needs no SOL: the relayer pays the transfer's fee.
+ *
+ * This is real money. paj.cash settles in mainnet USDC only, so the balance
+ * here is read from mainnet and the wallet signs for mainnet, apart from the
+ * till's devnet takings. paj.cash pays out $0.50 to $10,000 at a time.
  *
  * The steps, and resuming them, are `@nelo/cashout`, under test. This screen
  * keeps one thing of its own: the id of a cash-out in progress, saved before
@@ -23,12 +27,16 @@ import {
   type CashoutRecord,
   type TransactionSigner,
 } from "@nelo/cashout";
-import { formatDollars, formatMoney, localToTokenBaseUnits, tokenBaseUnitsToLocalMinor, type Rate } from "@nelo/pay";
-import { relayProblem, relayToken, relayUrl, settleProblem, settleToken, settleUrl } from "./config";
+import { fetchTokenBalance, formatDollars, formatMoney, localToTokenBaseUnits, tokenBaseUnitsToLocalMinor, type Rate } from "@nelo/pay";
+import { cashoutMint, cashoutRpc, relayProblem, relayToken, relayUrl, settleProblem, settleToken, settleUrl } from "./config";
 import { loadSetting, saveSetting } from "./daybook";
 import { usePrivySigner } from "./privySigner";
 
 const PENDING = "cashout-pending";
+
+/** paj.cash's limits per payout, USDC base units. Below the minimum, money only comes back by a manual refund. */
+const MIN_TOKEN = 500_000n;
+const MAX_TOKEN = 10_000_000_000n;
 
 interface Pending {
   id: string;
@@ -43,7 +51,6 @@ export interface CashOutProps {
   owner: string;
   /** Saved from onboarding or an earlier cash-out: `bank:NG:058:0123456789`. */
   payout: string | undefined;
-  balanceBaseUnits: bigint | null;
   rate: Rate | null;
   currency: { code: string; symbol: string; minorDigits: number };
   /** Null while the wallet is not ready. */
@@ -76,6 +83,9 @@ export default function CashOut(props: CashOutProps) {
   const [holder, setHolder] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  /** Mainnet USDC in the merchant's wallet: what can actually be cashed out. Null until read. */
+  const [balance, setBalance] = useState<bigint | null>(null);
+  const [balanceFailed, setBalanceFailed] = useState(false);
   const alive = useRef(true);
 
   const configured = !!settleUrl && !!relayUrl;
@@ -94,16 +104,26 @@ export default function CashOut(props: CashOutProps) {
         }
       }
       if (!configured) return setStage({ step: "form" });
+      fetchTokenBalance(cashoutRpc, props.owner, cashoutMint)
+        .then((b) => alive.current && setBalance(b))
+        .catch(() => alive.current && setBalanceFailed(true));
       const { settle } = services();
       const list = await settle.banks().catch(() => []);
       if (!alive.current) return;
       setBanks(list);
       const m = /^bank:NG:(\d{3,6}):(\d{10})$/.exec(props.payout ?? "");
       if (m) {
-        const found = list.find((b) => b.code === m[1]) ?? { code: m[1]!, name: `Bank ${m[1]}` };
-        setBank(found);
         setAccount(m[2]!);
-        settle.resolve(m[1]!, m[2]!).then((r) => alive.current && setHolder(r.accountName)).catch(() => {});
+        // Only a bank paj.cash lists by that very code. A code saved before
+        // (a 3-digit CBN code, say) is not guessed at: the merchant picks the
+        // bank from the list again and the account number is kept.
+        const found = list.find((b) => b.code === m[1]);
+        if (found) {
+          setBank(found);
+          settle.resolve(found.code, m[2]!).then((r) => alive.current && setHolder(r.accountName)).catch(() => {});
+        } else if (list.length > 0) {
+          setNote("Choose your bank from the list once more; paj.cash names banks by its own codes.");
+        }
       }
       setStage({ step: "form" });
     })();
@@ -114,9 +134,12 @@ export default function CashOut(props: CashOutProps) {
 
   const localMinor = parseLocal(amountText, props.currency.minorDigits);
   const tokenMinor = localMinor !== null && props.rate ? localToTokenBaseUnits(localMinor, props.rate) : null;
-  const tooMuch = tokenMinor !== null && props.balanceBaseUnits !== null && tokenMinor > props.balanceBaseUnits;
+  const tooMuch = tokenMinor !== null && balance !== null && tokenMinor > balance;
+  const belowMin = tokenMinor !== null && tokenMinor > 0n && tokenMinor < MIN_TOKEN;
+  const aboveMax = tokenMinor !== null && tokenMinor > MAX_TOKEN;
   const destination = bank && /^\d{10}$/.test(account) ? `bank:NG:${bank.code}:${account}` : null;
-  const ready = !!destination && !!holder && tokenMinor !== null && tokenMinor > 0n && !tooMuch && !!props.sign;
+  const ready =
+    !!destination && !!holder && tokenMinor !== null && tokenMinor > 0n && !tooMuch && !belowMin && !aboveMax && balance !== null && !!props.sign;
 
   async function check() {
     if (!bank || !/^\d{10}$/.test(account)) return;
@@ -199,8 +222,7 @@ export default function CashOut(props: CashOutProps) {
   }
 
   const money = (minor: bigint) => formatMoney(minor, props.currency);
-  const balanceLocal =
-    props.balanceBaseUnits !== null && props.rate ? tokenBaseUnitsToLocalMinor(props.balanceBaseUnits, props.rate) : null;
+  const balanceLocal = balance !== null && props.rate ? tokenBaseUnitsToLocalMinor(balance, props.rate) : null;
 
   if (!configured) {
     return (
@@ -289,7 +311,12 @@ export default function CashOut(props: CashOutProps) {
               onPress={() => setAmountText((balanceLocal / 10n ** BigInt(props.currency.minorDigits)).toString())}
             />
           ) : null}
-          {tooMuch ? <Notice tone="danger">That is more than your balance.</Notice> : null}
+          {tooMuch ? <Notice tone="danger">That is more than the USDC in your wallet.</Notice> : null}
+          {belowMin ? <Notice tone="danger">paj.cash pays out {formatDollars(MIN_TOKEN)} or more.</Notice> : null}
+          {aboveMax ? <Notice tone="danger">paj.cash pays out at most {formatDollars(MAX_TOKEN)} at a time.</Notice> : null}
+          {balance === null ? (
+            <Small>{balanceFailed ? "Could not read your USDC on mainnet. Check your signal and open Cash out again." : "Reading your USDC balance…"}</Small>
+          ) : null}
 
           <Label>To</Label>
           {bank ? (
@@ -303,7 +330,7 @@ export default function CashOut(props: CashOutProps) {
             <>
               <Field label="Bank" value={filter} onChangeText={setFilter} placeholder="Type your bank's name" />
               {shown.map((b) => (
-                <Card key={b.code} onPress={() => { setBank(b); setFilter(""); setHolder(null); }} accessibilityLabel={b.name}>
+                <Card key={b.code} onPress={() => { setBank(b); setFilter(""); setHolder(null); setNote(null); }} accessibilityLabel={b.name}>
                   <Body>{b.name}</Body>
                 </Card>
               ))}
@@ -326,7 +353,10 @@ export default function CashOut(props: CashOutProps) {
 
           <Button label={localMinor ? `Cash out ${money(localMinor)}` : "Cash out"} disabled={!ready} onPress={() => void start()} />
           {!props.sign ? <Small>Your wallet is not ready yet.</Small> : null}
-          <Small>Paid by paj.cash to the account above. You approve one transfer; Nelo pays its fee.</Small>
+          <Small>
+            Paid by paj.cash to the account above, usually within a minute. You approve one transfer of USDC on Solana mainnet; Nelo pays
+            its fee.
+          </Small>
         </>
       )}
     </Shell>

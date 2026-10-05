@@ -60,9 +60,13 @@ interface BankRules {
 
 const BANK_RULES: Readonly<Record<Market, BankRules>> = {
   // NUBAN is a genuine standard: a 3-digit CBN institution code and a 10-digit
-  // account whose last digit is a check digit.
+  // account whose last digit is a check digit. The code is 3 digits for the
+  // commercial banks, but 5 or 6 for most fintechs and microfinance banks
+  // (the OPay, PalmPay and Moniepoint accounts merchants actually hold), and
+  // the payout partner may name banks by their 6-digit NIBSS code. All three
+  // are accepted; the check digit is computed only for a 3-digit CBN code.
   NG: {
-    institution: /^\d{3}$/,
+    institution: /^\d{3}(\d{2,3})?$/,
     account: /^\d{10}$/,
     checkDigit: true,
     hint: "a 10-digit account number",

@@ -37,7 +37,8 @@ A refusal on budget or the per-vault cap tells the till to retry later; any othe
   <Step title="Fill in the keys it asks for">
     Open the files it names and paste in:
     - `RELAY_RPC_URL` in `~/.config/nelo/relay.env`: your Helius devnet URL. If one of the apps' `.env` already has one, it is copied across for you.
-    - `PAJ_API_KEY` in `~/.config/nelo/settle.env`, once paj.cash sends the staging key.
+    - `PAJ_API_KEY` and `PAJ_WEBHOOK_SECRET` (`whsec_…`) in `~/.config/nelo/settle.env`: Nelo's paj.cash business key and its signing secret. Production only; paj.cash has no staging.
+    - `RELAY_CASHOUT_RPC_URL` in `~/.config/nelo/relay.env`: a **mainnet** RPC (your Helius mainnet URL), for cash-outs. It is copied to the merchant app too.
   </Step>
   <Step title="A fee-payer key, funded with devnet SOL">
     ```bash
@@ -81,31 +82,37 @@ The submission is written to the ledger before the transaction is sent, and requ
 
 ## Cash-outs through paj.cash
 
-The settlement service (`services/settle`) opens payout orders with paj.cash, and the relayer pays the fee on the merchant's transfer to the order's deposit address. It runs on the same Mac, behind its own tunnel.
+The settlement service (`services/settle`) opens payout orders with paj.cash, and the relayer pays the fee on the merchant's transfer to the order's deposit address. It runs on the same Mac, behind `pnpm gateway` at `<address>/settle` ([Release builds](/operations/release)), or behind its own tunnel in development.
+
+**This is real money.** paj.cash's v2 API is production only and settles in mainnet USDC. Offline payments stay on devnet; a cash-out moves mainnet USDC from the merchant's wallet, and the relayer pays its fee in mainnet SOL.
 
 <Steps>
-  <Step title="Start a tunnel for it, and tell the setup">
+  <Step title="Tell the setup where it is">
     ```bash
-    cloudflared tunnel --protocol http2 --url http://127.0.0.1:8788
-    cd ~/nelo && pnpm setup:env --settle-url <the https address cloudflared printed>
+    cd ~/nelo && pnpm setup:env --settle-url https://<your-domain>.ngrok-free.app/settle
     ```
-    This writes the address to `SETTLE_PUBLIC_URL`, which paj.cash's webhook uses, and to the merchant app's `.env`. `PAJ_API_KEY` must be in `~/.config/nelo/settle.env` by now.
+    This writes the address to `SETTLE_PUBLIC_URL`, which paj.cash's webhook uses, and to the merchant app's `.env`. `PAJ_API_KEY` and `PAJ_WEBHOOK_SECRET` must be in `~/.config/nelo/settle.env` by now. There is no login step: v2 uses the API key alone.
   </Step>
-  <Step title="Log in to paj.cash">
+  <Step title="Give the fee payer mainnet SOL">
     ```bash
-    cd ~/nelo/services/settle && pnpm paj:login
+    solana address -k ~/.config/solana/nelo/relay-fee-payer.json
     ```
-    paj.cash sends a code to the email or phone you give; type it in. The session is saved owner-only to `~/.config/nelo/paj-session.json`. When it expires, cash-outs pause with a message saying so; run this again.
+    Send about 0.01 SOL to that address on mainnet from any wallet (there is no airdrop on mainnet). Each cash-out costs it about 0.000005 SOL.
   </Step>
   <Step title="Start it">
     ```bash
-    pnpm start      # reads ~/.config/nelo/settle.env
+    cd ~/nelo/services/settle && pnpm start      # reads ~/.config/nelo/settle.env
     ```
-    Restart Metro with `--clear`. The till then shows paj.cash's naira rate, and the balance opens Cash out.
+    It warns if the mint is not mainnet USDC, or if there is no signing secret. Restart Metro with `--clear`. The till then shows paj.cash's naira rate, and the balance opens Cash out.
+  </Step>
+  <Step title="Fund the merchant's wallet">
+    The cash-out screen reads the merchant wallet's **mainnet** USDC. Send it at least $0.50 of mainnet USDC: paj.cash pays out $0.50 to $10,000 at a time, and money sent below the minimum only comes back by a manual refund.
   </Step>
 </Steps>
 
-The relayer allows 5 cash-out transfers per merchant a day (`RELAY_CASHOUTS_PER_DAY`). If paj.cash's deposit addresses turn out to have no USDC token account, set `RELAY_SPONSOR_DEPOSIT_ACCOUNTS=true` in `relay.env` to have the relayer open one, at about 0.002 SOL each.
+The relayer allows 5 cash-out transfers per merchant a day (`RELAY_CASHOUTS_PER_DAY`). paj.cash's USDC deposit addresses already have token accounts, so `RELAY_SPONSOR_DEPOSIT_ACCOUNTS` stays off.
+
+If a payout fails (`ERROR`), paj.cash refunds or retries it on request: the till shows the order id to quote. An unfunded order's address goes back to paj.cash's pool after two hours, so the service closes a cash-out still unfunded after 90 minutes; the merchant starts a new one.
 
 ## Every setting
 
@@ -121,22 +128,24 @@ The relayer allows 5 cash-out transfers per merchant a day (`RELAY_CASHOUTS_PER_
 | | `RELAY_DAILY_BUDGET_SOL`, `RELAY_MAX_PER_VAULT`, `RELAY_CASHOUTS_PER_DAY` | Limits: 0.5, 200, 5 | defaults |
 | | `RELAY_SPONSOR_DEPOSIT_ACCOUNTS` | `true` to pay rent for a deposit account | off |
 | | `RELAY_MINT`, `RELAY_MINT_DECIMALS`, `RELAY_PORT`, `RELAY_HOST` | Devnet USDC, 6, 8787, 127.0.0.1 | defaults |
+| | `RELAY_CASHOUT_RPC_URL` | Mainnet RPC for cash-out transfers. Unset: cash-outs use the devnet RPC, which paj.cash cannot see | you |
+| | `RELAY_CASHOUT_RPC_FALLBACK_URLS`, `RELAY_CASHOUT_MINT` | Fallbacks; the cash-out mint, default mainnet USDC | you, defaults |
 | `~/.config/nelo/settle.env` | `PAJ_API_KEY` | Nelo's paj.cash business key. Never in an app | you |
-| | `PAJ_ENV` | `staging` or `production` | setup: staging |
+| | `PAJ_WEBHOOK_SECRET` | The key's `whsec_…` signing secret. Set: unsigned webhooks are refused | you |
 | | `SETTLE_PUBLIC_URL` | This service's tunnel, for paj.cash's webhook | `--settle-url` |
 | | `SETTLE_WEBHOOK_SECRET` | Part of the webhook's path | setup |
 | | `SETTLE_TOKEN` | Bearer token; the merchant app holds a copy | setup |
-| | `PAJ_LOGIN` | Where paj.cash sends the login code; skips the prompt. Optional | you |
-| | `SETTLE_MINT`, `NELO_FEE_USDC` | The mint paj.cash takes; Nelo's fee per cash-out. Optional | you |
-| | `PAJ_SESSION_FILE`, `SETTLE_CASHOUTS_FILE`, `SETTLE_PORT`, `SETTLE_HOST` | Under `~/.config/nelo`, 8788, 127.0.0.1 | defaults |
+| | `SETTLE_MINT`, `NELO_FEE_USDC` | Default mainnet USDC; Nelo's fee per cash-out, added on top by paj.cash. Optional | defaults, you |
+| | `SETTLE_CASHOUTS_FILE`, `SETTLE_PORT`, `SETTLE_HOST` | Under `~/.config/nelo`, 8788, 127.0.0.1 | defaults |
 | `apps/merchant/.env` | `EXPO_PUBLIC_SOLANA_RPC_URL`, `EXPO_PUBLIC_SOLANA_RPC_FALLBACK_URLS` | The till's RPC, and fallbacks | you, or copied |
 | | `EXPO_PUBLIC_NELO_RELAY_URL`, `EXPO_PUBLIC_NELO_RELAY_TOKEN` | The relayer | `--relay-url`, setup |
 | | `EXPO_PUBLIC_NELO_SETTLE_URL`, `EXPO_PUBLIC_NELO_SETTLE_TOKEN` | The settlement service | `--settle-url`, setup |
+| | `EXPO_PUBLIC_CASHOUT_RPC_URL`, `EXPO_PUBLIC_CASHOUT_RPC_FALLBACK_URLS` | Mainnet RPC for the cash-out balance | copied from `RELAY_CASHOUT_RPC_URL` |
 | | `EXPO_PUBLIC_PRIVY_APP_ID`, `EXPO_PUBLIC_PRIVY_CLIENT_ID` | Phone-number onboarding. Optional | you |
 | `apps/payer/.env` | `EXPO_PUBLIC_SOLANA_RPC_URL`, `EXPO_PUBLIC_SOLANA_RPC_FALLBACK_URLS` | The payer app's RPC | you, or copied |
 | | `EXPO_PUBLIC_NELO_RELAY_URL`, `EXPO_PUBLIC_NELO_RELAY_TOKEN` | The relayer, for payments received from other customers | `--relay-url`, setup |
 
-Every `EXPO_PUBLIC_` value is compiled into the app and readable by anyone holding the APK. The RPC URL and the two tokens are fine there; `PAJ_API_KEY`, the fee-payer key and the paj.cash session are not, and live only on the Mac.
+Every `EXPO_PUBLIC_` value is compiled into the app and readable by anyone holding the APK. The RPC URL and the two tokens are fine there; `PAJ_API_KEY`, `PAJ_WEBHOOK_SECRET` and the fee-payer key are not, and live only on the Mac.
 
 ## Double spends
 

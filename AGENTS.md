@@ -68,8 +68,10 @@ then Metro per app (`--port 8082` for the second).
 
 - **Never commit a keypair, a mnemonic or a real API key.** `.env` files are gitignored; keep
   them so. The program keypair is not in this repo and must not be.
-- The relayer's fee-payer key, `PAJ_API_KEY`, the paj.cash session file and the Privy **app
-  secret** live only on the user's Mac (`~/.config/nelo`, `~/.config/solana/nelo`).
+- The relayer's fee-payer key, `PAJ_API_KEY`, `PAJ_WEBHOOK_SECRET` (`whsec_…`) and the Privy
+  **app secret** live only on the user's Mac (`~/.config/nelo`, `~/.config/solana/nelo`).
+- **Cash-outs move real money.** paj.cash has no staging: a cash-out is mainnet USDC. Offline
+  payments, vaults and redemptions stay on devnet. Never point a test at paj.cash's API.
 - Every `EXPO_PUBLIC_` value is compiled into the APK and is public. Treat it so.
 - Keep `anchor test` green; it is graded.
 - Say what is proven and what is not. "Built" and "ran on a handset" are different claims; the
@@ -88,23 +90,35 @@ cloudflared's port 7844). The fix is ready: ngrok's fixed domain plus `pnpm gate
 
 **Open, in order:**
 1. Settle an offline sale on the handsets through the stable address.
-2. paj.cash. The client is `services/settle/src/paj/`, built from their HTTP reference
-   (`lib/API_REFERENCE.md` in the `paj_ramp` npm package, v1.5.4) and tested against a fake.
-   It follows their off-ramp flow: session by one-time code, bank list, name enquiry, **save
-   the bank account**, create the order, the merchant's wallet sends USDC to the order's
-   deposit address, status from `GET /pub/transactions/:id` (`INIT`, `PAID`, `COMPLETED`).
-   Webhooks are unsigned in their examples and are only a prompt to ask the API. KYC is per
-   paj.cash user: Nelo's account is verified once with `pnpm paj:kyc`. docs.paj.cash is
-   blocked from the cloud sessions; it may hold details the npm reference does not (the user
-   says its register-bank-account page differs). Still open with paj.cash: staging mint,
-   failure states, session length, one Nelo account vs per-merchant accounts.
+2. paj.cash: a first real payout. The integration is on their **v2 API**
+   (`services/settle/src/paj/`, https://docs.paj.cash, answers from their devs on 5 Oct):
+   - `x-api-key` only; no session, login or KYC step on Nelo's side (BVN optional for now,
+     required later). Production only, mainnet USDC `EPjF…Dt1v`.
+   - Flow: bank list (`GET /pub/v2/bank`, NIBSS codes; CBN 3-digit coming), name enquiry =
+     `POST /pub/v2/bank-account` (idempotent, ~30 s), order `POST /pub/v2/offramp` → one-off
+     deposit address, merchant's wallet sends USDC on mainnet, status from
+     `GET /pub/v2/transaction/:id`: `INIT` → `PROCESSING` → `COMPLETED` / `ERROR`.
+   - **Orders, not the standing bank-account address**: deposits there get no webhook or record.
+   - Limits $0.50–$10,000 per payout, checked before an order. Payouts ~20 s, 24/7. `ERROR` is
+     refunded or retried by paj.cash on request (quote the order id). Nelo's fee
+     (`businessUSDCFee`) is added on top.
+   - Webhooks are HMAC-signed (`X-PAJ-Signature: v1=…` over `{ts}.{raw body}`, 5 min) and are
+     still only a prompt to ask the API. Unfunded addresses return to paj.cash's pool after 2 h,
+     so a cash-out unfunded after 90 min is closed unless paj.cash shows the USDC arrived.
+   - Mainnet split: `RELAY_CASHOUT_RPC_URL` gives the relayer's cash-out transfers a mainnet
+     RPC; the till reads the mainnet USDC balance (`EXPO_PUBLIC_CASHOUT_RPC_URL`) and MWA signs
+     cash-outs with `solana:mainnet`.
+   - Left for the user: the production key and `whsec_` secret in `settle.env`, a mainnet RPC
+     in `relay.env`, ~0.01 SOL on the fee payer on mainnet, ≥ $0.50 mainnet USDC in the
+     merchant's wallet, then one small cash-out on the handset. Rate limit "nine" (units
+     unclear) is not yet handled beyond the 1-minute rate cache and 1-hour bank cache.
 3. Release APKs: `pnpm release:env`, then `build:release` per app. Configured, not yet built.
 4. Video (3:00 max) and deck (team names; the "What actually ran" slide). The user has asked
    to leave these until the above is done.
 
 **Declared stubs, not to build now:** rebate payout; the SKR premium (1.5× is a placeholder,
-the reserve model supports about 1.001×); NGN price feed (fixed rate until paj.cash's rate is
-wired); NFC (QR only); the replay-window gap for never-redeemed vouchers; one-scan nelo Pay
+the reserve model supports about 1.001×); NGN price feed (the till shows paj.cash's rate when the settlement service answers, else a
+fixed rate); NFC (QR only); the replay-window gap for never-redeemed vouchers; one-scan nelo Pay
 when both phones are online (designed, not built); Privy SMS for Nigeria (dashboard setting).
 
 ## Things that have bitten

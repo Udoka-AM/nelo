@@ -48,6 +48,8 @@ export interface Cashout {
   localMinor: string | null;
   transferSignature: string | null;
   detail: string;
+  /** Closed because its deposit address was about to go back to paj.cash's pool. */
+  expired?: true;
   createdAt: number;
   updatedAt: number;
 }
@@ -94,6 +96,32 @@ const FINAL = new Set<State>(["paid", "failed"]);
 
 export const emptyCashouts = (): CashoutFile => ({ cashouts: {}, opened: {} });
 
+/**
+ * paj.cash gives an unfunded order's deposit address back to its pool after
+ * two hours, and from then on funds sent there settle somebody else's order.
+ * So a cash-out still waiting for its transfer this long after it was opened
+ * is closed rather than funded: the merchant starts a new one, with a new
+ * address. Well inside paj.cash's two hours, for a phone's clock and a slow
+ * signature.
+ */
+export const UNFUNDED_EXPIRY_MS = 90 * 60_000;
+
+const expired = (c: Cashout, now: number) =>
+  c.state === "awaiting-funds" && !c.transferSignature && now - c.createdAt > UNFUNDED_EXPIRY_MS;
+
+function expire(store: CashoutStore, c: Cashout, now: number): Cashout {
+  const file = store.read();
+  const next: Cashout = {
+    ...c,
+    state: "failed",
+    expired: true,
+    detail: "the deposit address expired before the USDC was sent; nothing moved. Start the cash-out again",
+    updatedAt: now,
+  };
+  store.write({ ...file, cashouts: { ...file.cashouts, [c.id]: next } });
+  return next;
+}
+
 export async function openCashout(
   input: { id: string; merchant: string; destination: string; tokenMinor: bigint },
   deps: CashoutDeps,
@@ -108,6 +136,8 @@ export async function openCashout(
     if (existing.merchant !== input.merchant || existing.destination !== input.destination || existing.tokenMinor !== input.tokenMinor.toString()) {
       return { ok: false, reason: "this cash-out id was used for a different cash-out", retryable: false };
     }
+    // Never hand out an address paj.cash may have given to someone else.
+    if (expired(existing, now)) return { ok: true, cashout: expire(store, existing, now) };
     // Opened, or failed for good: the same answer as before.
     if (existing.state !== "creating") return { ok: true, cashout: existing };
     // "creating": the partner may or may not have opened an order before a
@@ -195,9 +225,15 @@ export function markFunded(id: string, signature: string, deps: { store: Cashout
       ? { ok: true, cashout: c }
       : { ok: false, reason: "this cash-out was already funded by another transfer", retryable: false };
   }
-  if (c.state !== "awaiting-funds") return { ok: false, reason: `a cash-out that is ${c.state} cannot be funded`, retryable: false };
+  // A transfer sent just as the cash-out was closed for age still reached the
+  // address inside paj.cash's two hours: record it, so the order is followed.
+  const lateButInTime = c.state === "failed" && c.expired && deps.now - c.createdAt < 2 * 60 * 60_000;
+  if (c.state !== "awaiting-funds" && !lateButInTime) {
+    return { ok: false, reason: `a cash-out that is ${c.state} cannot be funded`, retryable: false };
+  }
   if (!/^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(signature)) return { ok: false, reason: "not a transaction signature", retryable: false };
-  const next: Cashout = { ...c, state: "funded", transferSignature: signature, detail: "USDC sent; waiting for the partner", updatedAt: deps.now };
+  const { expired: _closed, ...open } = c;
+  const next: Cashout = { ...open, state: "funded", transferSignature: signature, detail: "USDC sent; waiting for the partner", updatedAt: deps.now };
   deps.store.write({ ...file, cashouts: { ...file.cashouts, [id]: next } });
   return { ok: true, cashout: next };
 }
@@ -206,17 +242,28 @@ export function markFunded(id: string, signature: string, deps: { store: Cashout
 export async function refresh(id: string, deps: { store: CashoutStore; partner: CashoutPartner; now: number }): Promise<Cashout | null> {
   const c = deps.store.read().cashouts[id];
   if (!c) return null;
-  if (FINAL.has(c.state) || !c.reference || c.state === "creating") return c;
+  // Closed for age, but a transfer the app never reported may still have
+  // reached the address: until paj.cash deletes the order, its record decides.
+  const closedForAge = c.state === "failed" && c.expired === true && deps.now - c.createdAt < 72 * 60 * 60_000;
+  if ((FINAL.has(c.state) && !closedForAge) || !c.reference || c.state === "creating") return c;
   const status = await deps.partner.status(c.reference);
   const file = deps.store.read();
   const current = file.cashouts[id]!;
+  if (closedForAge || expired(current, deps.now)) {
+    const moved = status.state === "processing" || status.state === "paid" || status.state === "failed";
+    if (!moved) return closedForAge ? current : expire(deps.store, current, deps.now);
+    const { expired: _closed, ...open } = current;
+    const next: Cashout = { ...open, state: status.state!, detail: status.detail, updatedAt: deps.now };
+    deps.store.write({ ...file, cashouts: { ...file.cashouts, [id]: next } });
+    return next;
+  }
   let next: Cashout = { ...current, detail: status.detail, updatedAt: deps.now };
   if (status.state) {
     // paj.cash says INIT for an order it has not seen money for, and it will
     // until the transfer lands; that must not undo "funded".
     if (ORDER[status.state] > ORDER[current.state]) next = { ...next, state: status.state };
     if (status.state === "failed" && current.transferSignature) {
-      next = { ...next, detail: `${status.detail}. The USDC was sent (${current.transferSignature}); ask paj.cash where it was returned.` };
+      next = { ...next, detail: `${status.detail}. The USDC was sent in ${current.transferSignature}.` };
     }
   }
   deps.store.write({ ...file, cashouts: { ...file.cashouts, [id]: next } });

@@ -27,11 +27,14 @@ const APP_IDENTITY = {
   icon: "favicon.png",
 } as const;
 
-/** Devnet until a payout partner and real money are in play. */
+/** Offline payments run on devnet; cash-outs to paj.cash sign for mainnet (see config.ts). */
 const CHAIN = "solana:devnet" as const;
+export type Chain = typeof CHAIN | "solana:mainnet";
 
 /** A credential: it re-authorises without prompting, so it never touches plain storage. */
 const AUTH_TOKEN_KEY = "nelo.merchant.authToken";
+/** A wallet may scope a grant to its chain, so each chain keeps its own. */
+const tokenKey = (chain: Chain) => (chain === CHAIN ? AUTH_TOKEN_KEY : `${AUTH_TOKEN_KEY}.${chain.replace(/\W/g, "_")}`);
 
 /**
  * Ask the wallet to authorise. Returns null if the merchant declines, which is
@@ -72,20 +75,27 @@ export async function connect(): Promise<MerchantAccount | null> {
  * One wallet session for the whole batch, so settling five vouchers is one
  * approval rather than five.
  */
-export async function signTransactions(transactions: readonly Uint8Array[]): Promise<Uint8Array[]> {
-  const authToken = await SecureStore.getItemAsync(AUTH_TOKEN_KEY);
+export async function signTransactions(transactions: readonly Uint8Array[], chain: Chain = CHAIN): Promise<Uint8Array[]> {
+  const authToken = await SecureStore.getItemAsync(tokenKey(chain));
   const { signed, token } = await transact(async (wallet) => {
-    const auth = await wallet.authorize({
-      identity: APP_IDENTITY,
-      chain: CHAIN,
-      ...(authToken ? { auth_token: authToken } : {}),
-    });
+    let auth;
+    try {
+      auth = await wallet.authorize({
+        identity: APP_IDENTITY,
+        chain,
+        ...(authToken ? { auth_token: authToken } : {}),
+      });
+    } catch (e) {
+      // A grant the wallet no longer honours: ask afresh, once.
+      if (!authToken) throw e;
+      auth = await wallet.authorize({ identity: APP_IDENTITY, chain });
+    }
     const result = await wallet.signTransactions({
       payloads: transactions.map((t) => base64.decode(t)),
     });
     return { signed: result.signed_payloads, token: auth.auth_token };
   });
-  await SecureStore.setItemAsync(AUTH_TOKEN_KEY, token);
+  await SecureStore.setItemAsync(tokenKey(chain), token);
   return signed.map((s) => new Uint8Array(base64.encode(s)));
 }
 
@@ -106,5 +116,9 @@ export async function disconnect(): Promise<void> {
       // ignored deliberately
     }
   }
-  await Promise.all([SecureStore.deleteItemAsync(AUTH_TOKEN_KEY), forget()]);
+  await Promise.all([
+    SecureStore.deleteItemAsync(AUTH_TOKEN_KEY),
+    SecureStore.deleteItemAsync(tokenKey("solana:mainnet")),
+    forget(),
+  ]);
 }

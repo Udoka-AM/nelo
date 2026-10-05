@@ -175,3 +175,44 @@ test("limits: a daily count per merchant, a smallest amount, and a sane id", asy
   assert.equal((await openCashout(req("co_000003", 999_999n), deps(p))).ok, false);
   assert.equal((await openCashout(req("../x"), deps(p))).ok, false);
 });
+
+const LATER = NOW + 91 * 60_000;
+
+test("an unfunded cash-out is closed before paj.cash can give its address to someone else", async () => {
+  fresh();
+  const p = partner();
+  await openCashout(req(), deps(p));
+  // Asked again after 90 minutes: closed, never the old address as if open.
+  const again = await openCashout(req(), { ...deps(p), now: LATER });
+  assert.ok(again.ok && again.cashout.state === "failed" && again.cashout.expired);
+  if (again.ok) assert.match(again.cashout.detail, /nothing moved/);
+  assert.deepEqual(p.asked, ["co_000001"], "no second order under the same id");
+});
+
+test("refreshing an old unfunded cash-out asks paj.cash first, and closes it only if nothing arrived", async () => {
+  fresh();
+  const p = partner();
+  await openCashout(req(), deps(p));
+  const closed = await refresh("co_000001", { ...deps(p), now: LATER });
+  assert.equal(closed!.state, "failed");
+  assert.equal(closed!.expired, true);
+  // A transfer the app never reported did land: paj.cash's record reopens it.
+  p.next = { state: "processing", detail: "paying the bank" };
+  const found = await refresh("co_000001", { ...deps(p), now: LATER + 60_000 });
+  assert.equal(found!.state, "processing");
+  assert.equal(found!.expired, undefined);
+});
+
+test("a transfer reported just after the cash-out closed, inside paj.cash's two hours, is still followed", async () => {
+  fresh();
+  const p = partner();
+  await openCashout(req(), deps(p));
+  await refresh("co_000001", { ...deps(p), now: LATER });
+  const late = markFunded("co_000001", SIG, { store: current!, now: LATER + 60_000 });
+  assert.ok(late.ok && late.cashout.state === "funded" && late.cashout.expired === undefined);
+  // After two hours the address may be someone else's: refused.
+  fresh();
+  await openCashout(req(), deps(p));
+  await refresh("co_000001", { ...deps(p), now: LATER });
+  assert.equal(markFunded("co_000001", SIG, { store: current!, now: NOW + 121 * 60_000 }).ok, false);
+});

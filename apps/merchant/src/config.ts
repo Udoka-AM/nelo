@@ -106,3 +106,25 @@ const settleService = serviceAddress(process.env.EXPO_PUBLIC_NELO_SETTLE_URL, "E
 export const settleUrl = settleService.url;
 export const settleProblem = settleService.problem;
 export const settleToken = process.env.EXPO_PUBLIC_NELO_SETTLE_TOKEN?.trim() || null;
+
+/**
+ * Cash-outs run on mainnet. paj.cash settles in mainnet USDC only (it has no
+ * staging), while offline payments stay on devnet. So the cash-out screen reads
+ * its balance from mainnet and the wallet signs for mainnet: what is cashed
+ * out is real USDC, never the devnet takings shown on the till.
+ *
+ * `EXPO_PUBLIC_CASHOUT_RPC_URL` is a mainnet RPC with a real quota; the public
+ * endpoint is the last resort. `EXPO_PUBLIC_CASHOUT_MINT` exists for tests
+ * against devnet USDC, and the wallet's chain follows the mint.
+ */
+export const USDC_MAINNET = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+const USDC_DEVNET = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
+export const cashoutMint = process.env.EXPO_PUBLIC_CASHOUT_MINT?.trim() || USDC_MAINNET;
+export const cashoutChain = cashoutMint === USDC_DEVNET ? ("solana:devnet" as const) : ("solana:mainnet" as const);
+export const cashoutRpc = failover(
+  endpointsFrom(
+    process.env.EXPO_PUBLIC_CASHOUT_RPC_URL,
+    process.env.EXPO_PUBLIC_CASHOUT_RPC_FALLBACK_URLS,
+    cashoutChain === "solana:devnet" ? "https://api.devnet.solana.com" : "https://api.mainnet-beta.solana.com",
+  ),
+);

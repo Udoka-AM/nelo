@@ -99,9 +99,9 @@ Swapping in a licensed partner is a constructor change. That is deliberate: it p
 
 ### Cash-outs through paj.cash
 
-`PajPartner` implements the same interface against paj.cash's API, with `fidelity: "sandbox"` on staging and `"live"` on production. It is built against their published reference and tested against a fake of it; it has not yet called paj.cash.
+`PajPartner` implements the same interface against [paj.cash's v2 API](https://docs.paj.cash), with one credential, the business API key, sent as `x-api-key`. paj.cash has no staging environment, so `fidelity` is `"live"`: every cash-out is real, in **mainnet USDC**, while offline payments, vaults and redemptions stay on devnet. It is tested against a fake of the documented API and has not yet sent a payout.
 
-paj.cash is paid by a transfer: an order gives a deposit address, and the bank is paid once the USDC arrives. The merchant's wallet sends it, and the relayer pays the fee.
+paj.cash is paid by a transfer: an order gives a one-off deposit address, and the bank is paid about 20 seconds after the USDC arrives, 24/7. The merchant's wallet sends it on mainnet, and the relayer pays the fee.
 
 ```
 GET  /v1/rate                           paj.cash's off-ramp rate, as exact integers
@@ -113,15 +113,18 @@ POST /v1/cashouts/:id/funded { signature }
 POST /v1/paj/webhook/:secret
 ```
 
-- **The bank account is saved to paj.cash before the order that pays it**, as paj.cash's own off-ramp flow does (`GET`/`POST /pub/bank-account`). Read first, saved once; an account paj.cash refuses to save is the cash-out's refusal, before any order exists; a duplicate save from two cash-outs at once is recovered, not refused.
-- **KYC is per paj.cash user**, so Nelo's own account is verified once by the operator: `pnpm paj:kyc` (BVN or NIN, never printed). An id can be linked to only one paj.cash user.
+- **Orders, not the standing address.** v2 can give a bank account a permanent deposit address, but paj.cash sends no webhook and keeps no readable record for deposits there, so the till could never confirm a payout. An order has an id, a status, a signed webhook and a record.
+- **The name enquiry is registration.** `POST /pub/v2/bank-account` confirms the account with the bank and returns the holder's name; it is idempotent and slow (a live bank call), so the client allows 35 s.
+- **paj.cash's limits, before any order:** $0.50 to $10,000 per payout. Below the minimum, money sent only comes back by a manual refund, so it is refused up front.
+- **Banks by paj.cash's own code.** NIBSS codes today, CBN 3-digit codes later. A code is matched exactly against paj.cash's list; one it no longer lists is refused with a reason, never guessed.
 - **One cash-out id, one order, one transfer.** paj.cash takes no idempotency key, so the record is written before it is asked, and again with the deposit address before the app is told where to send.
-- **paj.cash's numbers are decimals.** They are read through their text, exact both ways, and refused rather than rounded when a JSON number cannot carry them.
-- **The webhook is a prompt, not a source.** Nothing documents a signature on it, so its body is never believed: it names an order, and the service asks paj.cash's API about it. Its path carries a secret.
-- **State only moves forward.** A lagging "INIT" does not undo "funded", and "paid" is final.
-- **The session is an operator's.** `pnpm paj:login` exchanges a one-time code for a session token, stored owner-only outside the repository.
+- **A deposit address is not kept past its life.** paj.cash returns an unfunded order's address to its pool after two hours. A cash-out still unfunded after 90 minutes is closed, unless paj.cash's record shows the USDC arrived; a transfer reported inside the two hours is still followed.
+- **paj.cash's numbers are decimals.** They are read through their text, exact both ways, and refused rather than rounded when a JSON number cannot carry them. Every request body is built field by field: paj.cash rejects unknown fields.
+- **Webhooks are signed and still only a prompt.** With `PAJ_WEBHOOK_SECRET` set, a delivery must carry a valid `X-PAJ-Signature` (HMAC-SHA256 over `{timestamp}.{raw body}`, five-minute window) or it is refused. A verified body still only names an order; the service asks paj.cash's API about it. The path carries a secret too.
+- **States:** `INIT` → awaiting funds, `PROCESSING` → paying the bank, `COMPLETED` → paid, `ERROR` → failed, with the order id to quote, since paj.cash refunds or retries a failed payout on request. State only moves forward, and "paid" is final.
+- **A refused key is the operator's problem**, not a refusal: the app says cash-outs are paused and the same cash-out goes through once the key is fixed.
 
-**75 tests**, 36 of them for cash-outs.
+**84 tests**, 45 of them for cash-outs.
 
 ---
 
@@ -139,8 +142,8 @@ GET  /v1/health
 
 **Double spends.** Two vouchers at one sequence, from a till or seen by the relayer itself, are reported with `report_conflict`. A sweep every minute then cranks `slash` on each frozen vault that still holds stake.
 
-**Cash-out transfers.** `POST /v1/cashout/prepare` builds the merchant's transfer to a paj.cash deposit address with the relayer as fee payer; `POST /v1/cashout/submit` co-signs it only if it is exactly that message with the merchant's valid signature. It never parses a transaction someone else wrote. Bounded by mint, a daily count per merchant, the shared budget, and rent for a deposit account only when `RELAY_SPONSOR_DEPOSIT_ACCOUNTS=true`.
+**Cash-out transfers.** `POST /v1/cashout/prepare` builds the merchant's transfer to a paj.cash deposit address with the relayer as fee payer; `POST /v1/cashout/submit` co-signs it only if it is exactly that message with the merchant's valid signature. It never parses a transaction someone else wrote. Bounded by mint, a daily count per merchant, the shared budget, and rent for a deposit account only when `RELAY_SPONSOR_DEPOSIT_ACCOUNTS=true`. Cash-outs run on their own cluster: with `RELAY_CASHOUT_RPC_URL` set they are built and sent on mainnet in mainnet USDC (`RELAY_CASHOUT_MINT`), while redemptions stay on devnet. The same fee payer signs both, so it needs a little mainnet SOL.
 
 **No durable nonces**, since it signs each redemption fresh. **RPC failover** through `@nelo/rpc`: `RELAY_RPC_FALLBACK_URLS` are tried in order when `RELAY_RPC_URL` does not answer. Running it: [the relayer runbook](/operations/relay).
 
-**62 tests**, against a fake network.
+**63 tests**, against a fake network.
