@@ -113,6 +113,8 @@ POST /v1/cashouts/:id/funded { signature }
 POST /v1/paj/webhook/:secret
 ```
 
+- **The bank account is saved to paj.cash before the order that pays it**, as paj.cash's own off-ramp flow does (`GET`/`POST /pub/bank-account`). Read first, saved once; an account paj.cash refuses to save is the cash-out's refusal, before any order exists; a duplicate save from two cash-outs at once is recovered, not refused.
+- **KYC is per paj.cash user**, so Nelo's own account is verified once by the operator: `pnpm paj:kyc` (BVN or NIN, never printed). An id can be linked to only one paj.cash user.
 - **One cash-out id, one order, one transfer.** paj.cash takes no idempotency key, so the record is written before it is asked, and again with the deposit address before the app is told where to send.
 - **paj.cash's numbers are decimals.** They are read through their text, exact both ways, and refused rather than rounded when a JSON number cannot carry them.
 - **The webhook is a prompt, not a source.** Nothing documents a signature on it, so its body is never believed: it names an order, and the service asks paj.cash's API about it. Its path carries a secret.

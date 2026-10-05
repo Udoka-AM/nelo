@@ -14,7 +14,8 @@ function paj(script: Record<string, (body: any) => { status?: number; body: unkn
     const path = url.slice(PAJ_STAGING.length).split("?")[0]!;
     const body = init?.body ? JSON.parse(init.body) : undefined;
     asked.push({ path, body });
-    const key = Object.keys(script).find((k) => path.startsWith(k));
+    const keys = Object.keys(script).filter((k) => path === k || (k.endsWith("/") && path.startsWith(k)));
+    const key = keys.sort((a, b) => b.length - a.length)[0];
     const a = key ? script[key]!(body) : { status: 404, body: { message: "not found" } };
     return { ok: (a.status ?? 200) < 300, status: a.status ?? 200, text: async () => JSON.stringify(a.body) };
   };
@@ -33,7 +34,13 @@ function paj(script: Record<string, (body: any) => { status?: number; body: unkn
   return { partner, asked, store };
 }
 
-const BANKS = { "/pub/bank": () => ({ body: [{ id: "b-gt", code: "058", name: "GTBank", country: "NG" }] }) };
+const BANKS = {
+  "/pub/bank": () => ({ body: [{ id: "b-gt", code: "058", name: "GTBank", country: "NG" }] }),
+  "/pub/bank-account": (body: any) =>
+    body
+      ? { body: { id: "acct_1", accountName: "ADA OKAFOR", accountNumber: body.accountNumber, bank: body.bankId } }
+      : { body: [] },
+};
 const request = (destination = "bank:NG:058:0123456789") => ({
   payoutId: "co_000001",
   merchantId: "m",
@@ -110,4 +117,56 @@ test("the bank list is fetched once an hour, not per payout", async () => {
   await partner.bankFor("058");
   await partner.bankFor("058");
   assert.equal(asked.filter((a) => a.path === "/pub/bank").length, 1);
+});
+
+const ORDER = { "/pub/offramp": () => ({ body: { id: "ord_1", address: "Dep", mint: USDC, currency: "NGN", amount: 25, fiatAmount: 38125, rate: 1525, fee: 0 } }) };
+const posted = (asked: { path: string; body: any }[], path: string) => asked.filter((a) => a.path === path && a.body !== undefined);
+
+test("the bank account is saved to paj.cash before the order that pays it, once", async () => {
+  const { partner, asked } = paj({ ...BANKS, ...ORDER });
+  assert.equal((await partner.disburse(request())).status, "accepted");
+  const save = asked.findIndex((a) => a.path === "/pub/bank-account" && a.body !== undefined);
+  const order = asked.findIndex((a) => a.path === "/pub/offramp");
+  assert.ok(save >= 0 && save < order, "saved before the order");
+  assert.deepEqual(asked[save]!.body, { bankId: "b-gt", accountNumber: "0123456789" });
+  // A second cash-out to the same account does not save it again.
+  await partner.disburse(request());
+  assert.equal(posted(asked, "/pub/bank-account").length, 1);
+});
+
+test("an account paj.cash already holds is not saved again", async () => {
+  const { partner, asked } = paj({
+    ...BANKS,
+    ...ORDER,
+    "/pub/bank-account": (body: any) =>
+      body ? { status: 500, body: {} } : { body: [{ id: "acct_9", accountName: "ADA", accountNumber: "0123456789", bank: "b-gt" }] },
+  });
+  assert.equal((await partner.disburse(request())).status, "accepted");
+  assert.equal(posted(asked, "/pub/bank-account").length, 0);
+});
+
+test("an account paj.cash will not save is the cash-out's refusal, and no order is opened", async () => {
+  const { partner, asked } = paj({
+    ...BANKS,
+    ...ORDER,
+    "/pub/bank-account": (body: any) => (body ? { status: 400, body: { message: "Account could not be verified" } } : { body: [] }),
+  });
+  const r = await partner.disburse(request());
+  assert.equal(r.status, "rejected");
+  if (r.status === "rejected") assert.match(r.reason, /could not be verified/);
+  assert.ok(!asked.some((a) => a.path === "/pub/offramp"));
+});
+
+test("a save refused because another cash-out just saved the same account is not a refusal", async () => {
+  let reads = 0;
+  const { partner } = paj({
+    ...BANKS,
+    ...ORDER,
+    "/pub/bank-account": (body: any) => {
+      if (body) return { status: 409, body: { message: "Bank account already exists" } };
+      reads++;
+      return { body: reads === 1 ? [] : [{ id: "acct_2", accountName: "ADA", accountNumber: "0123456789", bank: "b-gt" }] };
+    },
+  });
+  assert.equal((await partner.disburse(request())).status, "accepted");
 });

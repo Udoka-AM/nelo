@@ -22,6 +22,7 @@ const SIG = "5".repeat(87);
 function world(o: { sessionExpired?: boolean } = {}) {
   let status = "INIT";
   let calls = 0;
+  const saved: { id: string; accountName: string; accountNumber: string; bank: string }[] = [];
   const asked: string[] = [];
   const f = async (url: string, init?: { method?: string; body?: string }) => {
     const path = url.slice(PAJ_STAGING.length);
@@ -32,6 +33,13 @@ function world(o: { sessionExpired?: boolean } = {}) {
     if (path.startsWith("/pub/bank-account/confirm")) {
       return path.includes("0000000000") ? reply({ message: "Account not found" }, 400) : reply({ accountName: "ADAEZE OKAFOR" });
     }
+    if (path === "/pub/bank-account" && init?.method === "POST") {
+      const b = JSON.parse(init.body ?? "{}") as { bankId: string; accountNumber: string };
+      const a = { id: `acct_${saved.length + 1}`, accountName: "ADAEZE OKAFOR", accountNumber: b.accountNumber, bank: b.bankId };
+      saved.push(a);
+      return reply(a);
+    }
+    if (path === "/pub/bank-account") return reply(saved);
     if (path === "/pub/offramp") {
       // Slow enough that two requests really overlap.
       await new Promise((r) => setTimeout(r, 25));

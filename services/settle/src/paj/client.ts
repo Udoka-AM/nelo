@@ -55,6 +55,17 @@ export interface PajBank {
   country: string;
 }
 
+/** A bank account saved to the paj.cash account the session belongs to. */
+export interface PajSavedAccount {
+  id: string;
+  accountName: string;
+  accountNumber: string;
+  /** paj.cash's bank id. */
+  bank: string;
+}
+
+export type KycIdType = "BVN" | "NIN";
+
 export interface OfframpRequest {
   bankId: string;
   accountNumber: string;
@@ -169,6 +180,38 @@ export function pajClient(options: PajClientOptions) {
       const q = `bankId=${encodeURIComponent(bankId)}&accountNumber=${encodeURIComponent(accountNumber)}`;
       const r = await call<{ accountName: string }>("GET", `/pub/bank-account/confirm?${q}`, bearer(session));
       return { accountName: String(r.accountName) };
+    },
+
+    /** Bank accounts saved to this session's paj.cash account. */
+    async savedAccounts(session: Session): Promise<PajSavedAccount[]> {
+      const r = await call<PajSavedAccount[]>("GET", "/pub/bank-account", bearer(session));
+      return (r ?? []).map((a) => ({
+        id: String(a.id),
+        accountName: String(a.accountName),
+        accountNumber: String(a.accountNumber),
+        bank: String(a.bank),
+      }));
+    },
+
+    /**
+     * Save a bank account to the session's paj.cash account. Their off-ramp
+     * flow saves the account before an order pays it (API reference §14,
+     * step 5); paj.cash runs the name enquiry itself and returns the holder.
+     */
+    async saveAccount(session: Session, bankId: string, accountNumber: string): Promise<PajSavedAccount> {
+      const r = await call<PajSavedAccount>("POST", "/pub/bank-account", bearer(session), { bankId, accountNumber });
+      if (!r?.id) throw new PajError("paj.cash saved the account but returned no id", 200, false);
+      return { id: String(r.id), accountName: String(r.accountName), accountNumber: String(r.accountNumber), bank: String(r.bank) };
+    },
+
+    /**
+     * Government-ID KYC for the person the session belongs to: once, by the
+     * operator, for Nelo's own account. An id already linked to another
+     * paj.cash user is refused with 400 "IdNumber already used".
+     */
+    async submitKyc(session: Session, idNumber: string, idType: KycIdType, country: string): Promise<string> {
+      const r = await call<{ message?: string }>("POST", "/pub/kyc", bearer(session), { idNumber, idType, country });
+      return String(r?.message ?? "KYC submitted");
     },
 
     async createOfframp(session: Session, order: OfframpRequest): Promise<OfframpOrder> {

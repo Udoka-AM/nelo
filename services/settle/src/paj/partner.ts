@@ -48,6 +48,8 @@ export class PajPartner implements PayoutPartner {
   readonly fidelity: Fidelity;
   readonly #o: PajPartnerOptions;
   #banks: { at: number; list: PajBank[] } | null = null;
+  /** `bankId:accountNumber` already saved on paj.cash, so each is saved once. */
+  #saved = new Set<string>();
 
   constructor(options: PajPartnerOptions) {
     this.#o = options;
@@ -109,6 +111,7 @@ export class PajPartner implements PayoutPartner {
     if (!bank) return refuse(`paj.cash does not list bank code ${parsed.destination.institution}`);
 
     try {
+      await this.#ensureSaved(bank.id, parsed.destination.account);
       const order = await this.#o.client.createOfframp(this.#o.session(), {
         bankId: bank.id,
         accountNumber: parsed.destination.account,
@@ -134,6 +137,32 @@ export class PajPartner implements PayoutPartner {
       if (e instanceof PajError && !e.session && e.status >= 400 && e.status < 500) return refuse(e.message);
       throw e;
     }
+  }
+
+  /**
+   * paj.cash's off-ramp flow saves the bank account to the account the
+   * session belongs to before an order pays it. Saved once: the list is read
+   * first, so a restart or a second cash-out to the same account does not
+   * save it again. A refusal here (an account paj.cash cannot verify) is a
+   * 4xx and becomes the cash-out's refusal, before any order exists.
+   */
+  async #ensureSaved(bankId: string, accountNumber: string): Promise<void> {
+    const key = `${bankId}:${accountNumber}`;
+    if (this.#saved.has(key)) return;
+    const session = this.#o.session();
+    const saved = await this.#o.client.savedAccounts(session);
+    for (const a of saved) this.#saved.add(`${a.bank}:${a.accountNumber}`);
+    if (this.#saved.has(key)) return;
+    try {
+      await this.#o.client.saveAccount(session, bankId, accountNumber);
+    } catch (e) {
+      // Two cash-outs to one account at once can both try to save it. If the
+      // second is refused because the first got there, the list now has it.
+      if (!(e instanceof PajError) || e.session) throw e;
+      const again = await this.#o.client.savedAccounts(session);
+      if (!again.some((a) => a.bank === bankId && a.accountNumber === accountNumber)) throw e;
+    }
+    this.#saved.add(key);
   }
 
   /**

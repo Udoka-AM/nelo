@@ -88,10 +88,16 @@ cloudflared's port 7844). The fix is ready: ngrok's fixed domain plus `pnpm gate
 
 **Open, in order:**
 1. Settle an offline sale on the handsets through the stable address.
-2. paj.cash: the user is meeting them on 5 Oct for the staging key and answers (session,
-   staging mint, deposit addresses, failure states, webhooks, fees). The client is
-   `services/settle/src/paj/`, built from their public API reference and tested against a
-   fake; adapt it to what they say, then run a real cash-out.
+2. paj.cash. The client is `services/settle/src/paj/`, built from their HTTP reference
+   (`lib/API_REFERENCE.md` in the `paj_ramp` npm package, v1.5.4) and tested against a fake.
+   It follows their off-ramp flow: session by one-time code, bank list, name enquiry, **save
+   the bank account**, create the order, the merchant's wallet sends USDC to the order's
+   deposit address, status from `GET /pub/transactions/:id` (`INIT`, `PAID`, `COMPLETED`).
+   Webhooks are unsigned in their examples and are only a prompt to ask the API. KYC is per
+   paj.cash user: Nelo's account is verified once with `pnpm paj:kyc`. docs.paj.cash is
+   blocked from the cloud sessions; it may hold details the npm reference does not (the user
+   says its register-bank-account page differs). Still open with paj.cash: staging mint,
+   failure states, session length, one Nelo account vs per-merchant accounts.
 3. Release APKs: `pnpm release:env`, then `build:release` per app. Configured, not yet built.
 4. Video (3:00 max) and deck (team names; the "What actually ran" slide). The user has asked
    to leave these until the above is done.
