@@ -49,6 +49,7 @@
         "pages": [
           "operations/deployment",
           "operations/relay",
+          "operations/release",
           "operations/testing",
           "operations/status"
         ]

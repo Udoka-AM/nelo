@@ -27,10 +27,22 @@ export interface Relayer {
   fetch?: Fetch;
 }
 
+/**
+ * Sent with every request to Nelo's own services. A free ngrok address (the
+ * stable public address the relay runs behind) answers a request it takes for
+ * a browser's with a warning page instead of passing it on; this header says
+ * it is not one. Anything else in front of the relay ignores it.
+ */
+export const SERVICE_HEADERS: Record<string, string> = { "ngrok-skip-browser-warning": "1" };
+
 const post = (r: Relayer, path: string, body: unknown) =>
   (r.fetch ?? (fetch as unknown as Fetch))(`${r.url}${path}`, {
     method: "POST",
-    headers: { "content-type": "application/json", ...(r.token ? { authorization: `Bearer ${r.token}` } : {}) },
+    headers: {
+      "content-type": "application/json",
+      ...SERVICE_HEADERS,
+      ...(r.token ? { authorization: `Bearer ${r.token}` } : {}),
+    },
     body: JSON.stringify(body),
   });
 

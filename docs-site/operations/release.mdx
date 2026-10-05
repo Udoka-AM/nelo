@@ -1,0 +1,106 @@
+---
+title: "Release builds"
+description: "A stable public address for the relay and settlement service, and signed release APKs of both apps that use it."
+---
+
+A development build loads its code from Metro and reads `.env` there, so a quick tunnel or a LAN
+address is enough. A **release APK** is different in three ways, and each one breaks the
+setup that works in development:
+
+| | Development build | Release APK |
+|---|---|---|
+| Where `EXPO_PUBLIC_` values come from | `apps/<app>/.env`, through Metro | **Compiled in at build time**, from EAS's `production` environment (the `.env` files are gitignored, so a cloud build never sees them) |
+| Plain `http://` | Allowed (Metro itself is http) | **Refused by Android.** A LAN address fails silently |
+| A quick tunnel (`*.trycloudflare.com`) | Fine, re-run `setup:env` when it changes | **Broken on the next restart.** The APK keeps the old address forever |
+
+So a release needs one https address that never changes, set on EAS before building.
+
+## 1. One stable address: ngrok and the gateway
+
+ngrok's free plan gives every account one fixed domain (`<name>.ngrok-free.app`) and connects
+out on **port 443**, which works on networks that block cloudflared's port 7844 (the network this
+was built on does). One domain, two services, so a small gateway splits it:
+
+```
+https://<name>.ngrok-free.app/settle/…  →  gateway :8790  →  settlement service :8788  ("/settle" removed)
+https://<name>.ngrok-free.app/…         →  gateway :8790  →  relayer :8787
+```
+
+<Steps>
+  <Step title="Get the domain, once">
+    Sign up at ngrok.com, then `brew install ngrok` and `ngrok config add-authtoken <token>`
+    (Dashboard → Your Authtoken). Your free domain is under Dashboard → Domains.
+  </Step>
+  <Step title="Run the services">
+    In separate terminals, leave each running:
+    ```bash
+    source ~/.config/nelo/relay.env  && cd ~/nelo/services/relay  && pnpm start   # :8787
+    source ~/.config/nelo/settle.env && cd ~/nelo/services/settle && pnpm start   # :8788, once paj.cash is set up
+    cd ~/nelo && pnpm gateway                                                       # :8790
+    ngrok http 8790 --url=https://<name>.ngrok-free.app
+    ```
+    `RELAY_HOST` stays `127.0.0.1`: the gateway and ngrok are on the same Mac.
+  </Step>
+  <Step title="Check it from a phone">
+    `https://<name>.ngrok-free.app/v1/health` shows the relayer's fee payer.
+    `https://<name>.ngrok-free.app/gateway/health` shows the gateway itself. A browser sees
+    ngrok's warning page first; the apps send `ngrok-skip-browser-warning` with every request,
+    so they never do.
+  </Step>
+  <Step title="Point everything at it">
+    ```bash
+    cd ~/nelo && pnpm setup:env \
+      --relay-url  https://<name>.ngrok-free.app \
+      --settle-url https://<name>.ngrok-free.app/settle
+    ```
+    This writes both apps' `.env` and `SETTLE_PUBLIC_URL`, so paj.cash's webhook arrives at
+    `…/settle/v1/paj/webhook/<secret>` and the gateway passes it on. Restart the settlement
+    service after this so it picks up the new `SETTLE_PUBLIC_URL`.
+  </Step>
+</Steps>
+
+The address never changes, so development builds can use it too, and nothing needs re-running
+after a restart. The quick-tunnel and LAN set-ups in [Relay](/operations/relay) still work for
+development.
+
+## 2. Put the values on EAS
+
+```bash
+cd ~/nelo
+pnpm release:env --check   # what would be set, and anything a release cannot use
+pnpm release:env           # sets them on EAS's "production" environment, per app
+```
+
+It refuses a plain-http or quick-tunnel relay or settlement address, and an empty relay URL or
+token, naming the file and the variable. Values are never printed. RPC URLs and tokens are set
+as `sensitive`. An empty value in `.env` is skipped, not cleared on EAS; remove a stale one with
+`npx eas env:delete` in that app's folder.
+
+## 3. Build
+
+```bash
+pnpm --filter @nelo/merchant build:release
+pnpm --filter @nelo/payer    build:release
+```
+
+`eas.json`'s `production` profile builds an APK with `environment: "production"` and bumps the
+version code. It uses the same EAS keystore as the development builds, so **a release APK installs
+over a development build** and keeps the app's data. That matters on the payer phone: uninstalling
+deletes the StrongBox key its vault is enrolled to, and that vault can then only be used from a new
+wallet.
+
+If the EAS queue is long, `pnpm --filter @nelo/merchant build:release --local` builds on the Mac
+(Android Studio's SDK and Java 17 needed) with the same keystore and the same EAS environment.
+
+## 4. Check the release, on the phones
+
+1. `adb install -r <file>.apk` on each phone. `-r` keeps the data.
+2. Open both. No Metro, no dev menu, no gear button.
+3. Till: the balance loads. Payer: **Sync** works.
+4. The offline sale: both phones in airplane mode, charge, pay, the till scans the payer's code,
+   **Hand over the goods**, scan the same code again (refused). Airplane mode off, **Settle now**:
+   the balance goes up.
+5. The relay terminal logs the redemption; the gateway logs `POST relay /v1/redeem → 200`.
+
+A release build with no relay address says so on screen when settling, rather than failing on the
+network: both apps check the addresses they were built with when they start.

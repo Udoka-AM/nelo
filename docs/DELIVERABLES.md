@@ -544,6 +544,11 @@ that is not negotiable — half the marks.
 2. **Signed release APK.** *(Android)*
    **Done when:** it installs from scratch on the handset that has *never* had a dev build,
    and completes a sale.
+   **Configured, not yet built (5 Oct).** `production` EAS profile in both apps, `pnpm release:env`
+   to put the apps' public values on EAS (a cloud build cannot see the gitignored `.env`), and
+   `build:release` per app. The relayer and settlement service sit behind one stable https
+   address (ngrok's fixed domain in front of `pnpm gateway`), because a release APK compiles its
+   addresses in and refuses plain http. Runbook: `docs-site/operations/release.mdx`.
 3. **dApp Store publish.** *(Android)*
 4. **Repo clean.** `git clone` → `pnpm install` → `anchor test` green on a machine that has
    never seen the project. *(Anchor)*

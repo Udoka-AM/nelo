@@ -47,7 +47,8 @@
   "scripts": {
     "start": "expo start --dev-client",
     "android": "expo run:android",
-    "build:dev": "eas build -p android --profile development"
+    "build:dev": "eas build -p android --profile development",
+    "build:release": "eas build -p android --profile production"
   },
   "private": true,
   "description": "Expo app — the merchant terminal. Local-currency amount entry, Solana Pay, day-book, and onboarding behind an embedded wallet."

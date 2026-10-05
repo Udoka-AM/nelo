@@ -51,11 +51,16 @@ Each check is negative-tested rather than trusted: removing the `ScrollView` imp
 
 ## What still has never run
 
-<Warning>
-**The merchant app has never rendered.** A development client **does not embed the JS bundle**; it loads it from Metro at runtime, so compiling the native side proves nothing about the screens. No merchant screen has been drawn and no component has mounted. It typechecks clean under `strict`, which is a real result and not the same result.
+<Note>
+**Both apps now run on handsets** (30 Sep – 1 Oct, development builds). What ran, on two phones, one with StrongBox:
 
-The payer app **has** now rendered on a handset, so the shared halves — Hermes, the bundler, the native module boundary — are no longer in question. The till is.
-</Warning>
+- **The till renders and works online.** It charges in naira, its Solana Pay code is paid from Solflare (devnet transactions landed), and its balance reads the chain.
+- **The payer enrolled for real.** StrongBox key generated, vault opened and funded ($15 set aside), offline limit read back from the chain.
+- **The offline sale works, both ways.** Payer scans the till's code and signs; the till scans the payer's code, checks it offline and records the sale ("2 offline payments to settle").
+- **Settling on the handset has not completed yet.** Every attempt so far failed on the network between the till and the relayer, not in the code: first a Helius key answering 401, then a placeholder relay address, then a network that blocks cloudflared (port 7844). Each was fixed or worked around; the stable address in [Release builds](/operations/release) is the fix for the last. The same settlement path passed on devnet in `pnpm rehearse`.
+
+Findings the handsets produced, all fixed on `main`: `@nelo/rpc` did not fail over on 401; the till said "no signal" when only the relayer was down; the keypad screen overlapped once an offline payment was waiting; the payer's vault setup failed in the wallet with only "simulation failed"; nelo Pay's flow did not say the till has to scan back.
+</Note>
 
 <Warning>
 **StrongBox still has not run, and now for a different reason.** `@nelo/attest` compiles, loads and answers on a real handset — but the handset that ran it **has no secure element**, so the two deepest checks never executed: keygen with attestation, and a hardware signature verifying against the device key.

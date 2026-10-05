@@ -9,7 +9,9 @@
     "program:build": "anchor build",
     "program:test": "anchor test",
     "setup:env": "node --disable-warning=ExperimentalWarning scripts/setup-env.mts",
-    "rehearse": "node --disable-warning=ExperimentalWarning --env-file-if-exists=$HOME/.config/nelo/relay.env tools/rehearse/src/main.ts"
+    "rehearse": "node --disable-warning=ExperimentalWarning --env-file-if-exists=$HOME/.config/nelo/relay.env tools/rehearse/src/main.ts",
+    "gateway": "node --disable-warning=ExperimentalWarning scripts/gateway.mts",
+    "release:env": "node --disable-warning=ExperimentalWarning scripts/release-env.mts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

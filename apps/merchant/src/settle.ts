@@ -23,6 +23,7 @@
 import { getBase64Decoder } from "@solana/kit";
 import {
   relayPrepare,
+  SERVICE_HEADERS,
   reportConflict,
   rpcStatuses,
   settleOnce,
@@ -182,7 +183,7 @@ export async function whyOffline(): Promise<string> {
     return r.ok;
   });
   if (!relayUrl) return chain ? "Could not settle. Try again in a moment." : "No signal — try again when you are online.";
-  const relay = await answers(async () => (await fetch(`${relayUrl}/v1/health`)).ok);
+  const relay = await answers(async () => (await fetch(`${relayUrl}/v1/health`, { headers: SERVICE_HEADERS })).ok);
   if (relay) return "The relay answered but did not settle. Try again in a moment.";
   const host = relayUrl.replace(/^https?:\/\//, "").split("/")[0];
   return chain

@@ -7,6 +7,10 @@ The relayer is why a merchant needs no SOL and never signs anything. `redeem_vou
 
 It runs as one small Node process. For the week-3 demo it runs on a Mac behind a tunnel, because the phones are on mobile data and cannot reach a laptop on a home network.
 
+<Note>
+**For release APKs and the demo, use the stable address in [Release builds](/operations/release)**: ngrok's fixed domain in front of `pnpm gateway`, which serves the relayer and the settlement service from one https address that never changes. The quick tunnel and LAN set-ups below are for development builds only: a release APK compiles its addresses in and Android refuses plain http outside development.
+</Note>
+
 ## What it will pay for
 
 | Limit | Default | Why |

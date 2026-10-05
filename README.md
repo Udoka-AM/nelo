@@ -22,7 +22,9 @@ what the insurance line has to be, and what the SKR premium can honestly be pric
 
 ## Status
 
-Week 2 in progress. The **vault program is real**: collateral deposit, offline voucher
+Week 4 (submission 8 Oct). The live ledger is [`docs-site/operations/status.mdx`](docs-site/operations/status.mdx), and [`AGENTS.md`](AGENTS.md) is the hand-over for anyone picking the work up. Both apps now run on handsets, and the offline gate has passed on devnet. The history below is how it got here.
+
+The **vault program is real**: collateral deposit, offline voucher
 redemption with the device signature verified on chain by the secp256r1 precompile, a
 128-slot replay window, and a timelocked withdrawal. A valid signature over the wrong
 bytes is refused, and so is a deliberate double-spend.

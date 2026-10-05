@@ -62,7 +62,12 @@ async function call<T>(s: Service, method: "GET" | "POST", path: string, body?: 
   const send = s.fetch ?? (fetch as unknown as Fetch);
   const response = await send(`${s.url}${path}`, {
     method,
-    headers: { "content-type": "application/json", ...(s.token ? { authorization: `Bearer ${s.token}` } : {}) },
+    // See SERVICE_HEADERS in @nelo/queue: a free ngrok address needs it.
+    headers: {
+      "content-type": "application/json",
+      "ngrok-skip-browser-warning": "1",
+      ...(s.token ? { authorization: `Bearer ${s.token}` } : {}),
+    },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   const parsed = (await response.json().catch(() => ({}))) as { error?: string; login?: boolean };
