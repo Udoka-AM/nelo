@@ -41,12 +41,23 @@ if (!/^https:\/\/[^/\s]+\.[^/\s]+/.test(publicUrl)) {
 const webhookURL = `${publicUrl}/v1/paj/webhook/${pathSecret}`;
 
 async function call(method: "PATCH" | "POST", path: string, body?: unknown): Promise<any> {
-  const r = await fetch(`${base}${path}`, {
-    method,
-    headers: { "content-type": "application/json", "x-api-key": apiKey },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    signal: AbortSignal.timeout(30_000),
-  });
+  let r: Response;
+  try {
+    r = await fetch(`${base}${path}`, {
+      method,
+      headers: { "content-type": "application/json", "x-api-key": apiKey },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch (e) {
+    // No answer at all: this Mac's network, not the key. Nothing was changed.
+    const cause = (e as { cause?: { code?: string; message?: string } }).cause;
+    fail(
+      `Could not reach ${new URL(base).host} from this Mac (${cause?.code ?? cause?.message ?? (e as Error).message}). Nothing was changed.\n` +
+        `Check with: curl -sS -m 15 -o /dev/null -w "%{http_code}\\n" ${base}/pub/v2/bank\n` +
+        `A number (401 is fine) means it is reachable; a timeout means this network, a VPN or a firewall is blocking it.`,
+    );
+  }
   const text = await r.text();
   let parsed: any = null;
   try {
