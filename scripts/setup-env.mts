@@ -244,7 +244,7 @@ const need = (f: EnvFile, key: string, what: string) => {
 };
 need(relay, "RELAY_RPC_URL", "your Helius devnet URL");
 need(settle, "PAJ_API_KEY", "Nelo's paj.cash business key (production; there is no staging)");
-need(settle, "PAJ_WEBHOOK_SECRET", "the key's whsec_… signing secret, from paj.cash");
+need(settle, "PAJ_WEBHOOK_SECRET", "optional: once SETTLE_PUBLIC_URL is set, `cd services/settle && pnpm paj:webhook` fetches it");
 need(relay, "RELAY_CASHOUT_RPC_URL", "a mainnet RPC for cash-outs, e.g. your Helius mainnet URL");
 need(settle, "SETTLE_PUBLIC_URL", "the settle tunnel: pnpm setup:env --settle-url https://…");
 need(merchant, "EXPO_PUBLIC_NELO_RELAY_URL", "the relay tunnel: pnpm setup:env --relay-url https://…");

@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning --env-file-if-exists=$HOME/.config/nelo/settle.env src/main.ts",
     "dev": "node --watch src/main.ts",
-    "test": "node --test \"test/*.test.ts\""
+    "test": "node --test \"test/*.test.ts\"",
+    "paj:webhook": "node --disable-warning=ExperimentalWarning --env-file-if-exists=$HOME/.config/nelo/settle.env src/paj-webhook.ts"
   },
   "dependencies": {
     "@nelo/onboard": "workspace:*",

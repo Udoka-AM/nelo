@@ -108,6 +108,8 @@ cloudflared's port 7844). The fix is ready: ngrok's fixed domain plus `pnpm gate
    - Mainnet split: `RELAY_CASHOUT_RPC_URL` gives the relayer's cash-out transfers a mainnet
      RPC; the till reads the mainnet USDC balance (`EXPO_PUBLIC_CASHOUT_RPC_URL`) and MWA signs
      cash-outs with `solana:mainnet`.
+   - The dashboard may not show the `whsec_` secret; `pnpm paj:webhook` (services/settle) sets
+     the key's ramp webhook via `PATCH /pub/v2/webhook` and saves the returned secret.
    - Left for the user: the production key and `whsec_` secret in `settle.env`, a mainnet RPC
      in `relay.env`, ~0.01 SOL on the fee payer on mainnet, ≥ $0.50 mainnet USDC in the
      merchant's wallet, then one small cash-out on the handset. Rate limit "nine" (units
