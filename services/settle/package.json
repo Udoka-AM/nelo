@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "start": "node --disable-warning=ExperimentalWarning --env-file-if-exists=$HOME/.config/nelo/settle.env src/main.ts",
+    "start": "node --dns-result-order=ipv4first --disable-warning=ExperimentalWarning --env-file-if-exists=$HOME/.config/nelo/settle.env src/main.ts",
     "dev": "node --watch src/main.ts",
     "test": "node --test \"test/*.test.ts\"",
-    "paj:webhook": "node --disable-warning=ExperimentalWarning --env-file-if-exists=$HOME/.config/nelo/settle.env src/paj-webhook.ts"
+    "paj:webhook": "node --dns-result-order=ipv4first --disable-warning=ExperimentalWarning --env-file-if-exists=$HOME/.config/nelo/settle.env src/paj-webhook.ts"
   },
   "dependencies": {
     "@nelo/onboard": "workspace:*",
