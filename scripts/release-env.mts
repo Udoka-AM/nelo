@@ -89,27 +89,38 @@ if (checkOnly) {
   process.exit(0);
 }
 
+// The workspace's own eas-cli when installed: npx adds npm warnings about
+// pnpm's settings to every error, and was what got shown instead of the error.
+const localEas = join(root, "node_modules", ".bin", "eas");
+const eas = existsSync(localEas) ? { cmd: localEas, args: [] as string[] } : { cmd: "npx", args: ["eas"] };
+
 const sensitive = (name: string) => /TOKEN|RPC_URL|RPC_FALLBACK/.test(name);
 let failed = 0;
 for (const p of plan) {
   const r = spawnSync(
-    "npx",
+    eas.cmd,
     [
-      "eas", "env:set",
+      ...eas.args,
+      "env:set",
       "--environment", "production",
       "--name", p.name,
       "--value", p.value,
       "--visibility", sensitive(p.name) ? "sensitive" : "plaintext",
       "--non-interactive",
     ],
-    { cwd: join(root, "apps", p.app), stdio: ["ignore", "ignore", "pipe"], encoding: "utf8" },
+    { cwd: join(root, "apps", p.app), stdio: ["ignore", "pipe", "pipe"], encoding: "utf8" },
   );
   if (r.status === 0) console.log(`  set ${p.app} ${p.name}`);
   else {
     failed++;
-    // eas prints the value back in some errors; show only its first line, with the value removed.
-    const first = (r.stderr || "").split("\n").find((l) => l.trim()) ?? "unknown error";
-    console.error(`  FAILED ${p.app} ${p.name}: ${first.split(p.value).join("…")}`);
+    // eas prints the value back in some errors, so it is removed. npm's own
+    // warnings are not the error and are skipped.
+    const lines = `${r.stderr || ""}\n${r.stdout || ""}`
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l && !/^npm (warn|notice)/i.test(l) && !/^›?\s*$/.test(l));
+    const why = lines.slice(-3).join(" | ") || `exit ${r.status}`;
+    console.error(`  FAILED ${p.app} ${p.name}: ${why.split(p.value).join("…")}`);
   }
 }
 if (failed) {
