@@ -51,6 +51,14 @@ const flag = (name: string) => {
     );
     process.exit(1);
   }
+  // The docs' placeholders, typed in as they are: NAME.ngrok-free.app is
+  // somebody else's address, or nobody's.
+  if (v && /^https?:\/\/(name|yourname|your-domain|your-name|example)\./i.test(v)) {
+    console.error(
+      `${name}: "${v}" still has the placeholder in it. Put your own ngrok domain there: ngrok's dashboard → Domains, or the "Forwarding" line ngrok prints.`,
+    );
+    process.exit(1);
+  }
   return v?.replace(/\/+$/, "");
 };
 const relayUrl = flag("--relay-url");

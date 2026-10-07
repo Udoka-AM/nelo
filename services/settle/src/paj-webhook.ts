@@ -38,6 +38,9 @@ if (!/^https:\/\/[^/\s]+\.[^/\s]+/.test(publicUrl)) {
       `Set it first: pnpm setup:env --settle-url https://NAME.ngrok-free.app/settle`,
   );
 }
+if (/^https:\/\/(name|yourname|your-domain|your-name|example)\./i.test(publicUrl)) {
+  fail(`SETTLE_PUBLIC_URL is "${publicUrl}", which still has the docs' placeholder in it. Re-run pnpm setup:env with your own ngrok domain.`);
+}
 const webhookURL = `${publicUrl}/v1/paj/webhook/${pathSecret}`;
 
 async function call(method: "PATCH" | "POST", path: string, body?: unknown): Promise<any> {
