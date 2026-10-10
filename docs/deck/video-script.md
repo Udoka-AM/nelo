@@ -50,7 +50,7 @@ order id. Replace anything in brackets with what really happened, or cut the lin
 | Till: **Cash out**, **₦[amount]**, bank and account number; the holder's name appears. | "At the end of the day she cashes out, and sees whose account it is before anything moves." |
 | Wallet sheet on **mainnet**; she approves. | "One approval in her own wallet. nelo never holds her money or her key." |
 | Till: *Sent → paying your bank → **Paid to your bank*** | "Real USDC on Solana mainnet goes to our payout partner, paj.cash…" |
-| Her banking app: **credit alert ₦[amount]**. Solscan for a second. | "…and [N] seconds later it's in her bank account, in naira. With UseAzza, the same cash-out reaches nine more currencies." |
+| Her banking app: **credit alert ₦[amount]**. Solscan for a second. | "…and [N] seconds later it's in her bank account, in naira. With our second partner, UseAzza, live from day one, the same cash-out reaches nine more currencies. Nigeria first." |
 
 ## 1:55–2:20 · The business
 
@@ -93,7 +93,6 @@ order id. Replace anything in brackets with what really happened, or cut the lin
 - Never show an API key, the `whsec_` secret, `.env` files or a recovery phrase on screen.
 - The cash-out is on mainnet; the offline payments run on devnet. Say "devnet" on screen once,
   as the deck's "What actually ran" slide does.
-- The nelo pay services after paying a friend, UseAzza payouts and the projections are plans,
-  not shipped: the voice-over says "from month six" and the deck labels the model illustrative.
+- The nelo pay services after paying a friend and the projections are plans, not shipped: the voice-over says "from month six" and the deck labels the model illustrative.
   Keep it that way.
 - Time the final cut. 3:00 is a hard limit.
