@@ -27,6 +27,8 @@ export interface ServerOptions {
   now: () => number;
   /** When set, requests must carry `authorization: Bearer <token>`. */
   token?: string;
+  /** Where to report each settle decision. Omitted: silent (tests). */
+  log?: (line: string) => void;
   /**
    * Cash-out transfers. Omitted: the endpoints answer 404. paj.cash settles
    * on mainnet while offline payments run on devnet, so a cash-out may name
@@ -98,6 +100,14 @@ export function buildRelay(options: ServerOptions): Relay {
     try {
       return await serially(async () => {
         const answer = await redeem(packet, { ...options.deps, now: options.now() });
+        // One line per decision, so an operator can see why a till is waiting.
+        options.log?.(
+          answer.status === "sent"
+            ? `redeem sent ${answer.signature}`
+            : answer.status === "declined"
+              ? `redeem declined${answer.retryable ? " (will retry)" : ""}: ${answer.reason}`
+              : `redeem refused by the chain: ${JSON.stringify(answer.err)}`,
+        );
         // Asked to pay for a second, different voucher at a sequence it already
         // submitted: the relayer is holding a double spend. Report it now.
         if (answer.status === "declined" && answer.conflictWith) {

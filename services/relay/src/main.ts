@@ -75,6 +75,7 @@ const cashoutEndpoint = cashoutRpcUrl
 
 const relay = buildRelay({
   now,
+  log: (line) => console.log(`${new Date().toISOString().slice(11, 19)} ${line}`),
   cashout: {
     decimals: Number(process.env.RELAY_MINT_DECIMALS ?? "6"),
     ...(cashoutEndpoint ? { rpc: createRelayRpc(cashoutEndpoint.url, cashoutEndpoint.fetch) } : {}),
