@@ -56,15 +56,15 @@ order id. Replace anything in brackets with what really happened, or cut the lin
 
 | Picture | Voice-over |
 |---|---|
-| Deck, Market slide: TAM $1.4T → SAM $42B → SOM $177M, the seven categories lighting up. | "One point four trillion dollars already moves on phones in Africa. We start with businesses: market traders, restaurants, couriers and taxis, field services, fashion and jewellery, supermarkets, hotels and clubs." |
-| Projection slide: the users-by-month bars climbing, 500 → 4K → 56K. | "Five hundred users in our first month, four businesses to every payer. Four thousand by month three. Then the flywheel: every shop brings its customers onto nelo pay, and every customer asks the next shop. Fifty-six thousand users by the end of year one." |
+| Deck, Market slide: TAM $1.4T → SAM $48B → SOM $97M, the seven categories lighting up. | "Nigerians already move forty-eight billion dollars a year through 5.9 million POS terminals, and a quarter of those payments fail. We start with businesses: market traders, restaurants, couriers and taxis, field services, fashion and jewellery, supermarkets, hotels and clubs." |
+| Projection slide: the users-by-month bars climbing, 500 → 4K → 150K. | "Five hundred users in our first month, four businesses to every payer. Four thousand by month three. Then field sales and the flywheel: every shop brings its customers onto nelo pay, and every customer asks the next shop. A hundred and fifty thousand users by the end of year one." |
 
 ## 2:20–2:42 · nelo pay grows up
 
 | Picture | Voice-over |
 |---|---|
 | Dark slide: the six nelo pay services appear one by one. | "Every customer who pays with nelo pay can pay a friend. From month six, nelo pay becomes their money app: cash out, savings that earn, bill payments, stocks, and an API for AI agents to pay. All on Solana. All felt in naira." |
-| Projection table: revenue $1.6M → $21.6M → $73.4M; 1.7M users by year three. | "We earn 0.91% on every business payment, plus fees on nelo pay services. That's $1.6 million in year one, and $73 million by year three, across 1.7 million users." |
+| Projection table: revenue $0.9M → $11.2M → $43.4M; 500K businesses and 3.5M nelo pay users by year three. | "We earn 0.91% on every business payment, plus fees on nelo pay services. By year three: half a million businesses, four million users, a tenth of Nigeria's POS volume, and $43 million in revenue." |
 
 ## 2:42–2:52 · Close
 
