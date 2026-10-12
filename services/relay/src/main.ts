@@ -130,3 +130,31 @@ console.log(
     : "cash-outs: on the vaults' cluster. paj.cash settles on mainnet: set RELAY_CASHOUT_RPC_URL for real payouts",
 );
 if (!process.env.RELAY_TOKEN) console.warn("RELAY_TOKEN is not set: anyone who finds the URL can submit vouchers.");
+
+// The fee payer pays every fee: with no SOL, the chain refuses each
+// transaction as "AccountNotFound", which reads like anything but an empty
+// wallet. Say so at start, on each cluster, rather than let tills wait.
+async function solBalance(url: string, fetchImpl: typeof fetch): Promise<number | null> {
+  try {
+    const r = await fetchImpl(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getBalance", params: [feePayer.address, { commitment: "confirmed" }] }),
+    });
+    const body = (await r.json()) as { result?: { value: number } };
+    return body.result ? body.result.value / 1e9 : null;
+  } catch {
+    return null;
+  }
+}
+for (const [label, ep, min] of [
+  ["devnet (redemptions)", endpoint, 0.05],
+  ...(cashoutEndpoint ? [["mainnet (cash-outs)", cashoutEndpoint, 0.003] as const] : []),
+] as const) {
+  void solBalance(ep.url, ep.fetch).then((sol) => {
+    if (sol === null) return;
+    if (sol < min) {
+      console.warn(`fee payer has ${sol} SOL on ${label}: too little to pay fees. Fund ${feePayer.address} there, or settling fails with "AccountNotFound".`);
+    } else console.log(`fee payer: ${sol.toFixed(4)} SOL on ${label}`);
+  });
+}
