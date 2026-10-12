@@ -89,6 +89,31 @@ export interface CashoutInput {
   /** Also open the deposit address's token account, paid by the fee payer. */
   createDepositAccount: boolean;
   tokenProgram?: string;
+  /**
+   * A priority fee, set here so the wallet has no reason to add its own: a
+   * wallet that prepends a ComputeBudget instruction changes the message, and
+   * the relayer refuses a message it did not build. Mainnet needs one to land
+   * promptly anyway. Omitted: no ComputeBudget instructions.
+   */
+  priority?: { computeUnits: number; microLamportsPerUnit: bigint };
+}
+
+export const COMPUTE_BUDGET_PROGRAM_ID = "ComputeBudget111111111111111111111111111111";
+
+/** ComputeBudget SetComputeUnitLimit (2) and SetComputeUnitPrice (3), as the runtime reads them. */
+export function priorityInstructions(computeUnits: number, microLamportsPerUnit: bigint): Instruction[] {
+  if (!Number.isInteger(computeUnits) || computeUnits <= 0 || computeUnits > 1_400_000) throw new Error("compute units out of range");
+  if (microLamportsPerUnit < 0n || microLamportsPerUnit >= 1n << 64n) throw new Error("priority price out of range");
+  const limit = new Uint8Array(5);
+  limit[0] = 2;
+  new DataView(limit.buffer).setUint32(1, computeUnits, true);
+  const price = new Uint8Array(9);
+  price[0] = 3;
+  new DataView(price.buffer).setBigUint64(1, microLamportsPerUnit, true);
+  return [
+    { programAddress: COMPUTE_BUDGET_PROGRAM_ID, accounts: [], data: limit },
+    { programAddress: COMPUTE_BUDGET_PROGRAM_ID, accounts: [], data: price },
+  ];
 }
 
 /** The transfer, fee paid by the relayer, signed by the merchant. */
@@ -96,7 +121,9 @@ export function buildCashout(input: CashoutInput, lifetime: Lifetime): Unsigned 
   addressBytes(input.owner);
   addressBytes(input.deposit);
   if (input.owner === input.feePayer) throw new Error("the merchant cannot be the fee payer here");
-  const instructions: Instruction[] = [];
+  const instructions: Instruction[] = input.priority
+    ? priorityInstructions(input.priority.computeUnits, input.priority.microLamportsPerUnit)
+    : [];
   if (input.createDepositAccount) {
     instructions.push(createDepositAccountInstruction({ payer: input.feePayer, owner: input.deposit, mint: input.mint, ...(input.tokenProgram ? { tokenProgram: input.tokenProgram } : {}) }));
   }

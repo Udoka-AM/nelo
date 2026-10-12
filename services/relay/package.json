@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "node --watch src/index.ts",
     "test": "node --test \"test/*.test.ts\"",
-    "start": "node --dns-result-order=ipv4first --disable-warning=ExperimentalWarning --env-file-if-exists=$HOME/.config/nelo/relay.env src/main.ts"
+    "start": "node --dns-result-order=ipv4first --disable-warning=ExperimentalWarning --env-file-if-exists=$HOME/.config/nelo/relay.env src/main.ts",
+    "withdraw": "node --dns-result-order=ipv4first --disable-warning=ExperimentalWarning --env-file-if-exists=$HOME/.config/nelo/relay.env src/withdraw.ts"
   },
   "dependencies": {
     "@nelo/enrol": "workspace:*",

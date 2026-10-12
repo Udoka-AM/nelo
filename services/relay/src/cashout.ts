@@ -7,11 +7,19 @@
  *
  * ## The relayer signs only what it built
  *
- * `prepare` builds the transfer and remembers its exact bytes. `submit` takes
- * the merchant's signed copy, refuses it unless the message is exactly the
- * one built and the merchant's signature verifies, and only then adds the
- * relayer's signature. So the relayer never parses a stranger's transaction
- * to decide whether paying for it is safe.
+ * `prepare` builds the transfer, signs it as fee payer, and remembers its
+ * exact bytes. `submit` takes the merchant's signed copy, refuses it unless
+ * the message is exactly the one built and the merchant's signature verifies,
+ * and sends it. So the relayer never parses a stranger's transaction to decide
+ * whether paying for it is safe.
+ *
+ * It signs first, before the wallet sees the transfer, because wallets on
+ * mainnet add a priority-fee instruction to a transaction nobody else has
+ * signed yet, and an added instruction is a different message: the relayer
+ * would rightly refuse it. A transaction already carrying another signature
+ * is left alone. The transfer also sets its own priority fee, so there is
+ * nothing for the wallet to add. Signing first means the merchant could send
+ * it themselves, so its cost is counted when it is signed, not when it is sent.
  *
  * ## What bounds the cost
  *
@@ -48,7 +56,12 @@ export interface CashoutLimits {
   sponsorDepositAccounts: boolean;
   /** Shared with redemptions. */
   budgetLamports: number;
+  /** Priority fee per compute unit, in micro-lamports. 0: none set. */
+  priorityMicroLamports?: bigint;
 }
+
+/** Enough for create_idempotent and transfer_checked, with room. */
+const computeUnitsFor = (createsAccount: boolean) => (createsAccount ? 60_000 : 20_000);
 
 export interface CashoutDeps {
   rpc: RelayRpc;
@@ -127,7 +140,9 @@ export async function prepareCashout(
   if (createsAccount && !limits.sponsorDepositAccounts) {
     return { status: "declined", reason: "the deposit address has no token account, and opening one is not sponsored", retryable: false };
   }
-  const costLamports = SIGNATURE_FEE_LAMPORTS * 2 + (createsAccount ? ATA_RENT_LAMPORTS : 0);
+  const price = limits.priorityMicroLamports ?? 0n;
+  const priorityLamports = Number((BigInt(computeUnitsFor(createsAccount)) * price + 999_999n) / 1_000_000n);
+  const costLamports = SIGNATURE_FEE_LAMPORTS * 2 + priorityLamports + (createsAccount ? ATA_RENT_LAMPORTS : 0);
   if (state.spentLamports + costLamports > limits.budgetLamports) {
     return { status: "declined", reason: "the relayer's budget for this window is spent", retryable: true };
   }
@@ -145,17 +160,20 @@ export async function prepareCashout(
         feePayer: feePayer.address,
         createDepositAccount: createsAccount,
         tokenProgram,
+        ...(price > 0n ? { priority: { computeUnits: computeUnitsFor(createsAccount), microLamportsPerUnit: price } } : {}),
       },
       { blockhash: lifetime.blockhash, lastValidBlockHeight: BigInt(lifetime.lastValidBlockHeight) },
     );
   } catch (e) {
     return { status: "declined", reason: e instanceof Error ? e.message : "could not build the transfer", retryable: false };
   }
+  // Signed by the relayer now, so the wallet leaves the message as built.
+  const relayerSigned = withSignature(unsigned.wire, feePayer.address, feePayer.sign(unsigned.message));
   const transfer: Transfer = {
     owner: input.owner,
     deposit: input.deposit,
     amount: input.amount.toString(),
-    wire: b64(unsigned.wire),
+    wire: b64(relayerSigned),
     message: hex(unsigned.message),
     lastValidBlockHeight: lifetime.lastValidBlockHeight,
     createsAccount,
@@ -163,7 +181,13 @@ export async function prepareCashout(
     preparedAt: deps.now,
     signature: null,
   };
-  state = { ...state, transfers: { ...state.transfers, [input.order]: transfer } };
+  // Counted now: from here the merchant holds a transaction the relayer pays for.
+  state = {
+    ...state,
+    transfers: { ...state.transfers, [input.order]: transfer },
+    spentLamports: state.spentLamports + costLamports,
+    perOwner: { ...state.perOwner, [input.owner]: sentToday + 1 },
+  };
   ledger.write(state);
   return { status: "prepared", wire: transfer.wire, lastValidBlockHeight: transfer.lastValidBlockHeight, createsAccount };
 }
@@ -190,8 +214,6 @@ export async function submitCashout(order: string, signedWire: Uint8Array, deps:
   const sentState: LedgerState = {
     ...state,
     transfers: { ...state.transfers, [order]: { ...transfer, signature } },
-    spentLamports: state.spentLamports + transfer.costLamports,
-    perOwner: { ...state.perOwner, [transfer.owner]: (state.perOwner?.[transfer.owner] ?? 0) + 1 },
   };
   ledger.write(sentState);
 

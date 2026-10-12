@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { ed25519 } from "@noble/curves/ed25519";
 import { getCompiledTransactionMessageDecoder, getTransactionDecoder } from "@solana/kit";
 import { encodeBase58, decodeBase58 } from "@nelo/voucher";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, buildCashout, withSignature } from "@nelo/redeem";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, COMPUTE_BUDGET_PROGRAM_ID, buildCashout, withSignature } from "@nelo/redeem";
 import {
   emptyLedger,
   feePayerFromSecret,
@@ -78,6 +78,29 @@ test("a cash-out is built for the merchant to sign, with the relayer paying", as
   assert.equal(m.staticAccounts[0], FEE_PAYER.address);
   assert.equal(m.header.numSignerAccounts, 2);
   assert.equal(p.createsAccount, false);
+  // Already signed by the relayer, so a wallet leaves the message alone.
+  const sigs = tx.signatures as Record<string, Uint8Array | null>;
+  assert.ok(ed25519.verify(sigs[FEE_PAYER.address]!, new Uint8Array(tx.messageBytes), decodeBase58(FEE_PAYER.address)));
+  assert.ok(!sigs[OWNER] || sigs[OWNER]!.every((b) => b === 0), "the merchant has not signed yet");
+  // Counted when signed: the merchant now holds a transaction the relayer pays for.
+  assert.equal(s.ledger.state().spentLamports, 2 * SIGNATURE_FEE_LAMPORTS);
+  assert.equal(s.ledger.state().perOwner?.[OWNER], 1);
+});
+
+test("with a priority fee set, the transfer carries its own ComputeBudget instructions, and their cost is counted", async () => {
+  const s = setup();
+  const deps = () => ({ ...s.deps(), limits: { ...s.deps().limits, priorityMicroLamports: 100_000n } });
+  const p = await prepareCashout(order(), deps());
+  if (p.status !== "prepared") throw new Error(p.status);
+  const tx = getTransactionDecoder().decode(new Uint8Array(Buffer.from(p.wire, "base64")));
+  const m = getCompiledTransactionMessageDecoder().decode(tx.messageBytes);
+  if (!("instructions" in m)) throw new Error("legacy expected");
+  const programs = m.instructions.map((ix) => m.staticAccounts[ix.programAddressIndex]);
+  assert.deepEqual(programs.slice(0, 2), [COMPUTE_BUDGET_PROGRAM_ID, COMPUTE_BUDGET_PROGRAM_ID]);
+  // 20,000 units at 100,000 micro-lamports: 2,000 lamports on top of the signatures.
+  assert.equal(s.ledger.state().spentLamports, 2 * SIGNATURE_FEE_LAMPORTS + 2_000);
+  // Signed by the merchant as built, it goes out.
+  assert.equal((await submitCashout("ord_1", signAsOwner(p.wire), deps())).status, "sent");
 });
 
 test("signed by the merchant, it is co-signed by the relayer and sent, once", async () => {

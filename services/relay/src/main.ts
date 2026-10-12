@@ -18,6 +18,8 @@
  *   RELAY_CASHOUT_RPC_URL           mainnet RPC. Unset: cash-outs use RELAY_RPC_URL (devnet), which paj.cash cannot see
  *   RELAY_CASHOUT_RPC_FALLBACK_URLS comma-separated, as above
  *   RELAY_CASHOUT_MINT              default mainnet USDC when RELAY_CASHOUT_RPC_URL is set
+ *   RELAY_CASHOUT_PRIORITY          priority fee, micro-lamports per compute unit: default 100000
+ *                                   on mainnet (about 0.000002 SOL a transfer), 0 elsewhere
  *
  * The same fee payer signs on both clusters, so its address needs mainnet SOL
  * for cash-outs. The daily budget is shared.
@@ -79,6 +81,7 @@ const relay = buildRelay({
     limits: {
       perOwnerPerDay: Number(process.env.RELAY_CASHOUTS_PER_DAY ?? "5"),
       sponsorDepositAccounts: process.env.RELAY_SPONSOR_DEPOSIT_ACCOUNTS === "true",
+      priorityMicroLamports: BigInt(process.env.RELAY_CASHOUT_PRIORITY?.trim() || (cashoutMint === USDC_MAINNET ? "100000" : "0")),
     },
   },
   ...(process.env.RELAY_TOKEN?.trim() ? { token: process.env.RELAY_TOKEN.trim() } : {}),

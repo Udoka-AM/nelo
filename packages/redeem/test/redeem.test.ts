@@ -478,6 +478,8 @@ test("only a real conflict is accepted: same vault and sequence, different bytes
 import {
   buildCashout,
   checkOwnerSigned,
+  COMPUTE_BUDGET_PROGRAM_ID,
+  priorityInstructions,
   createDepositAccountInstruction,
   transferCheckedInstruction,
   withSignature,
@@ -548,6 +550,16 @@ test("a cash-out is paid by the relayer and needs the merchant's signature, exac
   const sigs = getTransactionDecoder().decode(full).signatures as Record<string, Uint8Array>;
   assert.ok(ed25519.verify(sigs[relayer]!, u.message, ed25519.getPublicKey(relayerKey)));
   assert.ok(ed25519.verify(sigs[owner]!, u.message, ed25519.getPublicKey(ownerKey)));
+});
+
+test("priority instructions are ComputeBudget's own encoding", () => {
+  const [limit, price] = priorityInstructions(60_000, 100_000n);
+  assert.equal(limit!.programAddress, COMPUTE_BUDGET_PROGRAM_ID);
+  assert.equal(hex(limit!.data), "0260ea0000");
+  assert.equal(hex(price!.data), "03a086010000000000");
+  assert.deepEqual(limit!.accounts, []);
+  assert.throws(() => priorityInstructions(0, 1n));
+  assert.throws(() => priorityInstructions(2_000_000, 1n));
 });
 
 test("a cash-out refuses nonsense before it becomes a transaction", () => {
