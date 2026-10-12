@@ -200,6 +200,16 @@ function Till() {
     void refreshOwed();
   }, [merchant, refreshOwed]);
 
+  /** `work`, or an error saying it took too long. Nothing already sent is undone. */
+  function within<T>(work: Promise<T>, ms: number): Promise<T> {
+    return Promise.race([
+      work,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error("Settling is taking too long. Your payments are safe in the queue: try again in a moment.")), ms),
+      ),
+    ]);
+  }
+
   async function onSettle() {
     if (!merchant) return;
     setSettling(true);
@@ -207,8 +217,12 @@ function Till() {
     try {
       // A fresh payer list first: it is also the freshest view of which
       // payers have been frozen since the till last looked.
-      await syncPayers(USDC_DEVNET).catch(() => {});
-      const settled = await settleVouchers(merchant, USDC_DEVNET);
+      // Bounded: a slow chain read must not hold the round, which uses the
+      // list already on the phone if this one does not arrive.
+      await within(syncPayers(USDC_DEVNET), 20_000).catch(() => {});
+      // And the round itself: every step has its own timeout, so this only
+      // fires if something new hangs. The button must always come back.
+      const settled = await within(settleVouchers(merchant, USDC_DEVNET), 150_000);
       if (settled.kind !== "round") {
         setSettleNote(settled.reason);
       } else {
@@ -684,6 +698,10 @@ function settleFailure(error: unknown): string {
   const first = (error instanceof Error ? error.message : String(error)).split("\n")[0]!.trim();
   if (/unexpected host|UnknownHost|Unable to resolve host/i.test(first)) {
     return "Cannot reach the relay: its address in the app's .env is wrong, or its tunnel has stopped.";
+  }
+  if (/taking too long/i.test(first)) return first;
+  if (/did not answer within/i.test(first)) {
+    return "The relay did not answer. Check the relay, the gateway and ngrok are all running on the Mac, then try again.";
   }
   if (/Network request failed|timed out|ECONN|Failed to connect/i.test(first)) {
     return "Cannot reach the relay. Check it is running and its tunnel is up, then try again.";

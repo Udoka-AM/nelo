@@ -13,7 +13,7 @@ import { encodeBase64 } from "@nelo/voucher";
 import type { Entry } from "./queue.ts";
 import type { Declined, Prepared, SignatureStatus } from "./settle.ts";
 
-type Fetch = (url: string, init?: { method?: string; headers?: Record<string, string>; body?: string }) => Promise<{
+type Fetch = (url: string, init?: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal }) => Promise<{
   ok: boolean;
   status: number;
   json(): Promise<unknown>;
@@ -25,6 +25,8 @@ export interface Relayer {
   /** Bearer token, if the relayer wants one. */
   token?: string;
   fetch?: Fetch;
+  /** Per request. Default {@link RELAY_TIMEOUT_MS}. */
+  timeoutMs?: number;
 }
 
 /**
@@ -35,16 +37,37 @@ export interface Relayer {
  */
 export const SERVICE_HEADERS: Record<string, string> = { "ngrok-skip-browser-warning": "1" };
 
-const post = (r: Relayer, path: string, body: unknown) =>
-  (r.fetch ?? (fetch as unknown as Fetch))(`${r.url}${path}`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      ...SERVICE_HEADERS,
-      ...(r.token ? { authorization: `Bearer ${r.token}` } : {}),
-    },
-    body: JSON.stringify(body),
-  });
+/**
+ * How long one request to the relayer may take. It answers within a few RPC
+ * round trips; a request that has not answered by now is a dead tunnel or a
+ * stuck relayer, and the round should say so rather than spin forever.
+ */
+export const RELAY_TIMEOUT_MS = 45_000;
+
+async function post(r: Relayer, path: string, body: unknown) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), r.timeoutMs ?? RELAY_TIMEOUT_MS);
+  try {
+    const response = await (r.fetch ?? (fetch as unknown as Fetch))(`${r.url}${path}`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...SERVICE_HEADERS,
+        ...(r.token ? { authorization: `Bearer ${r.token}` } : {}),
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    // The body too: a relayer can send headers and then stall.
+    const parsed = await response.json().catch(() => null);
+    return { ok: response.ok, status: response.status, json: async () => parsed };
+  } catch (e) {
+    if (controller.signal.aborted) throw new Error(`the relayer did not answer within ${Math.round((r.timeoutMs ?? RELAY_TIMEOUT_MS) / 1000)} s`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 type RedeemAnswer =
   | { status: "sent"; signature: string }

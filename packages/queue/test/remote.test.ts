@@ -99,3 +99,12 @@ test("signature statuses search history and read every shape", async () => {
   const bad = fakeFetch(() => ({ status: 200, body: { error: { message: "rate limited" } } }));
   await assert.rejects(rpcStatuses("r", bad.f)(["a"]), /rate limited/);
 });
+
+test("a relayer that never answers is given up on, not waited for forever", async () => {
+  // Honours the abort signal, as fetch does, and otherwise never resolves.
+  const hang = (_url: string, init?: { signal?: AbortSignal }) =>
+    new Promise<never>((_, reject) => init?.signal?.addEventListener("abort", () => reject(new Error("aborted"))));
+  const started = Date.now();
+  await assert.rejects(relayPrepare({ url: "u", fetch: hang as never, timeoutMs: 50 })(entry()), /did not answer within/);
+  assert.ok(Date.now() - started < 2_000);
+});
