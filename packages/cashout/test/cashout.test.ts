@@ -159,3 +159,24 @@ test("a message-signing wallet's signature is used only if it verifies over the 
   await assert.rejects(messageSigner(OWNER, async (m) => encodeBase64(ed25519.sign(decodeBase64(m), someoneElse)))(u.wire));
   await assert.rejects(messageSigner(OWNER, async () => "not a signature")(u.wire));
 });
+
+test("a failed address lookup on the phone is tried again, then explained", async () => {
+  const { settleService } = await import("../src/index.ts");
+  let calls = 0;
+  const lookupFails = (async () => {
+    calls++;
+    throw new TypeError('java.net.UnknownHostException: Unable to resolve host "x.ngrok-free.dev": No address associated with hostname');
+  }) as never;
+  await assert.rejects(
+    settleService({ url: "https://x.ngrok-free.dev", fetch: lookupFails, retryDelaysMs: [0, 0] }).banks(),
+    /This phone could not find Nelo's server \(x\.ngrok-free\.dev\)/,
+  );
+  assert.equal(calls, 3);
+
+  let tries = 0;
+  const secondTime = (async () => {
+    if (++tries === 1) throw new TypeError("Unable to resolve host");
+    return { ok: true, status: 200, json: async () => [{ code: "058", name: "GTBank" }] };
+  }) as never;
+  assert.deepEqual(await settleService({ url: "https://x.ngrok-free.dev", fetch: secondTime, retryDelaysMs: [0] }).banks(), [{ code: "058", name: "GTBank" }]);
+});

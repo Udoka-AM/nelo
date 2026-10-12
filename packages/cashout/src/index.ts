@@ -32,6 +32,8 @@ export interface Service {
   url: string;
   token?: string;
   fetch?: Fetch;
+  /** Waits between retries when the address cannot be looked up; tests pass zeros. */
+  retryDelaysMs?: number[];
 }
 
 /** The settlement service's record of a cash-out. Amounts are base-unit strings. */
@@ -58,18 +60,45 @@ export class ServiceError extends Error {
   }
 }
 
+/**
+ * The phone could not look up the server's address, so the request never left
+ * it. Safe to try again, and a phone between cell towers or on patchy Wi-Fi
+ * often succeeds on the second or third try.
+ */
+const LOOKUP_FAILED = /UnknownHost|Unable to resolve host|No address associated|ENOTFOUND|EAI_AGAIN/i;
+
+export class UnreachableError extends Error {}
+
 async function call<T>(s: Service, method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
   const send = s.fetch ?? (fetch as unknown as Fetch);
-  const response = await send(`${s.url}${path}`, {
-    method,
-    // See SERVICE_HEADERS in @nelo/queue: a free ngrok address needs it.
-    headers: {
-      "content-type": "application/json",
-      "ngrok-skip-browser-warning": "1",
-      ...(s.token ? { authorization: `Bearer ${s.token}` } : {}),
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
+  const delays = s.retryDelaysMs ?? [1_000, 2_000, 4_000];
+  let response: Awaited<ReturnType<Fetch>>;
+  for (let i = 0; ; i++) {
+    try {
+      response = await send(`${s.url}${path}`, {
+        method,
+        // See SERVICE_HEADERS in @nelo/queue: a free ngrok address needs it.
+        headers: {
+          "content-type": "application/json",
+          "ngrok-skip-browser-warning": "1",
+          ...(s.token ? { authorization: `Bearer ${s.token}` } : {}),
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      });
+      break;
+    } catch (e) {
+      const text = e instanceof Error ? `${e.message} ${String((e as { cause?: unknown }).cause ?? "")}` : String(e);
+      if (!LOOKUP_FAILED.test(text)) throw e;
+      if (i < delays.length) {
+        await new Promise((r) => setTimeout(r, delays[i]));
+        continue;
+      }
+      throw new UnreachableError(
+        `This phone could not find Nelo's server (${new URL(s.url).host}). Check the phone has internet: turn Wi-Fi off and on, or switch to mobile data`,
+        { cause: e },
+      );
+    }
+  }
   const parsed = (await response.json().catch(() => ({}))) as { error?: string; login?: boolean };
   if (!response.ok) {
     throw new ServiceError(parsed.error ?? `HTTP ${response.status}`, response.status, parsed.login === true);
