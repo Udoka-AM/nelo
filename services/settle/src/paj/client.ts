@@ -26,6 +26,7 @@
  * what it puts on the wire.
  */
 import { toJsonNumber, toMinor } from "./decimal.ts";
+import { reach } from "../net.ts";
 
 type Fetch = (
   url: string,
@@ -148,12 +149,14 @@ export function pajClient(options: PajClientOptions) {
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     let response: Awaited<ReturnType<Fetch>>;
     try {
-      response = await send(`${base}${path}`, {
-        method,
-        headers: { "content-type": "application/json", "x-api-key": options.apiKey },
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-        signal: controller.signal,
-      });
+      response = await reach(base, () =>
+        send(`${base}${path}`, {
+          method,
+          headers: { "content-type": "application/json", "x-api-key": options.apiKey },
+          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+          signal: controller.signal,
+        }),
+      );
     } finally {
       clearTimeout(timer);
     }
