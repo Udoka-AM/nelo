@@ -116,7 +116,7 @@ The reserve requirement is **modelled** — [`packages/reserve`](packages/reserv
 in [`docs/RESERVE.md`](docs/RESERVE.md). It turns the plan's own exposure formula into a number
 and checks the two things the plan asserts; both came back short. The 0.20% insurance line did
 not cover expected loss at these inputs — the line charged is now **29 bps**, which takes the
-net take rate to 0.61% — and reserve relief funds an SKR premium of about 1.001× rather than
+net take rate to 0.61% before the payout spread was set at 0.80% (0.91% now) — and reserve relief funds an SKR premium of about 1.001× rather than
 the illustrative 1.5×, which is still to be reflected in the deck. It also finds the Trust
 Stake curve *raises* required reserve below $250 of staked value, which is what should set `k`.
 

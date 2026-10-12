@@ -416,13 +416,13 @@ observed cashflow — the same sequence Square walked.
 | Merchant daily turnover | $95 | Small stall; varies enormously by segment |
 | Share captured on Nelo | 40% | Cash keeps the rest early on |
 | Platform fee | 0.50% | Below typical card acceptance cost |
-| Payout spread | 0.50% | Shared with the disbursement partner |
+| Payout spread | 0.80% | Shared with the disbursement partner |
 | Less: insurance reserve | 0.29% | Set by `@nelo/reserve`; 0.20% did not cover expected loss |
 | Less: Trust Stake rebate | 0.10% | 20% of the platform fee, bought on market |
-| **Net take rate** | **0.61%** | |
-| **Net revenue per merchant / month** | **≈ $7** | |
-| **At 1,000 merchants** | **≈ $7k / mo** | |
-| **At 25,000 merchants** | **≈ $174k / mo** | |
+| **Net take rate** | **0.91%** | |
+| **Net revenue per merchant / month** | **≈ $10** | |
+| **At 1,000 merchants** | **≈ $10k / mo** | |
+| **At 25,000 merchants** | **≈ $259k / mo** | |
 
 Thin per merchant and entirely normal for acquiring — the business is volume and retention, and
 the retention argument is that a merchant who has been paid on an afternoon the bank terminal

@@ -1,7 +1,7 @@
 # nelo: the 3-minute video
 
 **Hard limit 3:00.** Aim for 2:50 so an edit never pushes it over. Times are cumulative.
-It follows the deck (`docs/deck/nelo-deck.pptx`) and the site's look: black aurora for the
+It follows the 11-slide pitch deck (Google Slides) and the site's look: black aurora for the
 title and close, the two-tone headlines ("A payment terminal. *With no terminal.*"), blue for
 business, orange for nelo pay.
 
@@ -56,15 +56,15 @@ order id. Replace anything in brackets with what really happened, or cut the lin
 
 | Picture | Voice-over |
 |---|---|
-| Deck, Market slide: TAM $1.4T → SAM $42B → SOM $39.2M, the six categories lighting up. | "One point four trillion dollars already moves on phones in Africa. We start with businesses: market traders, restaurants, couriers and taxis, field services, fashion and jewellery, supermarkets." |
-| Year-one slide: the bars climbing, month 1 to month 12. | "A hundred businesses in our first ninety days. Three hundred in year one." |
+| Deck, Market slide: TAM $1.4T → SAM $42B → SOM $177M, the six categories lighting up. | "One point four trillion dollars already moves on phones in Africa. We start with businesses: market traders, restaurants, couriers and taxis, field services, fashion and jewellery, supermarkets." |
+| Projection slide: the users-by-month bars climbing, 500 → 4K → 56K. | "Five hundred users in our first month, four businesses to every payer. Four thousand by month three. Then the flywheel: every shop brings its customers onto nelo pay, and every customer asks the next shop. Fifty-six thousand users by the end of year one." |
 
 ## 2:20–2:42 · nelo pay grows up
 
 | Picture | Voice-over |
 |---|---|
 | Dark slide: the six nelo pay services appear one by one. | "Every customer who pays with nelo pay can pay a friend. From month six, nelo pay becomes their money app: cash out, savings that earn, bill payments, stocks, and an API for AI agents to pay. All on Solana. All felt in naira." |
-| Three-year projection: the stacked bars; "From nelo pay and agents: 30%". | "That's $28.5M a year by year three, with nearly a third from nelo pay and agents." |
+| Projection table: revenue $1.6M → $21.6M → $73.4M; 1.7M users by year three. | "We earn 0.91% on every business payment, plus fees on nelo pay services. That's $1.6 million in year one, and $73 million by year three, across 1.7 million users." |
 
 ## 2:42–2:52 · Close
 
@@ -84,7 +84,7 @@ order id. Replace anything in brackets with what really happened, or cut the lin
 6. `pnpm rehearse` in a terminal, scrolled to the double-spend lines.
 7. The cash-out from amount to "Paid to your bank", one take.
 8. The bank credit alert, and the transaction on Solscan.
-9. Screen captures of deck slides 1, 8, 10, 11 and 12 (export them as images from PowerPoint).
+9. Screen captures of deck slides 1, 8, 9, 10 and 11 (File → Download → PNG in Google Slides).
 10. The shopkeeper, a few seconds, for the open and close.
 
 ## Rules of thumb

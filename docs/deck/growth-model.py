@@ -15,7 +15,7 @@ for m in range(4,37):
     P[m]=p0+(b*b0+gP*p0)*(1-p0/SAT_P)
 avg_daily=895
 share={1:0.10,2:0.20,3:0.25}
-NET=0.0061
+NET=0.0091   # 0.80% fee + 0.50% payout spread, less reserve and rebate
 payer_rev={1:1.44,2:4.14,3:5.18}
 agent={1:0,2:0.02,3:0.05}
 for y in (1,2,3):
