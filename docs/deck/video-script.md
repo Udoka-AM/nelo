@@ -56,7 +56,7 @@ order id. Replace anything in brackets with what really happened, or cut the lin
 
 | Picture | Voice-over |
 |---|---|
-| Deck, Market slide: TAM $1.4T → SAM $42B → SOM $177M, the six categories lighting up. | "One point four trillion dollars already moves on phones in Africa. We start with businesses: market traders, restaurants, couriers and taxis, field services, fashion and jewellery, supermarkets." |
+| Deck, Market slide: TAM $1.4T → SAM $42B → SOM $177M, the seven categories lighting up. | "One point four trillion dollars already moves on phones in Africa. We start with businesses: market traders, restaurants, couriers and taxis, field services, fashion and jewellery, supermarkets, hotels and clubs." |
 | Projection slide: the users-by-month bars climbing, 500 → 4K → 56K. | "Five hundred users in our first month, four businesses to every payer. Four thousand by month three. Then the flywheel: every shop brings its customers onto nelo pay, and every customer asks the next shop. Fifty-six thousand users by the end of year one." |
 
 ## 2:20–2:42 · nelo pay grows up
