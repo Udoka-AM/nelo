@@ -121,8 +121,8 @@ RELAY_CASHOUT_RPC_URL=
 # RELAY_DAILY_BUDGET_SOL=0.5
 # RELAY_MAX_PER_VAULT=200
 # RELAY_CASHOUTS_PER_DAY=5
-# paj.cash's USDC deposit addresses already have token accounts; only for another mint:
-# RELAY_SPONSOR_DEPOSIT_ACCOUNTS=true
+# Paying rent to open a deposit address's token account when it has none:
+# RELAY_SPONSOR_DEPOSIT_ACCOUNTS=false   (on by default for mainnet USDC)
 # RELAY_MINT=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
 # RELAY_MINT_DECIMALS=6
 # RELAY_PORT=8787

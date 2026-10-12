@@ -62,7 +62,7 @@ const app = buildSettle({
   ...(signingSecret ? { pajSigningSecret: signingSecret } : {}),
   tokenCurrency: "USDC",
   localCurrency: "NGN",
-  limits: { perMerchantPerDay: 5, minTokenMinor: PAJ_LIMITS.minTokenMinor },
+  limits: { perMerchantPerDay: Number(process.env.SETTLE_CASHOUTS_PER_DAY ?? "5"), minTokenMinor: PAJ_LIMITS.minTokenMinor },
 });
 
 const port = Number(process.env.SETTLE_PORT ?? "8788");

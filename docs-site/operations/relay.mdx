@@ -116,7 +116,9 @@ The settlement service (`services/settle`) opens payout orders with paj.cash, an
   </Step>
 </Steps>
 
-The relayer allows 5 cash-out transfers per merchant a day (`RELAY_CASHOUTS_PER_DAY`). paj.cash's USDC deposit addresses already have token accounts, so `RELAY_SPONSOR_DEPOSIT_ACCOUNTS` stays off.
+The relayer allows 5 cash-out transfers per merchant a day (`RELAY_CASHOUTS_PER_DAY`), counted when it signs one. paj.cash's pooled deposit addresses may never have held USDC, so on mainnet the relayer opens the token account when one is missing (about 0.002 SOL rent, `RELAY_SPONSOR_DEPOSIT_ACCOUNTS=false` to stop it). The relayer signs each cash-out before the wallet sees it and sets its own priority fee (`RELAY_CASHOUT_PRIORITY`, default 100000 micro-lamports per unit on mainnet), because wallets add one to an unsigned transaction and the relayer refuses a message it did not build. The settlement service counts funded cash-outs toward `SETTLE_CASHOUTS_PER_DAY` (default 5); orders opened and never funded have a separate cap of four times that.
+
+USDC sent to the fee payer by mistake goes back with `cd services/relay && pnpm withdraw --to <wallet> --amount <n>` (add `--yes` to send).
 
 If a payout fails (`ERROR`), paj.cash refunds or retries it on request: the till shows the order id to quote. An unfunded order's address goes back to paj.cash's pool after two hours, so the service closes a cash-out still unfunded after 90 minutes; the merchant starts a new one.
 
@@ -132,7 +134,7 @@ If a payout fails (`ERROR`), paj.cash refunds or retries it on request: the till
 | | `RELAY_LEDGER` | What the relayer has submitted. Keep it | setup |
 | | `RELAY_TOKEN` | Bearer token; the apps hold a copy | setup |
 | | `RELAY_DAILY_BUDGET_SOL`, `RELAY_MAX_PER_VAULT`, `RELAY_CASHOUTS_PER_DAY` | Limits: 0.5, 200, 5 | defaults |
-| | `RELAY_SPONSOR_DEPOSIT_ACCOUNTS` | `true` to pay rent for a deposit account | off |
+| | `RELAY_SPONSOR_DEPOSIT_ACCOUNTS` | Pay rent for a deposit account with none | on for mainnet USDC |
 | | `RELAY_MINT`, `RELAY_MINT_DECIMALS`, `RELAY_PORT`, `RELAY_HOST` | Devnet USDC, 6, 8787, 127.0.0.1 | defaults |
 | | `RELAY_CASHOUT_RPC_URL` | Mainnet RPC for cash-out transfers. Unset: cash-outs use the devnet RPC, which paj.cash cannot see | you |
 | | `RELAY_CASHOUT_RPC_FALLBACK_URLS`, `RELAY_CASHOUT_MINT` | Fallbacks; the cash-out mint, default mainnet USDC | you, defaults |

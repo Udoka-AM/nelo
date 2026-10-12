@@ -170,9 +170,14 @@ test("limits: a daily count per merchant, a smallest amount, and a sane id", asy
   fresh();
   const p = partner();
   assert.ok((await openCashout(req("co_000001"), deps(p, 1))).ok);
-  const second = await openCashout(req("co_000002"), deps(p, 1));
+  // Not funded yet: another may be started (a retry after a refusal).
+  assert.ok((await openCashout(req("co_000002"), deps(p, 1))).ok);
+  // Once one is funded, that is the day's one cash-out.
+  markFunded("co_000001", SIG, { store: current!, now: NOW });
+  const second = await openCashout(req("co_000003"), deps(p, 1));
   assert.equal(second.ok, false);
-  assert.equal((await openCashout(req("co_000003", 999_999n), deps(p))).ok, false);
+  if (!second.ok) assert.match(second.reason, /today's limit/);
+  assert.equal((await openCashout(req("co_000009", 999_999n), deps(p))).ok, false);
   assert.equal((await openCashout(req("../x"), deps(p))).ok, false);
 });
 
@@ -215,4 +220,15 @@ test("a transfer reported just after the cash-out closed, inside paj.cash's two 
   await openCashout(req(), deps(p));
   await refresh("co_000001", { ...deps(p), now: LATER });
   assert.equal(markFunded("co_000001", SIG, { store: current!, now: NOW + 121 * 60_000 }).ok, false);
+});
+
+test("orders opened but never funded are capped separately, so the partner's addresses are not hoarded", async () => {
+  fresh();
+  const p = partner();
+  const d = () => ({ ...deps(p, 5), limits: { perMerchantPerDay: 5, minTokenMinor: 1_000_000n, openedPerDay: 2 } });
+  assert.ok((await openCashout(req("co_000001"), d())).ok);
+  assert.ok((await openCashout(req("co_000002"), d())).ok);
+  const third = await openCashout(req("co_000003"), d());
+  assert.equal(third.ok, false);
+  if (!third.ok) assert.match(third.reason, /without finishing/);
 });

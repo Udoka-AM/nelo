@@ -10,7 +10,8 @@
  *   RELAY_DAILY_BUDGET_SOL  default 0.5
  *   RELAY_MAX_PER_VAULT     redemptions per vault per day, default 200
  *   RELAY_CASHOUTS_PER_DAY  cash-out transfers per merchant per day, default 5
- *   RELAY_SPONSOR_DEPOSIT_ACCOUNTS  "true" to pay rent for a deposit address with no token account
+ *   RELAY_SPONSOR_DEPOSIT_ACCOUNTS  pay rent for a deposit address with no token account:
+ *                                   default true when cash-outs are in mainnet USDC
  *
  * Cash-outs go to paj.cash, which settles in mainnet USDC only, while offline
  * payments stay on devnet. So cash-out transfers have a cluster of their own:
@@ -80,7 +81,12 @@ const relay = buildRelay({
     ...(cashoutMint ? { mint: cashoutMint } : {}),
     limits: {
       perOwnerPerDay: Number(process.env.RELAY_CASHOUTS_PER_DAY ?? "5"),
-      sponsorDepositAccounts: process.env.RELAY_SPONSOR_DEPOSIT_ACCOUNTS === "true",
+      // paj.cash's pooled deposit addresses may never have held USDC: on
+      // mainnet the relayer opens the token account (~0.002 SOL rent) unless
+      // told not to. Elsewhere only when asked.
+      sponsorDepositAccounts: process.env.RELAY_SPONSOR_DEPOSIT_ACCOUNTS
+        ? process.env.RELAY_SPONSOR_DEPOSIT_ACCOUNTS === "true"
+        : cashoutMint === USDC_MAINNET,
       priorityMicroLamports: BigInt(process.env.RELAY_CASHOUT_PRIORITY?.trim() || (cashoutMint === USDC_MAINNET ? "100000" : "0")),
     },
   },

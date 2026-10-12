@@ -86,7 +86,13 @@ export interface CashoutDeps {
   now: number;
   tokenCurrency: string;
   localCurrency: string;
-  limits: { perMerchantPerDay: number; minTokenMinor: bigint };
+  /**
+   * perMerchantPerDay counts cash-outs that were funded: money that moved.
+   * openedPerDay bounds paj.cash orders opened, funded or not, so retries
+   * after a refusal do not use up the day, but nobody can hold the partner's
+   * deposit addresses without limit. Default: four times perMerchantPerDay.
+   */
+  limits: { perMerchantPerDay: number; minTokenMinor: bigint; openedPerDay?: number };
 }
 
 export type Opened = { ok: true; cashout: Cashout } | { ok: false; reason: string; retryable: boolean };
@@ -143,9 +149,16 @@ export async function openCashout(
     // "creating": the partner may or may not have opened an order before a
     // crash. Asking again opens at most one more, unfunded, which is harmless.
   } else {
-    const dayKey = `${input.merchant}:${new Date(now).toISOString().slice(0, 10)}`;
-    if ((file.opened[dayKey] ?? 0) >= deps.limits.perMerchantPerDay) {
+    const day = new Date(now).toISOString().slice(0, 10);
+    const dayKey = `${input.merchant}:${day}`;
+    const fundedToday = Object.values(file.cashouts).filter(
+      (c) => c.merchant === input.merchant && c.transferSignature && new Date(c.createdAt).toISOString().slice(0, 10) === day,
+    ).length;
+    if (fundedToday >= deps.limits.perMerchantPerDay) {
       return { ok: false, reason: "that is today's limit on cash-outs", retryable: true };
+    }
+    if ((file.opened[dayKey] ?? 0) >= (deps.limits.openedPerDay ?? deps.limits.perMerchantPerDay * 4)) {
+      return { ok: false, reason: "too many cash-outs started today without finishing; try again tomorrow", retryable: true };
     }
     file = {
       cashouts: {
