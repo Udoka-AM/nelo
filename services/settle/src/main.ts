@@ -24,6 +24,14 @@ import { toMinor } from "./paj/decimal.ts";
 import { PAJ_LIMITS, PajPartner } from "./paj/partner.ts";
 import { buildSettle } from "./server.ts";
 
+/** A daily count limit from the environment: unset, "unlimited" or "0" means no limit. */
+function dailyLimit(value: string | undefined): number {
+  const v = value?.trim().toLowerCase();
+  if (!v || v === "unlimited" || v === "0") return Infinity;
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : Infinity;
+}
+
 function required(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) {
@@ -62,7 +70,7 @@ const app = buildSettle({
   ...(signingSecret ? { pajSigningSecret: signingSecret } : {}),
   tokenCurrency: "USDC",
   localCurrency: "NGN",
-  limits: { perMerchantPerDay: Number(process.env.SETTLE_CASHOUTS_PER_DAY ?? "5"), minTokenMinor: PAJ_LIMITS.minTokenMinor },
+  limits: { perMerchantPerDay: dailyLimit(process.env.SETTLE_CASHOUTS_PER_DAY), minTokenMinor: PAJ_LIMITS.minTokenMinor },
 });
 
 const port = Number(process.env.SETTLE_PORT ?? "8788");

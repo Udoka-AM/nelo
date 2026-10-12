@@ -9,7 +9,7 @@
  *   RELAY_PORT / RELAY_HOST default 8787 on 127.0.0.1: a tunnel fronts it
  *   RELAY_DAILY_BUDGET_SOL  default 0.5
  *   RELAY_MAX_PER_VAULT     redemptions per vault per day, default 200
- *   RELAY_CASHOUTS_PER_DAY  cash-out transfers per merchant per day, default 5
+ *   RELAY_CASHOUTS_PER_DAY  cash-out transfers per merchant per day, default unlimited
  *   RELAY_SPONSOR_DEPOSIT_ACCOUNTS  pay rent for a deposit address with no token account:
  *                                   default true when cash-outs are in mainnet USDC
  *
@@ -32,6 +32,14 @@ import { fileLedger, utcDay } from "./ledger.ts";
 import { endpointsFrom, failover } from "@nelo/rpc";
 import { createRelayRpc } from "./rpc.ts";
 import { buildRelay } from "./server.ts";
+
+/** A daily count limit from the environment: unset, "unlimited" or "0" means no limit. */
+function dailyLimit(value: string | undefined): number {
+  const v = value?.trim().toLowerCase();
+  if (!v || v === "unlimited" || v === "0") return Infinity;
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : Infinity;
+}
 
 const USDC_DEVNET = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
 const USDC_MAINNET = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
@@ -81,7 +89,7 @@ const relay = buildRelay({
     ...(cashoutEndpoint ? { rpc: createRelayRpc(cashoutEndpoint.url, cashoutEndpoint.fetch) } : {}),
     ...(cashoutMint ? { mint: cashoutMint } : {}),
     limits: {
-      perOwnerPerDay: Number(process.env.RELAY_CASHOUTS_PER_DAY ?? "5"),
+      perOwnerPerDay: dailyLimit(process.env.RELAY_CASHOUTS_PER_DAY),
       // paj.cash's pooled deposit addresses may never have held USDC: on
       // mainnet the relayer opens the token account (~0.002 SOL rent) unless
       // told not to. Elsewhere only when asked.
