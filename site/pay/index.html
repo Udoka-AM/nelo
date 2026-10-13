@@ -39,7 +39,7 @@
     <script type="module" src="../src/main.ts"></script>
   </head>
   <body>
-    <a class="skip" href="#waitlist">Skip to the waitlist</a>
+    <a class="skip" href="#waitlist">Skip to early access</a>
 
     <!-- The Liquid Glass lens. Only Chromium can use an SVG filter as a
          backdrop filter; everywhere else the glass is blur and saturation. -->
@@ -61,6 +61,7 @@
         <a href="#how">How it works</a>
         <a href="#friends">Pay a friend</a>
         <a href="./" aria-current="page">nelo Pay</a>
+        <a href="../#company">Company</a>
       </nav>
       <button class="theme" type="button" aria-label="Switch between light and dark" data-theme-toggle>
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -69,7 +70,7 @@
           <path class="theme__rays" d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8" />
         </svg>
       </button>
-      <a class="btn btn--small" href="#waitlist" data-magnetic>Join waitlist</a>
+      <a class="btn btn--small" href="#waitlist" data-magnetic>Get early access</a>
     </header>
 
     <svg class="defs" aria-hidden="true" width="0" height="0">
@@ -227,6 +228,7 @@
         <div class="waitlist__card" data-glass data-spot>
           <svg class="waitlist__mark" viewBox="0 0 32 32" width="56" height="56" aria-hidden="true"><use href="#mark" /></svg>
           <h2 id="waitlist-title">Get nelo Pay first.</h2>
+          <p class="waitlist__sub">Launching in Lagos with the shops that take it.</p>
           <form class="form" data-waitlist data-page="pay">
             <fieldset class="segmented">
               <legend class="visually-hidden">I want to</legend>
@@ -239,7 +241,7 @@
             <div class="field" data-glass>
               <label class="visually-hidden" for="email">Email</label>
               <input id="email" name="email" type="email" required autocomplete="email" inputmode="email" placeholder="you@example.com" />
-              <button class="btn btn--glow" type="submit" data-magnetic><span>Join the waitlist</span></button>
+              <button class="btn btn--glow" type="submit" data-magnetic><span>Get early access</span></button>
             </div>
             <input class="visually-hidden" type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" />
             <p class="form__note" role="status" aria-live="polite"></p>
@@ -256,7 +258,14 @@
 
     <footer class="footer">
       <p><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true"><use href="#mark" /></svg> nelo</p>
-      <p class="muted">Screens shown are the real apps, recorded in a browser. © 2026 nelo.</p>
+      <nav class="footer__links" aria-label="Company">
+        <a href="../">For business</a>
+        <a href="../#company">Investors</a>
+        <a href="https://github.com/Udoka-AM/nelo/blob/main/CONTRIBUTING.md">Careers</a>
+        <a href="https://github.com/Udoka-AM/nelo">GitHub</a>
+        <a href="https://udokaam.dev">Contact</a>
+      </nav>
+      <p class="muted">Screens shown are the real apps, recorded in a browser. © 2026 nelo. Lagos.</p>
     </footer>
   </body>
 </html>

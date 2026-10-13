@@ -9,6 +9,15 @@ pnpm --filter @nelo/site dev      # http://localhost:5173
 pnpm --filter @nelo/site build    # → site/dist
 ```
 
+## What the business page says
+
+Product first (hero, the till, how a sale works, highlights, the two apps), then the company:
+a proof strip of what is already live under the hero, the market (POS failure rate, $153B a year
+through 5.9M terminals, who nelo serves, sources), and a company section for investors,
+engineering candidates and partners, linking to the plan, CONTRIBUTING.md and the founder. The
+call to action is early access for the Lagos launch. Figures come from `docs/BUILD.md`; change
+them there first.
+
 ## How it adapts to the visitor
 
 The page is complete as HTML and CSS: with no JavaScript it shows every section, the phone

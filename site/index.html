@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>nelo — Every business can now take payments on Solana</title>
-    <meta name="description" content="Turn any phone into a point of sale. Take payments on Solana, priced in naira, cashed out to your bank. Even where there's no signal." />
+    <meta name="description" content="nelo turns any Android phone into a payment terminal. Take payments on Solana, priced in naira, cashed out to your bank in seconds. Even where there's no signal. Launching in Lagos." />
     <meta name="theme-color" content="#fbfbfd" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
     <meta name="color-scheme" content="light dark" />
@@ -39,7 +39,7 @@
     <script type="module" src="./src/main.ts"></script>
   </head>
   <body>
-    <a class="skip" href="#waitlist">Skip to the waitlist</a>
+    <a class="skip" href="#waitlist">Skip to early access</a>
 
     <!-- The Liquid Glass lens. Only Chromium can use an SVG filter as a
          backdrop filter; everywhere else the glass is blur and saturation. -->
@@ -61,6 +61,7 @@
         <a href="#story">How it works</a>
         <a href="#features">Why nelo</a>
         <a href="./pay/">nelo Pay</a>
+          <a href="#company">Company</a>
       </nav>
       <button class="theme" type="button" aria-label="Switch between light and dark" data-theme-toggle>
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -69,7 +70,7 @@
           <path class="theme__rays" d="M12 1.5v2.5M12 20v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M1.5 12H4M20 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8" />
         </svg>
       </button>
-      <a class="btn btn--small" href="#waitlist" data-magnetic>Join waitlist</a>
+      <a class="btn btn--small" href="#waitlist" data-magnetic>Get early access</a>
     </header>
 
     <svg class="defs" aria-hidden="true" width="0" height="0">
@@ -133,6 +134,16 @@
             <span class="rotator__item" aria-hidden="true">Everything in naira.</span>
             <span class="rotator__item rotator__item--edge" aria-hidden="true">Even where there's no signal.</span>
           </p>
+      </section>
+
+      <!-- Proof: what is already live. -->
+      <section class="proof" aria-label="Where nelo stands">
+        <ul class="proof__list">
+          <li><b>Live on Solana mainnet</b><span>Cash-outs in USDC</span></li>
+          <li><b>Paid into Nigerian banks</b><span>In about 20 seconds</span></li>
+          <li><b>paj.cash + UseAzza</b><span>Licensed payout partners</span></li>
+          <li><b>Works with no network</b><span>Signed by the secure chip</span></li>
+        </ul>
       </section>
 
       <!-- Easy: what the seller never has to deal with. -->
@@ -387,6 +398,72 @@
         </div>
       </section>
 
+      <!-- Market: the size of the problem nelo takes on. -->
+      <section id="market" class="till market" aria-labelledby="market-title">
+        <h2 id="market-title" class="section-title reveal">A quarter of card payments fail.<br /><span class="muted">Every afternoon.</span></h2>
+        <div class="till__grid">
+          <article class="till-card stat" data-glass data-spot>
+            <span class="stat__n grad">29.23%</span>
+            <h3>of POS payments failed in one day.</h3>
+            <p>About 157,000 declined sales on 15 May 2026. On a normal day it's 15%, and 25% at peak.</p>
+          </article>
+          <article class="till-card stat" data-glass data-spot>
+            <span class="stat__n grad">$153B</span>
+            <h3>a year through POS in Nigeria.</h3>
+            <p>₦59.33 trillion in Q1 2026 alone. nelo takes that market on with no hardware at all.</p>
+          </article>
+          <article class="till-card stat" data-glass data-spot>
+            <span class="stat__n grad">5.9M</span>
+            <h3>active terminals. Every owner has a phone.</h3>
+            <p>No deposit, no wait, no rental. The till is the phone already in their pocket.</p>
+          </article>
+        </div>
+        <div class="segments">
+          <p class="eyebrow eyebrow--blue">Who we serve</p>
+          <ul class="pills" aria-label="Businesses nelo serves">
+            <li>Market traders and shops</li>
+            <li>Restaurants, food and drink</li>
+            <li>Logistics, couriers and taxis</li>
+            <li>Field services and on-site pros</li>
+            <li>Fashion and jewellery</li>
+            <li>Supermarkets and malls</li>
+            <li>Hospitality: hotels and clubs</li>
+          </ul>
+        </div>
+        <p class="market__source muted">Sources: CBN and NIBSS POS data, Q1 2026 and March 2025; Nigerian POS failure-rate reporting, 2026.</p>
+      </section>
+
+      <!-- Company: for investors, engineers and partners. -->
+      <section id="company" class="till company" aria-labelledby="company-title">
+        <h2 id="company-title" class="section-title reveal">Building the payment network<br /><span class="grad">for every business.</span></h2>
+        <p class="company__lede">nelo launches in Lagos, with 500 users in the first month and payouts in naira from day one. UseAzza brings nine more payout currencies, so the next market is a setting, not a rebuild.</p>
+        <div class="till__grid">
+          <article class="till-card" data-glass data-spot>
+            <p class="eyebrow eyebrow--blue">Investors</p>
+            <h3>Raising our seed round.</h3>
+            <p>To launch in Lagos, audit the vault program and hire the core team. 0.91% net on every business payment, plus nelo pay services from month six.</p>
+            <a class="btn btn--small btn--ghost" href="https://github.com/Udoka-AM/nelo/blob/main/docs/BUILD.md">Read the plan <span class="nudge-right" aria-hidden="true">→</span></a>
+          </article>
+          <article class="till-card" data-glass data-spot>
+            <p class="eyebrow eyebrow--orange">Careers</p>
+            <h3>Hiring our first engineers.</h3>
+            <ul class="roles">
+              <li>Senior mobile engineer · React Native + Kotlin</li>
+              <li>Protocol engineer · Rust / Anchor</li>
+              <li>Backend and payments engineer · TypeScript</li>
+              <li>Head of merchant growth · Lagos</li>
+            </ul>
+            <a class="btn btn--small btn--ghost" href="https://github.com/Udoka-AM/nelo/blob/main/CONTRIBUTING.md">See how we build <span class="nudge-right" aria-hidden="true">→</span></a>
+          </article>
+          <article class="till-card" data-glass data-spot>
+            <p class="eyebrow eyebrow--blue">Partners</p>
+            <h3>Payouts, markets and merchants.</h3>
+            <p>Payout partners in new corridors, market associations in Lagos, and wallets that want their users to pay at the counter.</p>
+            <a class="btn btn--small btn--ghost" href="https://udokaam.dev">Talk to the founder <span class="nudge-right" aria-hidden="true">→</span></a>
+          </article>
+        </div>
+      </section>
+
       <!-- Statement -->
       <section class="statement" aria-label="What nelo is for">
         <p data-words>Any phone is a point of sale.</p>
@@ -398,6 +475,7 @@
         <div class="waitlist__card" data-glass data-spot>
           <svg class="waitlist__mark" viewBox="0 0 32 32" width="56" height="56" aria-hidden="true"><use href="#mark" /></svg>
           <h2 id="waitlist-title">Turn your phone into a till.</h2>
+          <p class="waitlist__sub">Launching in Lagos. Be first when your market opens.</p>
           <form class="form" data-waitlist data-page="business">
             <fieldset class="segmented">
               <legend class="visually-hidden">I want to</legend>
@@ -410,7 +488,7 @@
             <div class="field" data-glass>
               <label class="visually-hidden" for="email">Email</label>
               <input id="email" name="email" type="email" required autocomplete="email" inputmode="email" placeholder="you@example.com" />
-              <button class="btn btn--glow" type="submit" data-magnetic><span>Join the waitlist</span></button>
+              <button class="btn btn--glow" type="submit" data-magnetic><span>Get early access</span></button>
             </div>
             <input class="visually-hidden" type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" />
             <p class="form__note" role="status" aria-live="polite"></p>
@@ -419,7 +497,7 @@
           <div class="done" hidden>
             <svg viewBox="0 0 52 52" width="64" height="64" aria-hidden="true"><circle cx="26" cy="26" r="24" /><path d="M15 27l7 7 15-16" /></svg>
             <h3>You're on the list.</h3>
-            <p>We'll write when nelo is ready for you.</p>
+            <p>We'll write when nelo opens in your market.</p>
           </div>
         </div>
       </section>
@@ -427,7 +505,14 @@
 
     <footer class="footer">
       <p><svg viewBox="0 0 32 32" width="18" height="18" aria-hidden="true"><use href="#mark" /></svg> nelo</p>
-      <p class="muted">Screens shown are the real apps, recorded in a browser. © 2026 nelo.</p>
+      <nav class="footer__links" aria-label="Company">
+        <a href="./pay/">nelo Pay</a>
+        <a href="#company">Investors</a>
+        <a href="https://github.com/Udoka-AM/nelo/blob/main/CONTRIBUTING.md">Careers</a>
+        <a href="https://github.com/Udoka-AM/nelo">GitHub</a>
+        <a href="https://udokaam.dev">Contact</a>
+      </nav>
+      <p class="muted">Screens shown are the real apps, recorded in a browser. © 2026 nelo. Lagos.</p>
     </footer>
   </body>
 </html>

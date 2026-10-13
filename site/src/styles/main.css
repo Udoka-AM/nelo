@@ -2356,3 +2356,97 @@ html:not(.js) .hl__controls {
 .highlights.is-paused .hl__play .i-play {
   display: block;
 }
+
+/* ----------------------------------------------------------- company pages */
+/* Proof: four facts that are already true, under the hero. */
+.proof {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 24px var(--gutter) 0;
+}
+.proof__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px 12px;
+  text-align: center;
+}
+@media (min-width: 900px) {
+  .proof__list {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.proof__list li {
+  display: grid;
+  gap: 2px;
+}
+.proof__list b {
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+.proof__list span {
+  font-size: 13px;
+  color: var(--fg-2);
+}
+.stat__n {
+  font-size: clamp(44px, 5vw, 60px);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.stat h3 {
+  margin-top: 6px;
+}
+.segments {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  text-align: center;
+}
+.market__source {
+  font-size: 12px;
+  text-align: center;
+}
+.company__lede {
+  max-width: 680px;
+  margin: -24px auto 0;
+  text-align: center;
+  font-size: clamp(17px, 1.6vw, 20px);
+  color: var(--fg-2);
+  text-wrap: balance;
+}
+.company .till-card .btn {
+  justify-self: start;
+  margin-top: 8px;
+}
+.company .till-card h3 {
+  margin-top: 2px;
+}
+.roles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 15px;
+  color: var(--fg-2);
+}
+.waitlist__sub {
+  color: var(--fg-2);
+  font-size: 16px;
+  text-align: center;
+}
+.footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.footer__links a {
+  color: var(--fg-2);
+  text-decoration: none;
+}
+.footer__links a:hover {
+  color: var(--fg);
+}
