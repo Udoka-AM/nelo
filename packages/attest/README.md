@@ -16,7 +16,7 @@ hasKey(alias) / deleteKey(alias)
 **It never falls back to a software key.** `setIsStrongBoxBacked(true)` throws
 `StrongBoxUnavailableException` on a device with no secure element, and that
 exception is deliberately *not* retried without the flag. A silent fallback
-would keep the demo working while destroying the entire security argument, so a
+would keep the app working while destroying the entire security argument, so a
 handset without StrongBox degrades to online-only instead.
 
 StrongBox is API 28+ and absent on much budget hardware — which is the hardware

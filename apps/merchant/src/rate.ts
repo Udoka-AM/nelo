@@ -5,7 +5,7 @@
  *
  *  1. Pyth publishes no NGN feed. It covers ZAR, INR, PHP and 36 other pairs,
  *     but not the naira — so a Nigerian launch needs a different oracle, or a
- *     different launch currency. See docs/DELIVERABLES.md.
+ *     different launch currency. See docs/ROADMAP.md.
  *  2. hermes.pyth.network serves feed metadata publicly but returns 401 for
  *     prices. A key, or a self-hosted Hermes, is required.
  *

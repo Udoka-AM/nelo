@@ -1,28 +1,27 @@
-# Nelo — build plan
+# Nelo — product and business plan
 
 Accept payments on the phone you already own. Money lands in your own currency, in your
 own bank. And it keeps working when the network doesn't.
 
-**CLOCK IN · Solana Mobile × Radiants.** Submissions close 8 Oct 2026, 11:59pm PST.
-Android · Solana · USDC. Build plan v1, 9 Sep 2026.
+Android · Solana · USDC · Lagos first. Plan v2, October 2026.
 
 Nelo is a payment terminal with no terminal. It is built for the merchant economy — a shop,
-a stall, a salon, a driver — but the same primitive works between any two people, so paying
-a friend uses the identical rails. Everything the merchant sees is in their own currency.
+a stall, a salon, a driver, a hotel — but the same primitive works between any two people, so
+paying a friend uses the identical rails. Everything the merchant sees is in their own currency.
 Nothing in the product says the word *crypto*.
 
 | | |
 |---|---|
-| **Category** | Payments — stablecoins track, merchants as the primary user |
-| **Technical core** | P-256. Secure element signs, the chain verifies. No trusted server in the value path |
-| **SKR award** | Targeted. Trust Stake — collateral, not cashback. See §5 |
-| **Team** | 4 — Android, Anchor, design, commercial |
-| **Run cost** | ~$70/month, plus payout spread and reserve |
-| **Hard dependency** | Payout. A licensed disbursement partner. Chase it on day one |
+| **Category** | Payments acceptance — merchants first, their customers second |
+| **Technical core** | P-256. The phone's secure element signs, the chain verifies. No trusted server in the value path |
+| **Stage** | Product live end to end: signed Android apps, mainnet cash-out to Nigerian banks, offline payments on devnet |
+| **Payout partners** | paj.cash (live, Nigeria) and UseAzza (live at launch, 9+ currencies) |
+| **Run cost** | ~$70/month of infrastructure today, plus payout spread and reserve |
+| **Raising** | A seed round to launch in Lagos, audit the vault program and hire the core team (§12) |
 
 **Contents**
 
-1. [The hackathon](#1--the-hackathon)
+1. [The company](#1--the-company)
 2. [What Nelo is](#2--what-nelo-is)
 3. [How the money actually moves](#3--how-the-money-actually-moves)
 4. [Offline, and why double-spend is closed](#4--offline-and-why-double-spend-is-closed)
@@ -31,62 +30,47 @@ Nothing in the product says the word *crypto*.
 7. [How it makes money](#7--how-it-makes-money)
 8. [Distribution](#8--distribution)
 9. [Stack](#9--stack)
-10. [Partnerships needed](#10--partnerships-needed)
-11. [Provisions](#11--provisions)
-12. [Four weeks](#12--four-weeks)
+10. [Partnerships](#10--partnerships)
+11. [Operating requirements](#11--operating-requirements)
+12. [Plan, team and hiring](#12--plan-team-and-hiring)
 13. [Risks](#13--risks)
 
 ---
 
-## 1 · The hackathon
+## 1 · The company
 
-*From the organisers' announcement, 8 Sep 2026.*
+### The problem
 
-### Prize ladder
+A quarter of card payments in Nigeria fail on a bad afternoon. NIBSS recorded **29.23% of POS
+transactions failing on 15 May 2026** — about 157,000 declined sales in a day — and failure
+averages around 15%, reaching 25% at peak. When the network drops, the shop takes cash or loses
+the sale. A terminal costs a deposit, a wait and a monthly fee, and the merchant still carries
+the outage.
 
-It is ranked, not flat. **1st $30,000 USDC** plus a Seeker per registered teammate, 2nd
-$25,000, 3rd $20,000, 4th $15,000, 5th $10,000, then $5,000 each for 6th–10th. Separately,
-**$10,000 in SKR for the best SKR integration** — ten winning teams plus one specialist
-award, $135,000 total. The gap between first and sixth is six times the money, so aiming
-vaguely at "a win" is the wrong target.
+### What Nelo does about it
 
-### The scorecard — four categories, 25% each
+Nelo turns the Android phone a merchant already owns into the till. Customers pay with any
+Solana wallet, or with nelo pay — fully offline, on both phones, against money already locked
+on chain. The merchant cashes out to their own bank in about twenty seconds, in naira, and Nelo
+never holds their money or their keys.
 
-- **Stickiness & PMF** — does it solve something people care about?
-- **User Experience** — is it good to use?
-- **Innovation / X-Factor** — does it bring something new?
-- **Presentation & Demo** — can you show clearly why it deserves attention?
+### Where it stands
 
-Read that carefully: **UX and Presentation together are half the score.** On a 30-day build
-the instinct is to spend the last week on features. The rubric says spend it on the demo and
-the design.
+- **Two signed Android apps**: nelo for business (the till) and nelo pay (the customer app).
+- **A real mainnet cash-out**: merchant USDC on Solana mainnet, paid into a Nigerian bank
+  account through paj.cash's production API.
+- **Offline payments on devnet**: voucher signed by the phone's secure element, verified on
+  chain by the secp256r1 precompile, replay refused, double spend frozen and slashed.
+- **A tested codebase**: 500+ tests across the program, services and shared packages,
+  in CI on every push. See [`ROADMAP.md`](ROADMAP.md) for the milestone record.
 
-### Beyond the money
+### Why now
 
-Winners receive featured dApp Store placement, marketing and launch support, go-to-market
-guidance, and a call with Anatoly Yakovenko. The placement is arguably worth more than the
-cheque: it puts the app in front of an audience that already holds wallets and already
-understands signing a transaction.
-
-### The particulars
-
-| | |
-|---|---|
-| **Dates** | Registration and submissions opened 8 Sep, 09:00 PST. **Deadline 8 Oct, 11:59pm PST.** Judging 10 Oct – 8 Nov. Winners announced 10 Nov |
-| **Judges** | Anatoly Yakovenko, Mert, Chase, Akshay, Beeman, Ethelsec. Four of six are infrastructure, tooling or security people — technical depth is read, not skimmed |
-| **Requirements** | Android only. Ships a working APK. Uses Solana Mobile Stack + Mobile Wallet Adapter. Mobile-first. Meaningfully interacts with Solana. **No "website in a wrapper"** — a PWA does not count |
-| **Deliverables** | Working Android APK · demo video, **max 3 minutes** · a GitHub repo that clones and runs · pitch deck |
-| **Eligibility** | Project started within roughly the last 3 months. **No VC or angel-backed teams** for the USDC prizes. Existing projects need a major new mobile build. KYC required to win |
-| **Post-win** | **Winners must publish to the Solana dApp Store within 30 days** to claim. Do a stub publish in week one so the pipeline is proven |
-| **Resources** | solanamobile.com/hackathon is the source of truth — registration, updates, AI coaching and security audits. Radiants Discord for support |
-
-> **Three rules teams will fall foul of**
->
-> **Start a clean repo.** The project must have started within roughly the last three months;
-> do not lift an existing codebase in. **Check funding before you register.** If any
-> teammate's company has raised from a VC or angel, the USDC prizes are off the table — find
-> that out now, not after winning. **Plan for the dApp Store deadline.** Publishing within 30
-> days of winning is a condition of payment, not a formality.
+Two facts landed in the last eighteen months and nobody has put them together: Solana's
+secp256r1 precompile (mainnet, June 2025) lets a program verify the P-256 signature that
+Android's secure element produces. And stablecoin settlement is now cheap and fast enough that
+a ₦2,500 sale is worth settling on chain. Together they make offline, hardware-signed,
+on-chain-settled payments possible on a phone a merchant already owns.
 
 ---
 
@@ -242,12 +226,9 @@ schemes have priced floor-limit risk for fifty years.
 
 ## 5 · The Trust Stake — the SKR integration
 
-*Targets the $10,000 specialist award.*
-
-Start with what not to do. Across 2,992 corpus submissions, *tokenized rewards* as a stated
-solution has produced **zero winners in 39 attempts**. A panel including toly, Mert and
-Ethelsec reads a rewards programme as paying for volume, because that is what it is. So the
-money has to do a job.
+Start with what not to do. A token rewards programme reads as paying for volume, because that
+is what it is; in crypto payments it has a long record of failing to retain anyone once the
+rewards stop. So the money has to do a job.
 
 It does two, and they are different jobs that must not be confused with each other:
 **collateral**, which unlocks a capability and is supposed to saturate, and **earning**, which
@@ -374,32 +355,33 @@ goes live.
 
 ## 6 · Market
 
-The mPOS terminal market is forecast at roughly **$40.7 billion in 2026**, growing fastest in
-Asia-Pacific at over 22% CAGR — driven specifically by street vendors and informal retail that
-were cash-only until sub-$50 readers arrived. Nelo removes even that $50.
+Nelo competes with the POS terminal directly, on the phone the merchant already carries.
 
-Underneath, the settlement layer is ready. Solana cleared roughly **$650 billion of stablecoin
-volume in February 2026** and carries about 35% of global on-chain stablecoin transfers by
-count. Sub-Saharan Africa alone moved **$1.4 trillion through mobile money in 2025** — 66% of
-global transaction value — across 1.2 billion registered and 347 million active accounts.
-Deloitte found 75% of merchants planning crypto acceptance prefer stablecoins to anything
-volatile.
+| | | Source |
+|---|---:|---|
+| **Nigeria POS volume** | **₦59.33T a quarter** (~$153B a year at ₦1,550/$) | CBN, Q1 2026 |
+| — of which settled through NIBSS | ₦18.78T a quarter (~$48B a year) | NIBSS, Q1 2026 |
+| **Active POS terminals** | **5.9M** (8.36M registered) | CBN, Mar 2025 |
+| Volume per active terminal | ~$23–71 a day | Derived from the two above |
+| Mobile money, Sub-Saharan Africa | $1.4T in 2025, 66% of global value | GSMA |
+| Stablecoins on Solana | ~$650B of volume, Feb 2026 | 2026 reporting |
+| Merchants preferring stablecoins | 75% of those planning crypto acceptance | Deloitte |
 
-The reliability wedge is published rather than assumed. Nigerian POS failure rates run in double
-digits daily, averaging around 15% and reaching 25% at peak, with **29.23% recorded on 15 May
-2026** — roughly 157,000 declined transactions in a day — and the central bank has mandated dual
-routing with automatic failover because the single path keeps breaking. That is one worked
-example of a condition that recurs across emerging markets, not a Nigerian peculiarity.
+**TAM · SAM · SOM.** $1.4T of mobile money in Sub-Saharan Africa, reachable through UseAzza's
+nine-plus payout currencies; **$153B** of Nigerian POS volume, the market Nelo takes on first;
+and **$0.9B** of year-one volume from 150,000 businesses.
+
+**Why a phone wins against a terminal.** No hardware to buy, rent or wait for; it takes Solana
+Pay from any wallet, nelo pay offline, and transfers a terminal cannot; and it works when the
+network does not. That is why the plan sizes distribution against the terminal base itself.
 
 | | |
 |---|---|
-| **Primary user** | Micro and small merchants with an Android phone who cannot get a bank terminal or resent the one they have |
-| **Secondary** | Their customers — no app needed online; the app only for the offline path and for peer transfers |
-| **Wedge** | One trading cluster in one city, where card fees are visible and network failure is routine |
-| **Expansion** | Currency is configuration. New market = a payout partner and a price feed, not a rebuild |
-| **Competition** | Bank terminals on cost and reliability; ZunoPay, GotSOL, Solana POS on concept. The offline path is what makes it a different product |
-
----
+| **Primary user** | Micro, small and mid-sized merchants with an Android phone: market traders, restaurants, couriers and taxis, field services, fashion and jewellery, supermarkets, hotels and clubs |
+| **Secondary** | Their customers — no app needed online; nelo pay for offline payments, transfers and, from month six, savings, bills and cash-out |
+| **Wedge** | One trading cluster in Lagos, where card failures are visible and routine |
+| **Expansion** | Currency is configuration. A new market is a payout partner and a price feed, not a rebuild |
+| **Competition** | Moniepoint, OPay and PalmPay terminals on reach; bank terminals on cost and reliability. Neither takes a payment when the network is down |
 
 ## 7 · How it makes money
 
@@ -431,27 +413,40 @@ and it is unlocked by owning the cashflow record, not by charging more.
 
 ---
 
+### The three-year model
+
+From [`deck/growth-model.py`](deck/growth-model.py), grounded in the CBN and NIBSS figures above:
+500 users in month one at four businesses to every payer, 4,000 by month three, then field
+sales and the network effect. 70% of signed businesses trade in a month, at $100 a day each on
+Nelo; it costs about $30 to sign a business, paid back in about six weeks.
+
+| | Year 1 | Year 2 | Year 3 |
+|---|---:|---:|---:|
+| Businesses | 150K | 800K | 2M |
+| Share of active POS terminals | 2.5% | 13.6% | 33.9% |
+| nelo pay users | 300K | 2.5M | 8M |
+| Payment volume | $0.9B | $10.6B | $34.7B |
+| Revenue | $8.3M | $102M | $351M |
+| Share of Nigeria's POS volume (year end) | 2.5% | 13.3% | 33.4% |
+
+An illustrative model, not a forecast: every input is stated in the script and can be changed.
+
+---
+
 ## 8 · Distribution
 
-### During the hackathon
-
-Fifty merchants in one trading cluster, recruited on foot. This is doorstep work, not marketing,
-and it is also the product research — you will learn more from the tenth merchant refusing than
-from any amount of design.
-
-### After, in order
-
-- **Cluster by cluster.** Merchants in a market talk to each other constantly; density beats
-  reach. Win one row of stalls completely before opening a second city.
-- **The dApp Store.** A winning placement puts Nelo in front of users who already hold wallets —
-  the customer side of the network, seeded for free.
-- **Peer transfer as the spreading agent.** Every customer who pays a merchant offline has the
-  app; every one of them can pay a friend. Merchant acquisition is linear, peer transfer is not.
+- **Cluster by cluster, on foot.** Merchants in a market talk to each other constantly; density
+  beats reach. A field team signs one row of stalls completely before opening the next market.
+  This is doorstep work, and it is also the product research.
+- **Four businesses to every payer at launch, then the flywheel.** Every shop brings its
+  customers onto nelo pay; every customer asks the next shop "do you take nelo?". Merchant
+  acquisition is linear, peer transfer is not.
+- **App stores.** Play Store for reach; the Solana dApp Store for customers who already hold
+  wallets.
 - **The Trust Stake as a retention loop.** A merchant with staked collateral and a raised limit
   has a reason to keep volume on Nelo that has nothing to do with loyalty.
-- **Payout partners as a channel.** Disbursement providers have merchant relationships already
-  and an interest in volume. The integration that gates you at the start becomes a distribution
-  partner later.
+- **Payout partners as a channel.** paj.cash and UseAzza have merchant relationships and an
+  interest in volume. The integration that gated the start becomes a distribution partner.
 
 ---
 
@@ -460,7 +455,7 @@ from any amount of design.
 | Layer | Choice | Cost |
 |---|---|---|
 | App | **Expo / React Native** + TypeScript, Android, EAS development build (not Expo Go — the native module cannot run there) | Free |
-| Wallet | **Mobile Wallet Adapter** — required by the rules; **Privy** embedded so merchants never handle a key | $0 → $299/mo |
+| Wallet | **Mobile Wallet Adapter** — the Solana Mobile standard; **Privy** embedded so merchants never handle a key | $0 → $299/mo |
 | Online sale | **Solana Pay** transaction requests — `@solana/pay`. Works with any wallet the customer has | Free |
 | Vault program | **Anchor 1.2.x** — vault PDA, 128-slot replay window, timelocked withdraw, Trust Stake | Deploy gas |
 | Signing | **Android StrongBox** P-256 + key attestation, via a Kotlin Expo module | OS-level |
@@ -470,8 +465,8 @@ from any amount of design.
 | Fee sponsor | **Nelo's own relayer** (`services/relay`) pays offline settlement fees, so a merchant never needs SOL. Kora was the plan; its client is kept, unused | Self-hosted |
 | Price feed | **Pyth** or Switchboard, USD → local currency | Free on-chain |
 | SKR | Guardian delegation for staked collateral; TWAP for the haircut | Market cost |
-| Payout | **Yellow Card** or **Onafriq** in the first corridor; a regional equivalent per new market | Commercial |
-| Infra | **Helius** RPC + webhooks · Node/Hono · Postgres double-entry ledger · Redis queue | ~$70/mo |
+| Payout | **paj.cash** (Nigeria, live) and **UseAzza** (9+ currencies, live at launch); a regional partner per new corridor | Commercial |
+| Infra | **Helius** RPC · Node + Fastify services · double-entry ledger · managed hosting from launch | ~$70/mo today |
 | Publishing | `@solana-mobile/dapp-store-cli` + Publisher Portal; Publisher, App and Release NFTs | Gas only |
 
 ### Pinned toolchain
@@ -496,124 +491,101 @@ scaffold ships with (0.10.0) silently fails to load it with `InvalidAccountData`
 
 ---
 
-## 10 · Partnerships needed
+## 10 · Partnerships
 
-| Partner | Why | When |
+| Partner | Why | Status |
 |---|---|---|
-| **Disbursement partner** | The one that gates everything. Licensed local payout to bank and mobile money. Yellow Card ($6B+ processed, 35+ countries, 106+ banking partners) and Onafriq (400M+ endpoints, piloting USDC with Circle) in parallel — take whichever answers | Day 1 · blocking |
-| **On-ramp, later** | Only needed when customers without USDC must fund. Not required for the hackathon if the demo customer is already funded | Post-hackathon |
-| **Solana Mobile** | Publisher Portal account, and the hackathon's own security audit resource. Take the audit — Ethelsec is on the panel and a reviewed vault program is cheap credibility | Week 1 |
-| **A Guardian** | For SKR delegation of staked collateral. Solana Mobile itself is a Guardian at launch; Helius, Jito, Anza and Triton are named partners | Week 2 |
-| **Merchant cluster** | Not a company — a market association, a landlord, or simply the trader everyone else copies. One relationship gets you fifty conversations | Day 1 |
-| **Legal counsel, light** | An hour on two questions: is the Trust Stake rebate characterised correctly, and does automated payout make you a money transmitter in the launch market | Before launch |
+| **paj.cash** | Licensed naira payout to any Nigerian bank, ~20 seconds, 24/7, $0.50–$10,000 per payout | **Live** on their production API |
+| **UseAzza** | Second payout partner: redundancy in Nigeria and nine-plus more payout currencies | **Live at launch** |
+| **Solana Mobile** | dApp Store publishing; the Seeker's secure element and SKR | Publisher account in place |
+| **Privy** | Embedded wallets, so a merchant signs up with email or phone and never sees a key | Integrated |
+| **A Guardian** | SKR delegation of staked collateral. Solana Mobile is a Guardian at launch; Helius, Jito, Anza and Triton are named partners | To sign |
+| **An auditor** | External review of `nelo_vault` before offline payments go to mainnet | Seed use of funds |
+| **Merchant associations** | A market association, a landlord, or the trader everyone else copies. One relationship opens fifty conversations | Lagos, at launch |
+| **Legal counsel** | Two questions before scale: is the Trust Stake rebate characterised correctly, and how the non-custodial payout flow is classified in each market | Seed use of funds |
 
 ---
 
-## 11 · Provisions
+## 11 · Operating requirements
 
-*Secure before code.*
-
-- [ ] **Payout sandbox** *(commercial · day one)* — Longest lead time of anything. Send both
-      emails before opening an editor.
-- [ ] **Three Android devices** *(hardware)* — Two with StrongBox, one without to force an honest
-      fallback. Verify per device — StrongBox is not universal and assuming it burns week three.
-- [ ] **Google attestation root + CRL** *(backend)* — The enrolment service is meaningless
-      without chain validation and a verified boot check.
-- [ ] **Three authority keypairs** *(Solana)* — Program authority, enrolment, risk. Separate from
-      the start, never one key.
-- [ ] **Devnet USDC + Helius keys** *(Solana)* — Two Helius keys — app and relay — so you can see
-      which burns credits.
-- [ ] **EAS account, development build** *(mobile)* — Expo Go cannot load the attestation module.
-      Find that out now, not in week three.
-- [ ] **Publisher Portal + funded keypair** *(mobile)* — Publish a stub in week one so the
-      pipeline is proven and the 30-day post-win deadline holds no surprises.
-- [ ] **One real shop** *(commercial)* — Committed now to trading live in week four. A yes in
-      week four is not a yes.
+- **Hosted relayer and settlement service** with a fixed domain, secrets in a manager, and
+  alerting on the fee payer's SOL on both clusters.
+- **Separate authority keys** for the program upgrade, enrolment and risk, on hardware wallets
+  before mainnet.
+- **Two RPC providers** per cluster, with failover (`@nelo/rpc`).
+- **Google attestation root and CRL** for verifying device enrolment.
+- **A device lab**: handsets with and without StrongBox, including the low-cost models the
+  market actually uses.
+- **Daily reconciliation** of the journal against the chain, and a runbook for failed payouts
+  (paj.cash refunds or retries on request, quoting the order id).
 
 ---
 
-## 12 · Four weeks
+## 12 · Plan, team and hiring
 
-> **Week one has one job, and it is not UI**
->
-> A payer funds a vault on devnet, goes into airplane mode, emits a voucher as a QR, a second
-> offline phone verifies it, both reconnect, it redeems — and **a second voucher at the same
-> sequence is rejected by the program.** No merchant app, no payout, no NFC. If that works the
-> product is real. If it does not, better to know on day seven than day twenty-five.
+### Milestones
 
-| Week | Goal | |
+| Milestone | When | Outcome |
 |---|---|---|
-| **1** | **Prove the trust model** | Vault program, StrongBox signature verifying on chain via the precompile, replay window with out-of-order tests, timelocked withdraw, and a deliberate double-spend that fails |
-| **2** | **The ordinary sale** | Merchant app, Solana Pay, local-currency display, day-book. Payout sandbox wired. Trust Stake staking and the floor-limit curve |
-| **3** | **Offline in the hand** | NFC and QR transport, cached enrolment and revocation lists, offline queue, conflict handling, close-of-day reconciliation. Peer-to-peer transfer falls out of the same code. Full design pass |
-| **4** | **Real trading and the film** | A week of live sales in one shop. Signed APK, dApp Store publish, repo that clones and runs, 3-minute video with a shopkeeper in it rather than a developer |
+| Launch | Q4 2026 | Play Store and dApp Store; paj.cash and UseAzza live; first Lagos cluster; 500 users in month one, 4,000 by month three |
+| Production hardening | Q1 2027 | Vault audit; offline payments on mainnet; hosted, monitored infrastructure |
+| nelo pay services | From month six | Cash out, savings with yield, bills, stocks and RWAs, an agent payments API |
+| Credit and corridors | 2027 | Merchant credit against observed cashflow; new payout currencies |
 
-### Team
+The detailed record and the next engineering milestones are in [`ROADMAP.md`](ROADMAP.md).
 
-**Android / Kotlin — the secure element**
-- StrongBox P-256 keygen with attestation challenge
-- DER → raw r‖s conversion with low-S normalisation
-- NFC host card emulation and BLE fallback
-- Capability detection and honest degradation
+### The founder
 
-**Rust / Anchor — the vault**
-- Precompile introspection — assert ix 0 verified the right key and bytes
-- Replay window: set, reject-if-set, advance base
-- Trust Stake, floor-limit curve, Guardian delegation
-- A negative test that must fail before any positive one passes
+**Udoka A.M** ([udokaam.dev](https://udokaam.dev)) — led product end to end at Zinari Finance
+(now Yativo) across DeFi, NFTs and payments; regional DevRel at Superteam Nigeria ($40K community
+GDP in five months, a Colosseum winner, QuickNode and MagicBlock partnerships); a Solana
+Foundation grant for SprintIQ, since sold; 4,000+ developers reached across Africa.
 
-**Design — not optional**
-- UX is 25% of the score and a POS is where crypto apps look worst
-- Day-book and close-of-day are the screens a merchant actually lives in
-- The 3-minute video is a design deliverable, not an afterthought
+### Who we are hiring first
 
-**Commercial — unblock and prove**
-- Payout partner sandbox in week one
-- A committed shop by week two
-- Reserve and floor-limit model before week three
+| Role | What they own |
+|---|---|
+| **Senior mobile engineer** (React Native + Kotlin) | Both apps, the StrongBox attestation module, NFC, offline queue and device coverage |
+| **Protocol engineer** (Rust / Anchor) | `nelo_vault`, the audit, mainnet launch of offline payments, the replay-window and recovery work |
+| **Backend / payments engineer** (TypeScript) | The relayer, the settlement service, partner integrations, reconciliation and hosting |
+| **Head of merchant growth** (Lagos) | The field team, cluster launches, merchant support and the referral loop |
+| **Partnerships and compliance lead** | Payout partners, new corridors, licensing questions and counsel |
+
+### Use of the seed round
+
+Launch in Lagos with a field team; the external audit and mainnet offline payments; the first
+five hires above; hosted infrastructure; and the payout reserve that backs the offline guarantee.
 
 ---
 
 ## 13 · Risks
 
-### Things that will go wrong
+| Risk | What already mitigates it |
+|---|---|
+| **Double spend offline** | Offline money is locked in an on-chain vault first; a replayed voucher is refused; a forged second voucher freezes the vault and slashes its SKR stake |
+| **A tampered phone** | Keys live in the secure element and never leave it; floor limits cap any loss; the insurance reserve covers the residual |
+| **StrongBox is not on every phone** | Capability is detected, never assumed; without it the app degrades to online-only, never to a software key |
+| **A payout partner goes down** | Two partners from launch; money waits in the merchant's own wallet until it is paid out |
+| **Regulation** | Nelo never holds funds or keys; licensed partners handle naira payout and KYC; counsel before scale |
+| **Merchants don't want crypto** | Naira on every screen, no crypto words, no hardware; any Solana wallet pays; cash reaches the bank in seconds |
+| **A smart contract bug** | Negative tests before positive ones; 500+ tests in CI; an external audit before offline payments go to mainnet, with low limits until then |
+| **Network conditions** | Services resolve IPv4 first and retry failed lookups; the apps time out, retry and say which host they could not reach |
 
-- **Signature encoding.** Android returns DER; the precompile wants raw r‖s, 64 bytes, likely
-  low-S normalised. Half a day, spent in week one where it is cheap.
-- **StrongBox is not everywhere.** Budget hardware often has a TEE but no discrete secure
-  element — and budget hardware is this market. Detect and degrade to online-only. Silently
-  falling back to a software key would keep the demo working while destroying the entire
-  argument.
-- **Precompile introspection is fiddly.** Get the offsets wrong and it appears to work while
-  verifying nothing. Write the negative test first: a valid signature over *different* bytes must
-  be rejected.
-- **The payout partner may not answer.** Decide by end of week one: stub the settlement leg and
-  declare it, or pivot the demo to merchant-to-merchant settlement in USDC. Do not spend week
-  three hoping.
-
-The standing risk is that the offline guarantee is an insurance business you are entering
-whether you plan for it or not — model the floor limit and the reserve before you ship, not
-after. And the POS concept is the most contested idea on the shortlist; the win is on payout
-experience and reliability, never on the idea itself.
+The standing risk is that the offline guarantee is an insurance business Nelo is in whether it
+plans for it or not. The floor limit and the reserve are modelled ([`RESERVE.md`](RESERVE.md))
+and set from that model, not picked.
 
 ---
 
 ## Sourcing
 
-Hackathon rules, prizes, judges, scorecard, deliverables, eligibility and dates are from the
-Radiants announcement of 8 September 2026. The organisers name solanamobile.com/hackathon as the
-source of truth — re-check against it before committing, since the announcement is a summary.
-
 Technical claims are from primary documentation: the secp256r1 precompile from SIMD-0075 and
 Solana mainnet activation records; StrongBox, key attestation and KeyMint algorithm support from
-the Android Open Source Project; Subscriptions & Allowances from the Solana Foundation; C2PA from
-the Coalition for Content Provenance and Authenticity; QR capacities from ISO/IEC 18004;
-replay-window handling follows the standard IPsec anti-replay construction.
+the Android Open Source Project; QR capacities from ISO/IEC 18004; replay-window handling follows
+the standard IPsec anti-replay construction.
 
-Market figures are from 2026 reporting and industry sources cited in the shortlist document.
-Crowding reads come from the Colosseum corpus, which ends at Cypherpunk (September 2025) and
-cannot see 2026 projects — treat every density read as a floor, not a guarantee.
+Market figures: POS volume and terminal counts from CBN and NIBSS data for Q1 2026 and March
+2025, as reported by TechNext24, Nairametrics, BusinessDay and Techpoint; POS failure rates from
+2026 Nigerian reporting; mobile money from GSMA; merchant stablecoin preference from Deloitte.
 
 All financial tables are illustrative models with stated assumptions, not forecasts or quotes.
-Every input needs replacing with a real number before it informs a decision. Pricing shown is
-2026 list pricing and moves; anything marked commercial has no public rate card.

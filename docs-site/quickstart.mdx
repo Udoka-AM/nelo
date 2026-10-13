@@ -112,7 +112,7 @@ It passes against the **Trust Stake build** now deployed to devnet — the first
 
 ## Hard rules for this repo
 
-- **`anchor test` stays green.** It is a graded deliverable, not a nicety.
+- **`anchor test` stays green.** A clean clone must build and pass; CI checks every push.
 - **Negative tests before positive ones**, everywhere in the vault. A test that passes because nothing was checked is worse than no test.
 - **Never commit a keypair, a mnemonic, or a real API key.** `.env` is gitignored; keep it that way.
-- **Everything a judge needs is in the repo.** No links only the team can open.
+- **Everything an engineer needs is in the repo.** No links only one person can open.

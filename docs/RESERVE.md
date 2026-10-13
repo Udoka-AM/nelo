@@ -1,9 +1,8 @@
 # The reserve requirement
 
-The week-2 gate asks for this one directly:
-
-> **Model the reserve requirement this week** — the SKR premium is priced off it, and the
-> deck asserts that. An unmodelled multiplier is a number this panel will ask about.
+Offline payments make Nelo an insurer of floor-limit risk, whether it plans for that or not.
+The SKR premium is priced off the reserve, and an unmodelled multiplier is the first number an
+investor, a risk partner or an auditor will ask about.
 
 This is that model. It lives in [`packages/reserve`](../packages/reserve), runs off-device,
 and every conclusion below is a passing test.
@@ -24,7 +23,7 @@ any result, so the gap travels with the output.
 
 So the model does not say what the reserve *is*. It says **what would have to be true**, and
 which three or four numbers are worth going and finding out. Treat every figure below as
-conditional on inputs that a week of real trading in week 4 would settle.
+conditional on inputs that the first weeks of live trading in Lagos will settle.
 
 ---
 
@@ -150,8 +149,7 @@ dollar of platform-wide stake is `covered_attempts / staking_vaults`, not 1.
 The hedge in §5 was well placed. What has to change is the *description*: a premium above
 roughly 1.001× is being paid out of the rebate budget as acquisition cost, or justified by
 Guardian yield accruing to the merchant — both defensible — but it **cannot be described as
-priced off capital relief**. Four of six judges are infrastructure, tooling or security people,
-and that is the sentence they will test.
+priced off capital relief**. Any technical investor or auditor will test that sentence first.
 
 ---
 
@@ -166,7 +164,7 @@ netted off once and everything above it scales:
 | 20 | $8,000 |
 | 40 | $18,000 |
 
-It is also the input with the least behind it. One afternoon in the committed shop counting how
+It is also the input with the least behind it. One afternoon in the first launch cluster counting how
 many distinct merchants a customer could plausibly reach in one offline trip is worth more than
 any refinement of the maths here.
 
@@ -196,5 +194,5 @@ one.
 - The reserve and rebate lines are `INSURANCE_RESERVE` and `REBATE_PAYABLE` in
   [`services/settle`](../services/settle/src/accounts.ts), which already accrues both per sale.
   Finding 1 is a rate change in `money.ts`.
-- The deck's unit economics and premium slides are where findings 1 and 4 have to be reflected
-  before submission.
+- The deck's unit economics and premium slides are where findings 1 and 4 are reflected: the
+  net take rate (0.91% with the current payout spread) and a premium described honestly.

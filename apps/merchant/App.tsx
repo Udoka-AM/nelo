@@ -9,11 +9,11 @@
  * Week 2 scope: amount entry, conversion, the Solana Pay code, the day-book,
  * the balance — held in dollars, shown in the merchant's own currency — and
  * onboarding behind an embedded wallet. The payout leg comes next; see
- * docs/DELIVERABLES.md.
+ * docs/ROADMAP.md.
  *
  * There are two ways in, and the till does not care which was used: Mobile
  * Wallet Adapter for a merchant who already has a wallet, and a Privy embedded
- * wallet for one who does not. MWA is required by the hackathon rules, so the
+ * wallet for one who does not. MWA is the Solana Mobile standard and stays first, so the
  * embedded route is **additive** — and it is the route that makes step 2's
  * done-when true: setup completed without ever seeing a key.
  */

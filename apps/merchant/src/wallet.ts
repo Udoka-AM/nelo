@@ -1,7 +1,7 @@
 /**
  * Mobile Wallet Adapter — the merchant's own wallet.
  *
- * MWA is a hard requirement of the hackathon rules, but it is also the honest
+ * MWA is the Solana Mobile standard, and it is also the honest
  * design: Nelo never holds the merchant's key. The merchant authorises with a
  * wallet they already control, and Nelo learns only an address to be paid at.
  *

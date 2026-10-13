@@ -1,186 +1,99 @@
 # Nelo
 
-Accept payments on the phone you already own. Money lands in your own currency, in your own bank. And it keeps working when the network doesn't.
+**Every business can now take payments on Solana. Even when the network is down.**
 
-**Built for CLOCK IN — a Solana Mobile hackathon presented by Radiants.**
-Submissions close **8 Oct 2026, 11:59pm PST**. Android APK, Solana Mobile Stack + Mobile
-Wallet Adapter, mobile-first, meaningfully interacts with Solana. No website in a wrapper.
+Nelo turns the Android phone a merchant already owns into a payment terminal. Customers pay
+with any Solana wallet, or with **nelo pay** — fully offline, on both phones, against money
+already locked on chain. The merchant sees naira, cashes out to their own bank in about twenty
+seconds, and Nelo never holds their money or their keys.
 
-📄 **Full build plan:** [`docs/BUILD.md`](docs/BUILD.md) — the hackathon rules and scorecard,
-market, unit economics, stack, partnerships, provisions, the four-week sequence and the risks.
+A quarter of card payments in Nigeria fail on a bad afternoon (29.23% on 15 May 2026). Nigeria
+moves about **$153B a year through 5.9M POS terminals**. Nelo takes that market on with no
+hardware at all.
 
-🛠 **Build sequence:** [`docs/DELIVERABLES.md`](docs/DELIVERABLES.md) — the four graded
-deliverables, and the week-by-week steps with acceptance criteria.
+| | |
+|---|---|
+| **Product** | Two Android apps: **nelo for business** (the till) and **nelo pay** (the customer app) |
+| **Live** | Signed release builds; mainnet USDC cash-out paid into a Nigerian bank through paj.cash |
+| **Offline** | Vouchers signed by the phone's secure element, verified on chain by Solana's secp256r1 precompile (devnet) |
+| **Payout partners** | paj.cash (Nigeria, live) and UseAzza (nine-plus currencies, live at launch) |
+| **Engineering** | 500+ tests across the program, services and shared packages, in CI on every push |
+| **Next** | Play Store and Solana dApp Store launch in Lagos; vault audit; offline payments on mainnet |
 
-📊 **Pitch deck:** [`docs/deck/index.html`](docs/deck/index.html) — a single self-contained
-file. Open it in any browser; no build and no server.
+**Read next**
 
-💵 **Reserve model:** [`docs/RESERVE.md`](docs/RESERVE.md) — what the offline guarantee costs,
-what the insurance line has to be, and what the SKR premium can honestly be priced at.
+- [`docs/BUILD.md`](docs/BUILD.md) — the product and business plan: market, unit economics,
+  distribution, partnerships, team, hiring and risks.
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — the milestone record so far and the engineering roadmap.
+- [`docs/RESERVE.md`](docs/RESERVE.md) — what the offline guarantee costs and how the insurance
+  line is set.
+- [`docs-site/`](docs-site) — the full documentation: architecture, concepts, reference and
+  operations runbooks.
+- [`docs/deck/`](docs/deck) — investor deck, growth model and product film script.
 
 ---
 
-## Status
+## How it works
 
-Week 4 (submission 8 Oct). The live ledger is [`docs-site/operations/status.mdx`](docs-site/operations/status.mdx), and [`AGENTS.md`](AGENTS.md) is the hand-over for anyone picking the work up. Both apps now run on handsets, and the offline gate has passed on devnet. The history below is how it got here.
+**At the counter, online.** The merchant types an amount in naira. The till shows a Solana Pay
+code any wallet can pay, watches the chain, and validates the payment against what was asked —
+right payee, right mint, enough money, a transaction that did not fail. Anyone can name a
+reference, so finding a transaction is never treated as proof.
 
-The **vault program is real**: collateral deposit, offline voucher
-redemption with the device signature verified on chain by the secp256r1 precompile, a
-128-slot replay window, and a timelocked withdrawal. A valid signature over the wrong
-bytes is refused, and so is a deliberate double-spend.
+**At the counter, offline.** The customer has locked USDC into their own on-chain vault with
+nelo pay. With no signal on either phone, the customer scans the till's code; their phone signs
+a 202-byte voucher with a P-256 key held in the secure element (Android StrongBox) and shows it
+back as a QR. The till verifies it on the spot — signature, enrolled device, revocation list,
+floor limit, expiry — and records the sale. When the till reconnects, Nelo's relayer redeems it
+on chain and pays the fee. Offline money is prepaid, never an IOU.
 
-A proven double-spend also freezes the vault via `report_conflict` — permissionless, on
-two conflicting signed vouchers. The freeze blocks the payer's exit but leaves redemption
-open, so merchants holding good vouchers are still paid.
+**Double spends.** Each vault keeps a 128-slot replay window, so vouchers can redeem out of order
+but never twice. A forged second voucher at the same sequence is proof of tampering:
+`report_conflict` freezes the vault (merchants holding good vouchers are still paid) and `slash`
+moves the payer's staked SKR into the reserve as first-loss capital.
 
-The voucher wire format is real on both sides. `packages/voucher` encodes, decodes and
-verifies the 202-byte packet, and `vectors/voucher-v1.json` is a frozen set of golden
-vectors generated by the Rust side and asserted by both — so the phone and the chain
-cannot drift apart silently.
+**Cash-out.** The merchant picks a bank and account and sees the holder's name before anything
+moves. The settlement service opens a payout order with paj.cash; the relayer builds the USDC
+transfer to the order's deposit address and pays its fee; the merchant approves it in their own
+wallet on mainnet; the naira lands in their bank. Every step is keyed to the cash-out's id, so a
+retry continues where it stopped and nothing is sent twice.
 
-Two facts that cost time if you meet them late, now pinned by tests: `@noble/curves`
-does **not** default to low-S on P-256, and a high-S signature does **not** settle on
-chain. Every signing path must normalise; `derToRawSignature()` does it.
+**Trust Stake.** Payers stake SKR to raise their offline limit along a sublinear, hard-capped
+curve — `min(base × (1 + k·√stake) × reputation, hard_cap)` — valued at redemption with a haircut.
+Merchants can take volume rebates in staked SKR at a premium priced from the reserve model.
 
-Collateral is **SPL** — USDC in production. Deposits, redemptions and withdrawals all move
-real tokens, checked against the mint the vault was enrolled for, and a merchant taking
-their first Nelo payment gets a token account created for them rather than a failed sale.
+## Business model
 
-The merchant terminal takes an amount in local currency and shows a Solana Pay code any
-wallet can pay. All the arithmetic is integer-only and lives in `packages/pay`, tested off
-device: conversion rounds **up** so the merchant is never short, display rounds **down** so
-a balance is never overstated.
+0.91% net on business volume (0.50% platform fee + 0.80% payout spread, less 0.29% insurance
+reserve and 0.10% Trust Stake rebate), plus 0.3–1.5% on nelo pay services from month six. The
+three-year model in [`docs/deck/growth-model.py`](docs/deck/growth-model.py) reaches 2M
+businesses, a third of Nigeria's active POS base, and $351M of revenue in year three. Every
+input is stated and can be changed; it is a model, not a forecast.
 
-The merchant connects their **own** wallet through Mobile Wallet Adapter, so Nelo never
-holds a key — it learns only an address to pay. The grant is remembered in SecureStore, so
-the terminal opens ready to trade.
-
-The terminal watches the chain for the payment and says whether it landed. Finding a
-transaction is not proof: anyone can name your reference, so every payment is validated
-against what was asked — right payee, right mint, enough money, and the transaction did
-not fail. Underpayment is refused.
-
-Settled sales land in a day-book held in SQLite, grouped by the merchant's **own**
-calendar day — a sale at 00:30 belongs to that day's sheet, not to UTC's.
-
-The balance is **held in dollars and shown in the merchant's currency**, and the till says
-both. That is the product decision, not a formatting one: a trader in a devaluing currency
-who holds overnight is better off in a dollar asset converted at payout, and they should be
-able to see that is what is happening. The conversion rounds **down**, so the figure on
-screen is never larger than what is actually there, and an RPC failure leaves the last known
-number up rather than replacing it with a confident zero.
-
-The rate is quoted through a guarded oracle layer: a price that is stale or whose
-confidence band is too wide is **refused**, not displayed. Two things block a live feed —
-Pyth publishes no NGN pair, and Hermes needs an API key — so the till currently runs a
-configured rate and labels it on screen as not live.
-
-The offline limit is **bought, not fixed**. Staked SKR lifts it through a sublinear,
-hard-capped curve — `min(base × (1 + k·√stake) × reputation, hard_cap)` — so trust
-cannot simply be purchased and no merchant creates unbounded exposure. Past the point
-where the limit covers their largest realistic basket, more collateral buys nothing,
-which is correct for collateral and exactly why earning is a separate mechanism.
-
-The stake is valued **at redemption**, with a visible haircut, so a falling price
-shrinks the limit rather than leaving a merchant holding a ceiling their collateral no
-longer supports. Requested stake stops backing the limit the moment it is requested,
-not when it is collected, and the unstake cooldown is pinned to the settlement horizon
-— a payer must not be able to unstake out from under a loss still in flight.
-
-Every number the curve is shaped by — base, `k`, the hard cap, the haircut, the
-cooldown — is **configuration**, in a `RiskConfig` account under a risk authority held
-separately from the upgrade authority. They fall out of the reserve model, which does
-not exist yet; baking in three plausible-looking constants would be inventing its
-answer. 17 tests cover the curve off chain: sublinearity at every doubling, the cap
-against an absurd stake, reputation and coefficient, and `isqrt` brute-forced against
-its floor property.
-
-The payout leg has a real ledger under it. `services/settle` is double-entry: every
-transaction balances **per currency**, because a payout touches dollars and naira in one
-event and netting one against the other would balance while being nonsense. Posting is
-**idempotent** on an id the outside world already made unique — an on-chain signature, a
-partner reference — since a webhook firing twice is the normal case, not the edge one.
-The journal is append-only; a mistake is corrected by posting its reversal.
-
-The merchant's dollar claim is discharged when a payout is **instructed**, not when the
-partner confirms, so the same dollars cannot pay out twice while it is in flight — and a
-failure returns them exactly. `reconcileCustody` checks the journal against what the
-chain actually holds, which is the one test that catches a missed sale or a double post.
-
-The disbursement partner is a **declared stub**, and it is built so it cannot be mistaken
-for a real one: `fidelity: "stub"` on every quote and every result, references prefixed
-`STUB-`, and `assertMovesRealMoney()` to refuse it at any boundary touching real funds.
-Swapping in a licensed partner is a constructor change.
-
-The reserve requirement is **modelled** — [`packages/reserve`](packages/reserve), written up
-in [`docs/RESERVE.md`](docs/RESERVE.md). It turns the plan's own exposure formula into a number
-and checks the two things the plan asserts; both came back short. The 0.20% insurance line did
-not cover expected loss at these inputs — the line charged is now **29 bps**, which takes the
-net take rate to 0.61% before the payout spread was set at 0.80% (0.91% now) — and reserve relief funds an SKR premium of about 1.001× rather than
-the illustrative 1.5×, which is still to be reflected in the deck. It also finds the Trust
-Stake curve *raises* required reserve below $250 of staked value, which is what should set `k`.
-
-Eleven of its inputs are guesses, and it says which before it says anything else. It states what
-would have to be true, not what is.
-
-A merchant can be onboarded without ever seeing a key. A phone number, an SMS code, and
-Privy creates an embedded Solana wallet behind it — while Mobile Wallet Adapter stays the
-first thing offered to anyone who already has a wallet. The step order, the input rules,
-the resend cooldown and the failure mapping live in `@nelo/onboard` as a state machine
-with no I/O, so the part that decides what happens is tested even though the SDK calls
-need a handset. Failures are labelled for the merchant or for whoever configured the app,
-because *"that code is not right"* and *"SMS login is not enabled for this Privy app"* are
-not the same problem and only one of them is fixable at a counter.
-
-**522 tests pass**: 451 in TypeScript across twelve packages and two services, 45 LiteSVM
-integration tests against the built program, 19 Rust unit tests for the curve and the
-precompile layout, and 7 that generate and check the cross-language golden vectors. All of them, plus four typechecks, `cargo
-fmt`, and clippy, run in CI on every push — see `.github/workflows/ci.yml`. The Anchor job
-is week 4's graded deliverable, *clone → install → `anchor test` green*, executed on a
-machine that starts with nothing.
-
-Not yet built: a live price feed (see above), paying out of the reserve (slashing moves a
-frozen vault's stake into it, but nothing yet moves it back out — that waits on a decision
-about who is compensated and how), and the payout partner adapter itself.
-
-**StrongBox has still never run.** The payer probe now works on a real handset — 4 of 5,
-with Hermes, the codec and P-256 all answered — but that handset has no secure element,
-which is itself the finding. The two checks it skipped are the ones only hardware can
-answer, and one of them is whether Android Keystore's own DER survives the low-S
-normalisation the chain requires.
-
-> **Neither app has been run.** An EAS development build compiles the whole native side,
-> so `@nelo/attest`'s Kotlin is no longer unproven at the compiler — but a development
-> client does not embed the JS bundle, so nothing in either app has rendered. Both
-> typecheck clean, which is not the same thing.
-
-See [the build sequence](docs/DELIVERABLES.md) for what is next and how each step is
-judged done.
-
-## Layout
+## Repository
 
 ```
-programs/nelo_vault/     Anchor program — vault, replay window, Trust Stake
-  src/curve.rs           The floor-limit curve: sublinear, capped, integer-only
-apps/merchant/           Expo — the terminal (amount entry, Solana Pay, onboarding)
-apps/payer/              Expo — the handset probe (codec, curves, StrongBox)
-packages/ledger/         The day-book: sale records, day boundaries, totals
-packages/pay/            Solana Pay requests + local-currency arithmetic
-packages/onboard/        Phone + payout validation, and the onboarding flow machine
-packages/reserve/        The insurance line: exposure, reserve, premium ceiling
-packages/voucher/        202-byte wire format: encode, decode, verify
-packages/attest/         Expo native module — StrongBox P-256 + attestation
-services/relay/          The relayer: submits offline vouchers and pays the fees
-services/settle/         Double-entry ledger, payout lifecycle, partner interface
-docs/BUILD.md            The build plan
-docs/DELIVERABLES.md     The build sequence, step by step
-docs/deck/               The pitch deck
+programs/nelo_vault/   Anchor program: vault, voucher redemption via the secp256r1 precompile,
+                       replay window, timelocked withdrawal, conflict freeze, Trust Stake, slash
+apps/merchant/         nelo for business: the till (Expo, Android). MWA or Privy, Solana Pay,
+                       offline scan, settle queue, day-book, cash-out
+apps/payer/            nelo pay: StrongBox enrolment, vault, offline vouchers, pay a friend
+packages/              Shared, tested logic: voucher (wire format), pay, accept, till, issue,
+                       queue, enrol, redeem, cashout, rpc, onboard, ledger, reserve, rebate,
+                       ui, attest (Kotlin StrongBox module)
+services/relay/        Relayer: redeems vouchers, pays fees, reports double spends, cranks slash,
+                       co-signs cash-out transfers on mainnet
+services/settle/       Settlement: double-entry ledger, cash-out lifecycle, paj.cash v2
+tools/rehearse/        The offline flow end to end on devnet, with the apps' own code
+scripts/               Environment setup, local gateway, release configuration
+site/                  Landing page
+docs-site/             Documentation (Mintlify)
+docs/                  Business plan, roadmap, reserve model, deck
 ```
 
 ## Getting started
 
-The toolchain is pinned. These are the versions the repo is built and tested against —
-`Anchor.toml` pins the first two, `rust-toolchain.toml` the third.
+The toolchain is pinned. `Anchor.toml` pins Anchor and Agave, `rust-toolchain.toml` pins Rust.
 
 | Tool | Version |
 |---|---|
@@ -191,87 +104,73 @@ The toolchain is pinned. These are the versions the repo is built and tested aga
 | pnpm | 9.15.0 |
 
 ```bash
-# Solana toolchain
-agave-install init 4.2.2
-
-# Anchor toolchain
-avm install 1.2.0 && avm use 1.2.0
-
-# JS workspace
-pnpm install
-cp .env.example .env      # fill in HELIUS_API_KEY
+agave-install init 4.2.2              # Solana toolchain
+avm install 1.2.0 && avm use 1.2.0    # Anchor
+pnpm install                          # JS workspace
+cp .env.example .env                  # fill in HELIUS_API_KEY
+anchor test                           # builds the program and runs its test suite
 ```
 
-The merchant app's onboarding needs a Privy app ID in `EXPO_PUBLIC_PRIVY_APP_ID`. It is a
-public identifier, not a secret — a Privy **app secret** belongs on a server and must never
-reach this bundle. Leave it empty and the app still runs: onboarding by phone number is
-simply not offered, and Mobile Wallet Adapter carries it on its own.
-
-Then:
+`anchor test` builds the program and runs the Rust and LiteSVM suites; it passes from a clean
+clone. The TypeScript suites and typechecks:
 
 ```bash
-anchor test
+pnpm -r --filter "./packages/*" --filter "./services/*" test
+pnpm exec tsc -p tsconfig.check.json
 ```
 
-That builds the program and runs the Rust test suite. It should pass from a clean clone.
+Running the apps against phones, the relayer and the settlement service is covered step by step
+in [`docs-site/quickstart.mdx`](docs-site/quickstart.mdx) and the
+[operations runbooks](docs-site/operations).
 
-## Devnet
+The merchant app's onboarding uses a Privy app ID (`EXPO_PUBLIC_PRIVY_APP_ID`), a public
+identifier. A Privy **app secret** belongs on a server and must never reach the app bundle.
+Without an app ID the app still runs, with Mobile Wallet Adapter as the only sign-in.
 
-The program is deployed to devnet at
-`29QdPRQC8C5v6C8gMcBqtw9T4RxYyZ1wqThkEj3XJeQx`, upgrade authority
-`BX8kSVjmx9Eihd173hdrRW1Ap61AmixQzqjtc3o5DQfu`.
+## Deployments
 
-The deployment carries the Trust Stake build: the upgrade extended the program data
-account from 244,088 to 329,664 bytes, and `RiskConfig` lives at
-`9JEJkGp3evd8wFAztEyjPLgTaRucThLyDJ5nkwdJg9ry`.
+| | |
+|---|---|
+| `nelo_vault` (devnet) | `29QdPRQC8C5v6C8gMcBqtw9T4RxYyZ1wqThkEj3XJeQx` |
+| Upgrade authority | `BX8kSVjmx9Eihd173hdrRW1Ap61AmixQzqjtc3o5DQfu` |
+| `RiskConfig` (devnet) | `9JEJkGp3evd8wFAztEyjPLgTaRucThLyDJ5nkwdJg9ry` |
+| Cash-out mint (mainnet USDC) | `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` |
 
-> **A vault opened by an older build cannot be deserialised by this one.** `Vault` gained
-> four fields. On devnet, open fresh ones. `RiskConfig` is initialised once per
-> deployment — the gate below does it itself, and tolerates one that already exists.
-
-The week-1 gate has been run there end to end **against this build** — vault funded,
-voucher redeemed with the device signature verified by the secp256r1 precompile on a real
-validator, double-spend refused, signature-over-other-bytes refused:
+The devnet end-to-end check runs vault funding, redemption with the signature verified by the
+precompile on a real validator, a refused double spend and a refused signature over other bytes:
 
 ```bash
 cargo test -p nelo_vault --test devnet -- --ignored --nocapture
 ```
 
-It creates its own 6-decimal mint (devnet USDC exists, but Circle holds its mint
-authority), so a run is self-contained. It is `#[ignore]` so it never runs in the default
-suite. It costs devnet SOL and uses a software P-256 key in place of StrongBox, which
-isolates "does the chain do what we think" from "does the handset do what we think".
+> **The program keypair is not in this repo, and must not be.** `target/` is gitignored, so
+> `rm -rf target/` destroys `target/deploy/nelo_vault-keypair.json` and `anchor build` silently
+> generates a new address. The canonical copy is kept outside the repo; restore from it rather
+> than editing `declare_id!`. Before mainnet it moves to a hardware wallet.
 
-> **The program keypair is not in this repo, and must not be.**
-> `target/deploy/nelo_vault-keypair.json` is what controls the program address, and
-> `target/` is gitignored — so `rm -rf target/` destroys it and `anchor build` silently
-> generates a new one with a different address. The canonical copy lives at
-> `~/.config/solana/nelo/nelo_vault-program-keypair.json`. If a build ever produces a
-> program id that does not match `declare_id!`, restore from there rather than editing
-> the id. Before mainnet, that key belongs on a hardware wallet.
+Program tests are **Rust + LiteSVM** in `programs/nelo_vault/tests/`; no local validator is
+needed. The Anchor TypeScript client is `@anchor-lang/core` (1.x); the pre-1.0
+`@coral-xyz/anchor` is abandoned and must not be imported.
 
-## Program tests
+## Engineering principles
 
-Program tests are **Rust + LiteSVM**, in `programs/nelo_vault/tests/`. There is no
-mocha/TypeScript test path — `Anchor.toml` sets `[scripts] test = "cargo test"`, and no
-local validator is needed.
+- **A clean clone builds and passes.** `pnpm install` → `anchor test` green, in CI on every push.
+- **Negative tests first** in the program: a check that passes because nothing was checked is
+  worse than no check.
+- **Say what is proven.** "Built", "tested" and "ran on a handset" are different claims; the
+  [status page](docs-site/operations/status.mdx) keeps them apart.
+- **No secrets in the repo.** Never commit a keypair, a mnemonic or a real API key. `.env`
+  files are gitignored. Every `EXPO_PUBLIC_` value is compiled into the app and is public.
+- **Non-custodial by construction.** Nelo never holds a merchant's key or money; the relayer
+  pays fees and cannot redirect a payment.
 
-Anchor's TypeScript client is `@anchor-lang/core` (1.x). The pre-1.0 `@coral-xyz/anchor`
-package is abandoned at 0.32.1 — **do not import it.**
+## Join us
 
-## Hard rules for this repo
-
-- **The judges clone this repo and run it.** Keep `pnpm install` → `anchor test` working at
-  all times.
-- **Everything a judge needs is in the repo.** No pointers to links only the team can open.
-  If a document matters, it lives in `docs/`.
-- **Never commit a keypair, a mnemonic, or a real API key.** `.env` is ignored; keep it that way.
-- **Start clean.** Hackathon eligibility requires the project to have started within roughly
-  the last three months. Do not import an existing codebase.
-- **Publish a stub to the dApp Store in week one** so the pipeline is proven — winners must
-  publish within 30 days of winning to claim a prize.
+Nelo is hiring its first engineers: a senior mobile engineer (React Native + Kotlin), a
+protocol engineer (Rust / Anchor), a backend and payments engineer (TypeScript), and a head of
+merchant growth in Lagos. The roles and what each owns are in
+[`docs/BUILD.md`](docs/BUILD.md#12--plan-team-and-hiring). Contact: [udokaam.dev](https://udokaam.dev).
 
 ## Licence
 
-UNLICENSED for now — decide before submission. Judges can read a private repo you share
-with them; the public licence choice is a launch decision, not a build one.
+Proprietary. All rights reserved.

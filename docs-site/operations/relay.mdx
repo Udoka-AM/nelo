@@ -1,14 +1,14 @@
 ---
 title: "Relay"
-description: "Running Nelo's relayer on a Mac: it submits merchants' offline vouchers and pays the fees."
+description: "Running Nelo's relayer: it submits merchants' offline vouchers, pays the fees and co-signs cash-out transfers."
 ---
 
 The relayer is why a merchant needs no SOL and never signs anything. `redeem_voucher`'s only signer is whoever pays the fee, and the program pays exactly the merchant the voucher names. So the relayer submits the voucher and pays, and it cannot redirect the money.
 
-It runs as one small Node process. For the week-3 demo it runs on a Mac behind a tunnel, because the phones are on mobile data and cannot reach a laptop on a home network.
+It runs as one small Node process. Until hosting (next on the roadmap) it runs on a single machine — a Mac in the commands below — behind a tunnel, because the phones are on mobile data and cannot reach a laptop on a home network.
 
 <Note>
-**For release APKs and the demo, use the stable address in [Release builds](/operations/release)**: ngrok's fixed domain in front of `pnpm gateway`, which serves the relayer and the settlement service from one https address that never changes. The quick tunnel and LAN set-ups below are for development builds only: a release APK compiles its addresses in and Android refuses plain http outside development.
+**For release APKs, use the stable address in [Release builds](/operations/release)**: ngrok's fixed domain in front of `pnpm gateway`, which serves the relayer and the settlement service from one https address that never changes. The quick tunnel and LAN set-ups below are for development builds only: a release APK compiles its addresses in and Android refuses plain http outside development.
 </Note>
 
 ## What it will pay for
@@ -72,7 +72,7 @@ A refusal on budget or the per-vault cap tells the till to retry later; any othe
 
 ## Keeping it up
 
-The Mac must be awake with both processes running whenever a till settles. `caffeinate -i` in a spare terminal stops it sleeping. If the relayer is down, nothing is lost: the till treats it as offline, keeps the vouchers queued, and tries again on the next round.
+Until the services are hosted, the machine running them must be awake whenever a till settles. `caffeinate -i` in a spare terminal stops it sleeping. If the relayer is down, nothing is lost: the till treats it as offline, keeps the vouchers queued, and tries again on the next round.
 
 ## Why it never submits a voucher twice
 

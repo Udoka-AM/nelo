@@ -3,7 +3,9 @@ title: "Introduction"
 description: "A payment terminal with no terminal — built for merchants who lose sales when the network goes down."
 ---
 
-Nelo lets a shopkeeper take a card-free payment on the Android phone they already own. The money settles in USDC on Solana, the merchant sees the amount in their own currency, and a licensed partner pays it into their own bank account.
+Nelo turns the Android phone a merchant already owns into a payment terminal. The money settles in USDC on Solana, the merchant sees the amount in their own currency, and a licensed partner pays it into their own bank account in about twenty seconds.
+
+Nelo is two apps: **nelo for business**, the till, and **nelo pay**, the customer app that pays offline and pays friends. It launches in Lagos, where Nigeria moves about $153B a year through 5.9M POS terminals and a quarter of card payments can fail on a bad afternoon.
 
 The part that matters is what happens when the network drops.
 
@@ -33,7 +35,7 @@ The secure element signs. The chain verifies. **There is no trusted server anywh
     In their own currency, the way they always would. Nothing on screen says the word *crypto*.
   </Step>
   <Step title="The customer pays">
-    A Solana Pay code, scannable by any wallet they already have. No Nelo app on the customer side.
+    Online, a Solana Pay code any wallet can pay. Offline, nelo pay signs a voucher with the phone's secure element and the till checks it with no network.
   </Step>
   <Step title="The terminal confirms">
     It watches the chain and validates what actually arrived — right payee, right mint, enough money, transaction did not fail.
@@ -41,12 +43,12 @@ The secure element signs. The chain verifies. **There is no trusted server anywh
   <Step title="The takings land in the day-book">
     Grouped by the merchant's own calendar day, not UTC's.
   </Step>
-  <Step title="Payout runs on a schedule">
-    A licensed partner converts and disburses to their bank or mobile money. **The merchant never off-ramps anything.**
+  <Step title="The merchant cashes out">
+    One approval in their own wallet, and a licensed partner (paj.cash, with UseAzza at launch) pays naira into their bank in about twenty seconds. **The merchant never visits an exchange.**
   </Step>
 </Steps>
 
-That last step is the decision that separates a POS from a crypto POS. Off-ramping is brutal if the merchant has to do it and invisible if the platform does it on a schedule. A merchant who must visit an exchange to get paid will not use this twice.
+That last step is the decision that separates a POS from a crypto POS. Off-ramping is brutal if the merchant has to do it and invisible if the platform does it for them. A merchant who must visit an exchange to get paid will not use this twice.
 
 ## Where to go next
 
@@ -65,6 +67,6 @@ That last step is the decision that separates a POS from a crypto POS. Off-rampi
   </Card>
 </CardGroup>
 
-<Warning>
-**This is a hackathon project in active development.** Some of it is proven by tests that have actually run; some of it is written and unexecuted; some is a declared stub. [Project status](/operations/status) and [Testing](/operations/testing) say exactly which is which, and those pages are kept honest rather than flattering. Do not put this near real money yet.
-</Warning>
+<Note>
+**Where it stands.** Cash-outs run on Solana mainnet and pay real naira into Nigerian banks. Offline payments run on devnet until the vault program's external audit; mainnet follows it. [Project status](/operations/status) and [Testing](/operations/testing) keep "proven", "written" and "declared stub" apart, and are kept honest rather than flattering.
+</Note>

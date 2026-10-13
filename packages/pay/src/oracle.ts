@@ -107,7 +107,7 @@ interface HermesParsed {
  *
  * `apiKey` is not optional in practice: hermes.pyth.network serves feed
  * metadata publicly but returns 401 for prices, so a key or a self-hosted
- * instance is required. See docs/DELIVERABLES.md.
+ * instance is required. See docs/ROADMAP.md.
  */
 export async function fetchHermesQuote(
   baseUrl: string,

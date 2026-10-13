@@ -1,7 +1,8 @@
-# nelo: the 3-minute video
+# nelo: the product film
 
-**Hard limit 3:00.** Aim for 2:50 so an edit never pushes it over. Times are cumulative.
-It follows the 11-slide pitch deck (Google Slides) and the site's look: black aurora for the
+A three-minute film for investors, partners, candidates and the app store listings. Aim for
+2:50 so it plays anywhere a three-minute limit applies. Times are cumulative.
+It follows the 11-slide investor deck (Google Slides) and the site's look: black aurora for the
 title and close, the two-tone headlines ("A payment terminal. *With no terminal.*"), blue for
 business, orange for nelo pay.
 
@@ -89,10 +90,10 @@ order id. Replace anything in brackets with what really happened, or cut the lin
 
 ## Rules of thumb
 
-- Captions for every spoken line: many judges watch muted.
+- Captions for every spoken line: most people watch muted.
 - Never show an API key, the `whsec_` secret, `.env` files or a recovery phrase on screen.
 - The cash-out is on mainnet; the offline payments run on devnet. Say "devnet" on screen once,
-  as the deck's "What actually ran" slide does.
+  until offline payments move to mainnet after the vault audit.
 - The nelo pay services after paying a friend and the projections are plans, not shipped: the voice-over says "from month six" and the deck labels the model illustrative.
   Keep it that way.
-- Time the final cut. 3:00 is a hard limit.
+- Time the final cut: 3:00 at most, so one edit works for every channel.

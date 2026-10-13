@@ -81,9 +81,9 @@ cd apps/payer    && npx eas build -p android --profile development
 cd apps/merchant && npx eas build -p android --profile development
 ```
 
-<Warning>
-**Neither has ever been built.** The Kotlin in `@nelo/attest` compiles for the first time during that EAS build, and neither app has ever been bundled. Budget for the first build to fail on things no test can catch — see [Testing](/operations/testing) for one that already did.
-</Warning>
+<Note>
+**The Kotlin in `@nelo/attest` compiles during the EAS build.** Both apps build in development and release profiles. A first build on a new SDK or Expo version can fail on things no test catches — see [Testing](/operations/testing) for one that did.
+</Note>
 
 Check a handset's capability without building anything:
 
@@ -95,11 +95,10 @@ StrongBox is API 28+ and absent on much budget hardware — which is the hardwar
 
 ## Release
 
-Not yet done, and week-4 work:
-
-- **Signed release APK.** Done when it installs from scratch on a handset that has *never* had a dev build, and completes a sale.
-- **dApp Store publish.** Requires a Publisher Portal account and a funded keypair.
-- **Repo clean.** `git clone` → `pnpm install` → `anchor test` green on a machine that has never seen the project. Done when someone outside the team does exactly that and it works.
+- **Signed release APKs.** ✅ Both apps, built on EAS with the `production` profile; see [Release builds](/operations/release).
+- **Repo clean.** ✅ `git clone` → `pnpm install` → `anchor test` green on a machine that has never seen the project, in CI on every push.
+- **Play Store and dApp Store.** Next: listings for both apps, with a Publisher Portal account and a funded keypair for the dApp Store.
+- **Hosted services.** Next: the relayer and settlement service on managed hosting with a fixed domain.
 
 ## Environment
 

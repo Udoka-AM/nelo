@@ -26,7 +26,7 @@ export const USDC_DEVNET = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
  * voucher can carry before stake lifts it. $50.
  *
  * Chosen by the app, not the payer, because the program accepts whatever it is
- * given up to the platform's hard cap. See docs/DELIVERABLES.md: that is a
+ * given up to the platform's hard cap. See docs/ROADMAP.md: that is a
  * program-side gap, and the app not exposing the knob is the stopgap.
  */
 export const FLOOR_LIMIT = 50_000_000n;

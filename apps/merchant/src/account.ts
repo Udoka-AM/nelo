@@ -4,7 +4,7 @@
  * There are two ways in, and the rest of the till does not care which:
  *
  * - **Mobile Wallet Adapter** — the merchant authorises with a wallet they
- *   already control. Required by the hackathon rules, and the honest default.
+ *   already control. The Solana Mobile standard, and the honest default.
  * - **A Privy embedded wallet** — created behind an SMS code, so a merchant who
  *   has never held a private key can still be paid. This is step 2's
  *   done-when: *setup completed without ever seeing a key.*

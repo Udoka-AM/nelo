@@ -14,7 +14,7 @@
  *
  * This repository has no Privy app ID and must not acquire one. So a build
  * without it works: the embedded path is simply not offered, and Mobile Wallet
- * Adapter — which is what the hackathon rules require anyway — carries the app
+ * Adapter — the Solana Mobile standard, offered first anyway — carries the app
  * on its own. A missing app ID that took the terminal down with it would make
  * the till un-runnable for the sake of an optional route into it.
  */

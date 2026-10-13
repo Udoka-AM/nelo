@@ -35,7 +35,7 @@ The screen a shopkeeper actually lives in. Nothing on it says the word *crypto*.
 { kind: "wallet" | "embedded", address, label?, payout? }
 ```
 
-**Mobile Wallet Adapter** is the first thing offered, and is required by the hackathon rules. Nelo never holds a key; it learns only an address to pay. The grant is remembered in SecureStore, so the terminal opens ready to trade, and a declined authorisation is surfaced rather than swallowed — the merchant is standing at a counter.
+**Mobile Wallet Adapter** is the first thing offered: it is the Solana Mobile standard. Nelo never holds a key; it learns only an address to pay. The grant is remembered in SecureStore, so the terminal opens ready to trade, and a declined authorisation is surfaced rather than swallowed — the merchant is standing at a counter.
 
 **A Privy embedded wallet** is the other way, for a merchant who has never held a key. A phone number, an SMS code, and a wallet appears behind it. This is what makes step 2's done-when true — *setup completed without ever seeing a key* — and it is **additive**: it does not replace MWA.
 
@@ -142,7 +142,7 @@ The screen that answers *"does this handset actually work?"* — and the one tha
 <Warning>
 **Capability detection is not optional, and the fallback is not software.**
 
-Where StrongBox is absent the correct behaviour is **online-only**. Silently falling back to a software key would keep the demo working while destroying the entire argument, and `@nelo/attest` enforces that at the module level — it throws rather than retrying without the flag.
+Where StrongBox is absent the correct behaviour is **online-only**. Silently falling back to a software key would keep the app working while destroying the entire argument, and `@nelo/attest` enforces that at the module level — it throws rather than retrying without the flag.
 
 The probe *detects and labels* this correctly, and the payer app says so on its welcome screen before a payer sets up.
 </Warning>
@@ -159,6 +159,6 @@ adb shell pm list features | grep -i strongbox
 cd apps/payer && npx eas build -p android --profile development
 ```
 
-<Warning>
-**The Kotlin has never been compiled.** There is no JDK or Android SDK on the development machine, so it compiles for the first time during the EAS build — and neither app has ever been bundled. See [Testing](/operations/testing) for what that costs.
-</Warning>
+<Note>
+**The Kotlin compiles in the EAS build**, not on the development machine, which has no JDK or Android SDK. Both apps build there in development and release profiles, and the module has generated and used StrongBox keys on a real handset. See [Testing](/operations/testing) for what the first builds caught.
+</Note>

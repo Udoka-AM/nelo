@@ -7,9 +7,9 @@
  *
  * So the interface comes first and the implementations come second, and one of
  * the implementations is a stub that says out loud that it is a stub. The fork
- * in docs/DELIVERABLES.md — "either stub the settlement leg and say so on
- * camera, or pivot the demo to merchant-to-merchant settlement" — is then a
- * choice of which object to construct, not a week of work.
+ * in docs/ROADMAP.md — "stub the settlement leg and say so, or settle
+ * merchant to merchant in USDC" — is then a choice of which object to
+ * construct, not a week of work.
  */
 import type { ConversionRate } from "./money.ts";
 

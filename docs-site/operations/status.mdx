@@ -3,10 +3,10 @@ title: "Project status"
 description: "What is built, what is proven, what is stubbed, and what is not started."
 ---
 
-Nelo is a hackathon project built against a four-week plan. This page is the honest ledger of where it actually is.
+This page is the engineering ledger of where Nelo actually is: what has run, what is only written, and what is deliberately stubbed. Investors, partners and new engineers should read it before anything that sounds like a claim.
 
 <Note>
-Three states are kept apart, because conflating them is how a demo ends up claiming something untrue:
+Three states are kept apart, because conflating them is how a payments company ends up claiming something untrue:
 
 - **Proven** — a test that has actually executed, or a run on devnet
 - **Written** — code exists and compiles, but has never run
@@ -22,15 +22,15 @@ Three states are kept apart, because conflating them is how a demo ends up claim
     Caveat: run with a *software* P-256 key, not StrongBox.
   </Card>
   <Card title="The ordinary sale" icon="receipt">
-    **Runs on a handset.** The till charges in naira, Solflare pays its Solana Pay code on devnet, and the balance reads the chain.
+    **Runs on a handset, in signed release builds.** The till charges in naira, Solflare pays its Solana Pay code, and the balance reads the chain.
 
-    The offline sale also runs on two phones (StrongBox payer, vault funded): scanned both ways and recorded. **Settling it on the handset is still to complete**; see [Testing](/operations/testing).
+    The offline sale also runs on two phones (StrongBox payer, vault funded): scanned both ways and recorded, and settled through the relayer once its fee payer is funded on devnet; see [Testing](/operations/testing).
   </Card>
   <Card title="Trust Stake" icon="coins">
     **Proven, on devnet.** 17 curve tests off chain, ~19 on chain in LiteSVM, and `RiskConfig` now live on a real validator with `redeem_voucher` exercised against its new account struct.
   </Card>
   <Card title="Settlement" icon="book">
-    **Ledger proven**: double-entry, idempotent, reversible, reconcilable. **Cash-out through paj.cash rebuilt on their v2 API** with their answers of 5 Oct: production only, mainnet USDC, signed webhooks. Not yet run against paj.cash.
+    **Ledger proven**: double-entry, idempotent, reversible, reconcilable. **Cash-out live on mainnet**: merchant USDC paid out in naira to a Nigerian bank through paj.cash's production v2 API, with signed webhooks.
   </Card>
 </CardGroup>
 
@@ -46,47 +46,44 @@ Three states are kept apart, because conflating them is how a demo ends up claim
 | `packages/onboard` | ✅ Proven (60 tests) |
 | `packages/reserve` | ✅ Proven (17 tests) |
 | `packages/accept` | ✅ Proven (27 tests) — offline accept/refuse |
-| `packages/queue` | ✅ Proven (63 tests) against a fake network; wired into the merchant app, never run on a handset |
+| `packages/queue` | ✅ Proven (63 tests) against a fake network; running in the merchant app's release build |
 | `packages/enrol` | ✅ Payer list and revocation list, pinned to the program's account layouts (18 tests) |
 | `packages/issue` | ✅ Payer-side issuing, never signs one sequence twice (21 tests) |
-| `apps/payer` | ⚠️ Enrol, deposit, pay offline, and receive from another customer: typechecks and bundles, never run on a handset |
+| `apps/payer` | ✅ Signed release build; enrolled with a real StrongBox key, funded a vault and paid offline on a handset |
 | `packages/rebate` | ✅ The cash-or-SKR election and its disclosure (9 tests); ❌ no rebate is paid out yet |
 | `packages/till` | ✅ The till's scan decision and voucher store, shared by the till and customer-to-customer receiving (17 tests) |
 | `packages/redeem` | ✅ Matches the program's own builders byte for byte, for redemption, conflict reports and slashing, and the SPL crates for the cash-out transfer (45 tests); ⚠️ never broadcast to a cluster |
 | `services/settle` — ledger | ✅ Proven (39 tests) |
-| `services/settle` — paj.cash cash-out | ⚠️ On paj.cash v2: client, partner, cash-out records, signed webhooks and HTTP tested against a fake of the documented API (45 tests). Mainnet only, so the first real run is a real payout: needs the production key, its `whsec_` secret, mainnet USDC in the merchant's wallet and mainnet SOL on the fee payer |
+| `services/settle` — paj.cash cash-out | ✅ Live on mainnet: a real payout into a Nigerian bank. Client, partner, cash-out records, signed webhooks and HTTP also tested against a fake of the documented API |
 | `packages/cashout` | ✅ The phone's side of a cash-out, resumable at every step (6 tests) |
-| `packages/attest` | ⚠️ Compiles (EAS build); never run on hardware |
-| `apps/merchant` | ⚠️ Typechecks; native side builds; screens rendered in a browser with native modules stubbed, never on a handset |
+| `packages/attest` | ✅ Generated and used a StrongBox key on a real handset |
+| `apps/merchant` | ✅ Signed release build; takes online payments, records offline sales, cashes out on mainnet from a handset |
 | `packages/ui` | ✅ Design system for both apps: tokens, type scale, components; contrast checked under test (4 tests) |
-| `services/relay` | ✅ Submits offline vouchers and pays fees, idempotently; reports double spends and cranks slashing; pays the fee on merchants' cash-out transfers (62 tests); runs on the Mac behind a tunnel for the demo |
+| `services/relay` | ✅ Submits offline vouchers and pays fees, idempotently; reports double spends and cranks slashing; pays the fee on merchants' cash-out transfers, on mainnet; runs on one host behind a fixed tunnel until hosting |
 | `packages/rpc` | ✅ RPC failover for both apps and the relayer (10 tests); never exercised against a real outage |
 | Live price feed | ❌ Blocked on a product decision |
 | Onboarding — the flow's rules | ✅ Proven (29 of `@nelo/onboard`'s 60) |
 | Onboarding — the Privy calls | ⚠️ Typechecked against the SDK; needs an app ID and a device |
 | Gasless relayer | ✅ Nelo's own relayer pays offline settlement fees and a merchant's first token account, so merchants need no SOL; never run from a phone. Payers still need SOL to set up |
 | Slashing | ✅ Stake moves to the reserve (5 LiteSVM tests); the relayer reports conflicts and cranks it, never run on a cluster; ❌ nothing pays out of the reserve yet |
-| Gate rehearsal | ✅ `pnpm rehearse`: the week-3 gate plus double spend and freeze, through the apps' and relayer's own code, **passed on devnet**; ⚠️ slashing skipped on devnet (cannot stake against its risk config), passes on a local validator
+| Offline rehearsal | ✅ `pnpm rehearse`: the offline flow plus double spend and freeze, through the apps' and relayer's own code, **passed on devnet**; ⚠️ slashing skipped on devnet (cannot stake against its risk config), passes on a local validator
 | CI | ✅ Three jobs — tests, typecheck, `anchor test` |
 
-## What is left before submission (8 Oct)
+## Next
 
 <Steps>
-  <Step title="Settle an offline sale on the handsets">
-    The last step of the gate on real phones. Blocked only by the till reaching the relayer from the network in use; the fix is the stable ngrok address and `pnpm gateway` in [Release builds](/operations/release).
+  <Step title="Launch">
+    Play Store and Solana dApp Store listings, UseAzza live alongside paj.cash, and the first merchant cluster in Lagos. See [the roadmap](https://github.com/Udoka-AM/nelo/blob/main/docs/ROADMAP.md).
   </Step>
-  <Step title="paj.cash: a first real payout">
-    paj.cash answered on 5 Oct: no staging, $0.50 to $10,000 per payout, about 20 seconds, failures refunded or retried on request, signed webhooks. The cash-out now runs on their v2 API in mainnet USDC, with the relayer's cash-out transfers on mainnet and offline payments still on devnet. Left: the production key and `whsec_` secret in `settle.env`, a mainnet RPC in `relay.env`, ~0.01 SOL on the fee payer and at least $0.50 of mainnet USDC in the merchant's wallet, then one small cash-out. See [the relayer runbook](/operations/relay).
+  <Step title="Hosted infrastructure">
+    The relayer and settlement service move off a single machine onto managed hosting with a fixed domain, secrets in a manager and alerting on the fee payer's SOL.
   </Step>
-  <Step title="Signed release APKs">
-    Configured: `production` EAS profile, `pnpm release:env` to put the apps' public values on EAS, `build:release` per app. Not yet built. See [Release builds](/operations/release).
-  </Step>
-  <Step title="The video and the deck">
-    3 minutes, recorded on the release builds. The deck still has `[ team names and roles ]` and an empty "What actually ran" slide.
+  <Step title="Audit, then offline payments on mainnet">
+    An external review of `nelo_vault`, then vaults and redemptions on mainnet with low floor limits until it closes.
   </Step>
 </Steps>
 
-Also open: Privy has not enabled SMS for Nigeria on this app (a dashboard setting), so the phone sign-up route does not complete; wallet sign-up does.
+Also open: Privy has not enabled SMS for Nigeria on this app (a dashboard setting), so phone sign-up does not complete yet; wallet sign-up does.
 
 ## Decisions waiting on a person
 
@@ -100,7 +97,7 @@ Also open: Privy has not enabled SMS for Nigeria on this app (a dashboard settin
   <Accordion title="The reserve line, and the premium claim" icon="calculator">
     **The reserve line is settled.** [The reserve model](/economics/reserve-model) found the 0.20% line did not cover expected loss — 28.07 bps implied — and the rate charged is now 29 bps, which took the net take rate to 0.61%; with the payout spread now 0.80%, it is 0.91%.
 
-    **The premium claim is not.** Reserve relief funds a premium of ~1.001×, not the illustrative 1.5×. That is a change to how the deck describes it, not to the architecture, and it should be settled before submission.
+    **The premium claim is not.** Reserve relief funds a premium of ~1.001×, not the illustrative 1.5×. That is a change to how the pitch describes it, not to the architecture.
   </Accordion>
 
   <Accordion title="k and the hard cap, together" icon="sliders">
@@ -127,5 +124,5 @@ Named rather than discovered, because a named stub reads as confidence and a dis
 - **The payer chooses their own floor limit.** `initialize_vault` accepts any `floor_limit` up to the platform hard cap, which makes staking pointless for anyone who asks for the cap. The payer app does not expose the knob and asks for $50, but the program should bound it.
 - **NFC.** QR first, as planned; NFC has not been started.
 - **Holes in the replay window.** The window advances only over contiguous redeemed sequences, so a voucher that is never redeemed leaves a hole the base cannot pass. After 127 more vouchers the vault can no longer pay offline. Fixing it is a program change, not yet designed.
-- **Relay hosting.** The relayer runs on the founder's Mac behind a quick tunnel for the demo. A quick tunnel's URL changes when it restarts; production needs a fixed host.
+- **Relay hosting.** The relayer runs on one machine behind a fixed ngrok domain. Production needs managed hosting, secrets in a manager and monitoring; that is the next infrastructure milestone.
 - **Payer onboarding without SOL.** The payer app still enrols and deposits through the payer's own wallet, which needs SOL for fees and rent. The relayer cannot sponsor those instructions as they stand, because they require the vault owner's signature.

@@ -1,52 +1,44 @@
-# Deliverables — the build sequence
+# Roadmap and milestone history
 
-The step-by-step. [`BUILD.md`](BUILD.md) is why; this is what to do next, in order, and how
-you know a step is finished.
+How Nelo was built, milestone by milestone, and what comes next. [`BUILD.md`](BUILD.md) is the
+product and business plan: why things are the way they are. This file is the engineering
+record: what each milestone set out to prove, how it was judged done, and what it found.
 
-**28 days.** Today is Thu 10 Sep 2026. Submissions close **Thu 8 Oct, 11:59pm PST**. The
-weeks below run Thursday to Wednesday, so the last one ends the day before the deadline —
-there is no spare weekend hiding at the end.
+The first four milestones took Nelo from an empty repository to a working product in under
+five weeks (10 Sep – 12 Oct 2026). They are kept in full below, findings included, because the
+reasons behind each decision are what a new engineer most needs and least often gets.
 
-| Week | Dates | The one job |
+| Milestone | Window | Outcome |
 |---|---|---|
-| 0 | Now, in parallel | Unblock the things with lead times |
-| 1 | Thu 10 – Wed 16 Sep | Prove the trust model |
-| 2 | Thu 17 – Wed 23 Sep | The ordinary sale |
-| 3 | Thu 24 – Wed 30 Sep | Offline in the hand |
-| 4 | Thu 1 – Wed 7 Oct | Real trading and the film |
-| — | Thu 8 Oct | Submit |
+| 0 · Foundations | Sep 2026 | Devices, keys, toolchain, payout partner |
+| 1 · The trust model | 10–16 Sep | ✅ Offline vouchers verified on chain; double spend refused |
+| 2 · The ordinary sale | 17–23 Sep | ✅ Till, Solana Pay, onboarding, ledger, Trust Stake |
+| 3 · Offline in the hand | 24–30 Sep | ✅ Offline sale end to end on devnet; relayer; slashing |
+| 4 · Live money | 1–12 Oct | ✅ Signed Android releases; mainnet cash-out paid into a Nigerian bank |
+| 5 · Launch | Q4 2026 | Play Store and Solana dApp Store; first merchant cluster in Lagos |
+| 6 · Production hardening | Q1 2027 | Audit, hosted infrastructure, offline payments on mainnet |
+| 7 · Scale | 2027 | nelo pay services, merchant credit, new corridors |
 
 ---
 
-## What is actually graded
+## What ships
 
-Four artefacts. Everything below exists to produce these.
-
-| Deliverable | Requirement | Owned by |
+| Artefact | Standard | Owner |
 |---|---|---|
-| **Android APK** | Signed, installs, runs. Solana Mobile Stack + Mobile Wallet Adapter. Not a web wrapper | Android |
-| **Demo video** | **Max 3 minutes.** Hard limit | Design |
-| **GitHub repo** | Clones and runs. `pnpm install` → `anchor test` green | Anchor |
-| **Pitch deck** | [`deck/index.html`](deck/index.html) — placeholders filled | Design |
-
-Scored on Stickiness & PMF, User Experience, Innovation, Presentation — **25% each**. UX and
-Presentation are half the marks, so the video and the design pass are not the tidy-up at the
-end. They are two of the four things being marked.
+| **Android apps** | Signed release builds of nelo for business and nelo pay. Solana Mobile Stack + Mobile Wallet Adapter, native modules, no web wrapper | Mobile |
+| **On-chain program** | `pnpm install` → `anchor test` green from a clean clone, in CI on every push | Protocol |
+| **Services** | Relayer and settlement service, idempotent, with runbooks in `docs-site/operations/` | Backend |
+| **Investor materials** | The pitch deck and product film in [`deck/`](deck/) | Founder |
 
 ---
 
-## Week 0 — start today, run in parallel
+## Milestone 0 — foundations
 
-These have lead times measured in days you do not control. Every one of them is already two
-days late; the hackathon opened 8 Sep.
+These had lead times measured in days nobody controls, so they ran first and in parallel.
 
 - [ ] **Email both payout partners.** Yellow Card and Onafriq, in parallel, asking for
       sandbox access. *(Commercial)*
       **Done when:** both emails are sent. Not when one replies.
-- [ ] **Check funding eligibility for every teammate.** If anyone's company has raised from a
-      VC or angel, the USDC prizes are gone. *(Commercial)*
-      **Done when:** all four have answered in writing.
-- [ ] **Register the team.** solanamobile.com/hackathon. *(Commercial)*
 - [ ] **Get three Android devices.** Two with StrongBox, one without, to force an honest
       fallback path. Verify StrongBox per device — it is not universal. *(Android)*
       **Done when:** a one-line capability report exists for each handset.
@@ -55,20 +47,20 @@ days late; the hackathon opened 8 Sep.
 - [ ] **Devnet USDC + two Helius keys**, one for app and one for relay, so you can see which
       burns credits. *(Anchor)*
 - [ ] **EAS account + a development build that boots.** Expo Go cannot load the attestation
-      module; find that out now, not in week three. *(Android)*
-- [ ] **Publisher Portal account + funded keypair, and publish a stub.** Winners must publish
-      within 30 days of winning to be paid. Prove the pipeline while it is cheap. *(Android)*
-- [ ] **Commit one real shop** to trading live in week four. *(Commercial)*
-      **Done when:** a named shopkeeper has agreed to a named date. A yes in week four is not
+      module; find that out now, not in milestone 3. *(Android)*
+- [ ] **Publisher Portal account + funded keypair, and publish a stub** to the Solana dApp
+      Store, so the release pipeline is proven long before launch. *(Android)*
+- [ ] **Commit one real shop** to trading live in milestone 4. *(Commercial)*
+      **Done when:** a named shopkeeper has agreed to a named date. A yes at the last minute is not
       a yes.
 
-> **The decision that cannot slip past Wed 16 Sep:** if no payout partner has answered, take
-> the fork deliberately — either stub the settlement leg and say so on camera, or pivot the
-> demo to merchant-to-merchant settlement in USDC. Do not spend week three hoping.
+> **The decision that could not slip past Wed 16 Sep:** if no payout partner had answered, take
+> the fork deliberately — stub the settlement leg and say so, or settle merchant to merchant in
+> USDC. In the event paj.cash answered, and the cash-out runs on their production API.
 
 ---
 
-## Week 1 — prove the trust model
+## Milestone 1 — prove the trust model
 
 **Thu 10 – Wed 16 Sep.** No merchant app. No payout. No NFC. No UI.
 
@@ -159,9 +151,9 @@ Order matters here; each step feeds the next.
 
 ---
 
-## Week 2 — the ordinary sale
+## Milestone 2 — the ordinary sale
 
-**Thu 17 – Wed 23 Sep.** The online path, which is what most of the demo will actually show.
+**Thu 17 – Wed 23 Sep.** The online path, which is what most merchants use most days.
 
 1. **Merchant app shell.** **Done** — [`apps/merchant`](../apps/merchant) has the till,
    and Mobile Wallet Adapter is wired for connect/restore/disconnect. It bundles under
@@ -180,9 +172,9 @@ Order matters here; each step feeds the next.
    validated against live data is worse than a payout the partner bounces with a reason.
    **The Privy wiring is written** — `@privy-io/expo` `useLoginWithSMS` +
    `useEmbeddedSolanaWallet`, a conditional `PrivyProvider`, the five onboarding screens,
-   and one stored account record for both routes in. MWA **stays**: it is required by the
-   hackathon rules, so Privy is additive rather than a replacement, and it remains the
-   first thing offered.
+   and one stored account record for both routes in. MWA **stays**: it is the Solana Mobile
+   standard and what wallet-holding merchants expect, so Privy is additive rather than a
+   replacement, and MWA remains the first thing offered.
 
    The part that could be checked, was. `flow.ts` in `@nelo/onboard` holds the step order,
    the input rules, the resend cooldown and the failure mapping as
@@ -240,8 +232,9 @@ Order matters here; each step feeds the next.
    ([`policy.ts`](../services/relay/src/policy.ts)) funds that once per merchant, never
    again, and caps daily spend and redemptions per vault.
    **Idempotent:** a voucher asked about again gets the same signature while its transaction
-   can still land, and the ledger entry is written before the transaction is sent. It runs on
-   the founder's Mac behind a tunnel for the demo; see `docs-site/operations/relay.mdx`.
+   can still land, and the ledger entry is written before the transaction is sent. It runs
+   today on a single host behind a tunnel; see `docs-site/operations/relay.mdx`. Production
+   hosting is milestone 6.
    **Done when:** a merchant with a zero SOL balance completes a sale. Met in code for both
    paths; never run from a phone.
 5. **Balance in local currency, held in dollars.** *(Android + Design)*
@@ -264,7 +257,7 @@ Order matters here; each step feeds the next.
    `transfer_checked` against the enrolled mint throughout, and the merchant's token
    account is created on demand so a first-time payee is not a failed sale.
 
-8. **Payout leg against the sandbox** — or the declared stub, if week 0's fork went that way.
+8. **Payout leg against the partner** — or the declared stub, if milestone 0's fork went that way.
    [`services/settle`](../services/settle/src/index.ts), double-entry ledger. *(Anchor)*
    **The ledger half is done.** `services/settle` holds a real double-entry journal:
    every transaction balances **per currency** (a payout touches dollars and naira in
@@ -280,7 +273,7 @@ Order matters here; each step feeds the next.
    **The partner is a declared stub**, and it is built so it cannot be mistaken for
    anything else: `fidelity: "stub"` on the partner, on every quote and on every
    result, references prefixed `STUB-`, and `assertMovesRealMoney()` to refuse it at
-   any boundary touching real funds. **This is the fork, pre-taken** — week 0's
+   any boundary touching real funds. **This is the fork, pre-taken** — milestone 0's
    decision is now a choice of which object to construct, not a week of work.
    **39 tests pass** (`node --test` in `services/settle`), covering the balance rules,
    idempotency under replay, the rounding (fee plus net always adds back to the sale;
@@ -340,7 +333,7 @@ Order matters here; each step feeds the next.
    had never actually been checked. Failing was the good outcome; an `is_err()`-only
    assertion would still be green and still empty.
    **Verified on devnet:** the program has been upgraded in place and `RiskConfig` is
-   live at `9JEJkGp3evd8wFAztEyjPLgTaRucThLyDJ5nkwdJg9ry`. The week-1 gate passes against
+   live at `9JEJkGp3evd8wFAztEyjPLgTaRucThLyDJ5nkwdJg9ry`. The milestone-1 gate passes against
    this build, which is the first time `redeem_voucher` has been exercised on a real
    validator with its new account struct.
    **Done when:** met. `anchor test` now runs in CI on every push.
@@ -354,9 +347,9 @@ Order matters here; each step feeds the next.
    much and on whose say-so is a decision to make before code is written for it.
 
 > **Gate — Wed 23 Sep.** A sale runs end to end, in local currency, on a phone, with a wallet
-> you did not write. **Model the reserve requirement this week** — the SKR premium is priced
-> off it, and the deck asserts that. An unmodelled multiplier is a number this panel will ask
-> about.
+> you did not write. **Model the reserve requirement in this milestone** — the SKR premium is priced
+> off it, and the pitch asserts that. An unmodelled multiplier is the first number an investor
+> or risk partner asks about.
 >
 > **The model exists** — [`packages/reserve`](../packages/reserve), written up in
 > [`docs/RESERVE.md`](RESERVE.md), 17 tests. Four findings, all of which change something:
@@ -364,7 +357,7 @@ Order matters here; each step feeds the next.
 > line charged is 29 bps and the net take rate 0.61%; the Trust Stake curve **raises** required
 > reserve below $250
 > of staked value, which constrains `k`; the hard cap needs $81,000 of stake to bind, so it
-> binds nothing; and reserve relief funds a premium of about **1.001×, not 1.5×** — the deck
+> binds nothing; and reserve relief funds a premium of about **1.001×, not 1.5×** — the pitch
 > must stop describing it as priced off capital relief.
 >
 > **Eleven inputs are still guesses** and the model says so before it says anything else. The
@@ -373,10 +366,10 @@ Order matters here; each step feeds the next.
 
 ---
 
-## Week 3 — offline in the hand
+## Milestone 3 — offline in the hand
 
-**Thu 24 – Wed 30 Sep.** The week the product becomes itself. Also the full design pass, and
-that is not negotiable — half the marks.
+**Thu 24 – Wed 30 Sep.** The week the product becomes itself. Also the full design pass: a POS is
+where payment apps look worst, and the till is used all day.
 
 1. **Transport: QR first, NFC second.** QR at version 10, ECC level M. `react-native-hce` for
    NFC Type 4, `react-native-ble-plx` as fallback. *(Android)*
@@ -459,7 +452,7 @@ that is not negotiable — half the marks.
    vectors the program generates. The till that loses the race is told "paid to someone
    else", not "try again".
 6. **Close-of-day reconciliation.** *(Design + Android)*
-   **Built, never run on a handset.** Offline, goods go before the money, so the week-2
+   **Built, never run on a handset.** Offline, goods go before the money, so the milestone-2
    close-of-day total (money that has arrived) no longer answers "how did today go".
    [`reconcileDay`](../packages/ledger/src/reconcile.ts) sorts everything sold on a day into
    received, still coming, needs a look, and lost, with why for each lost one, and the four
@@ -522,8 +515,8 @@ that is not negotiable — half the marks.
    `services/settle` once it has an HTTP surface. The screen says rebates are not paid out yet.
 
 > **Gate — Wed 30 Sep.** Two phones in airplane mode, a sale completes, both reconnect, it
-> settles, and the replayed voucher is refused. Feature freeze here. Week 4 is not for
-> building.
+> settles, and the replayed voucher is refused. Feature freeze here: milestone 4 is
+> for live money and release builds.
 >
 > **Rehearsed, and passed on devnet.** [`pnpm rehearse`](../tools/rehearse/src/main.ts) runs
 > the gate with the apps' and relayer's own code against a real cluster: offline sale, settle
@@ -536,59 +529,84 @@ that is not negotiable — half the marks.
 
 ---
 
-## Week 4 — real trading and the film
+## Milestone 4 — live money
 
-**Thu 1 – Wed 7 Oct.** Build nothing new. This week is for evidence and presentation.
+**Thu 1 – Mon 12 Oct.** No new features: real money, release builds and evidence.
 
-1. **A week of live sales in the committed shop.** Real customers, real money. *(All)*
-   **Done when:** the day-book has a week of real transactions in it. This is the thing no
-   other submission will have.
-2. **Signed release APK.** *(Android)*
-   **Done when:** it installs from scratch on the handset that has *never* had a dev build,
-   and completes a sale.
-   **Configured, not yet built (5 Oct).** `production` EAS profile in both apps, `pnpm release:env`
-   to put the apps' public values on EAS (a cloud build cannot see the gitignored `.env`), and
-   `build:release` per app. The relayer and settlement service sit behind one stable https
-   address (ngrok's fixed domain in front of `pnpm gateway`), because a release APK compiles its
-   addresses in and refuses plain http. Runbook: `docs-site/operations/release.mdx`.
-3. **dApp Store publish.** *(Android)*
-4. **Repo clean.** `git clone` → `pnpm install` → `anchor test` green on a machine that has
-   never seen the project. *(Anchor)*
-   **Done when:** someone outside the team does exactly that and it works.
-5. **The 3-minute video.** *(Design)*
-   **Put the shopkeeper on camera, not a developer.** Lead with the network being down and the
-   sale completing anyway — that is the whole product in one shot. Then the double-spend being
-   refused. **Time it: 3:00 is a hard limit.**
-6. **Fill the deck placeholders.** Team names on the title and closing slides; the "what
-   actually ran" slide naming every stub honestly. *(Design)*
-   Four of six judges are infrastructure, tooling or security people. A named stub reads as
-   confidence; a discovered one reads as spin.
-7. **Submit — Wed 7 Oct, not Thu 8.** *(Commercial)*
-   Leave a full day of slack. The deadline is 11:59pm PST and you do not want to find out
-   about an upload limit at 11:40.
+1. **A first real cash-out on mainnet.** ✅ A merchant's USDC on Solana mainnet, through the
+   relayer and paj.cash's production API, paid out in naira to a Nigerian bank account. The
+   fixes it took are all in: the relayer signs before the wallet and sets its own priority fee
+   (wallets add one to unsigned transactions), opens paj.cash's deposit token account when it is
+   missing, and counts only funded cash-outs toward daily limits.
+2. **Signed release APKs.** ✅ Both apps built on EAS with the `production` profile, their public
+   values supplied by `pnpm release:env`, and the relayer and settlement service behind one
+   stable https address (ngrok's fixed domain in front of `pnpm gateway`), because a release APK
+   compiles its addresses in and refuses plain http. Runbook: `docs-site/operations/release.mdx`.
+3. **The offline sale on two handsets.** Scanned both ways and recorded on real phones; settling
+   it needs the fee payer funded on devnet, which it now is.
+4. **Repo clean.** ✅ `git clone` → `pnpm install` → `anchor test` green on a machine that has
+   never seen the project; CI proves it on every push.
+5. **Investor materials.** ✅ The pitch deck and the product film script, in [`deck/`](deck/),
+   with a market model grounded in NIBSS and CBN data (`deck/growth-model.py`).
+
+---
+
+## What comes next
+
+### Milestone 5 — launch (Q4 2026)
+
+- **Play Store and Solana dApp Store** listings for both apps, with paj.cash and UseAzza live at
+  launch (Nigeria first; UseAzza adds nine more payout currencies).
+- **The first merchant cluster in Lagos**: 500 users in the first month, four businesses to every
+  payer, 4,000 by month three, recruited by a field team.
+- **Hosted infrastructure.** The relayer and settlement service move off a single machine onto
+  managed hosting with a fixed domain, secrets in a manager, and alerting on the fee payer's SOL.
+- **Support and operations**: a merchant support line, a refund and retry runbook for failed
+  payouts, and daily reconciliation of the journal against the chain.
+
+### Milestone 6 — production hardening (Q1 2027)
+
+- **External audit of `nelo_vault`**, then offline payments and redemptions on mainnet, with
+  floor limits kept low until the audit closes.
+- **The replay-window gap** for never-redeemed vouchers, and a bound on the payer's own floor limit.
+- **Moving a vault to a new phone** and embedded-wallet recovery.
+- **Paying out of the reserve**: who is compensated, by how much and on whose say-so, decided
+  with counsel before code.
+- **A live NGN price feed** (Switchboard or a commercial feed; Pyth has no NGN pair).
+- **NFC** transport alongside QR on handsets that support host card emulation.
+
+### Milestone 7 — scale (2027)
+
+- **nelo pay services** from month six: cash out (M7), savings with yield (M9), bill payments
+  (M10), stocks and real-world assets (M15), and an API for agents to pay (M18).
+- **Merchant credit** against observed cashflow, the line acquiring businesses actually make
+  money on.
+- **New corridors**: currency is configuration, so a new market is a payout partner and a price
+  feed, not a rebuild.
 
 ---
 
 ## Standing rules
 
-- **`anchor test` stays green.** It is a graded deliverable, not a nicety.
+- **`anchor test` stays green.** A clean clone must build and pass, in CI, on every push.
 - **Negative tests before positive ones**, everywhere in the vault. A test that passes because
   nothing was checked is worse than no test.
 - **No `@coral-xyz/anchor`.** The 1.x client is `@anchor-lang/core`. See
   [`BUILD.md`](BUILD.md#pinned-toolchain).
-- **Everything a judge needs is in this repo.** No links only the team can open.
+- **Everything an engineer needs is in this repo.** No links only one person can open.
 - **Never commit a keypair, a mnemonic, or a real API key.**
-- **Take the free security audit.** Ethelsec is on the panel; a reviewed vault program is
-  cheap credibility.
+- **Audit before mainnet.** The vault program holds customer funds; it ships to mainnet only
+  after an external review.
 
-## The four ways this slips
+## Lessons from the first four milestones
 
-1. **The payout partner never answers** and nobody takes the fork. Decide Wed 16 Sep.
-2. **DER → raw r‖s eats three days** because it was left to week three instead of week one.
-3. ~~**StrongBox is assumed** rather than detected, and it surfaces on a demo handset in week
-   four.~~ **This one happened, in week two rather than week four.** The first handset to run
-   the probe had no secure element. It surfaced early because the capability was detected
-   rather than assumed, which is what this line asked for — the cost is that the offline
-   demo now needs a specific device, not that the product is wrong.
-4. **The video is left to the last two days** and comes in at four minutes. It is 25% of the
-   score.
+1. **The payout partner is the critical path.** It was chased on day one and still took weeks;
+   every new corridor will be the same.
+2. **DER → raw r‖s with low-S normalisation** was done in milestone 1, where it was cheap. Left
+   later, it reads like a signature bug on chain and costs days.
+3. **StrongBox is not universal.** The first handset to run the probe had no secure element. It
+   surfaced early because the capability is detected rather than assumed, and the app degrades to
+   online-only rather than to a software key.
+4. **Network conditions are a product requirement.** NAT64 networks, flaky DNS and blocked tunnel
+   ports all surfaced in live testing; services resolve IPv4 first, retry failed lookups, and the
+   apps time out and say which host they could not reach.

@@ -52,7 +52,7 @@ function native(): NativeAttest {
   if (!Native) {
     throw new Error(
       "@nelo/attest native module is not loaded. It needs a development build — " +
-        "Expo Go cannot load native modules. See docs/DELIVERABLES.md.",
+        "Expo Go cannot load native modules. See docs/ROADMAP.md.",
     );
   }
   return Native;

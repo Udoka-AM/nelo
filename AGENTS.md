@@ -1,21 +1,19 @@
 # AGENTS.md: working on Nelo
 
-Read this first. It is the hand-over for any agent picking the project up, kept current with
-`main`. The longer records are [`docs-site/operations/status.mdx`](docs-site/operations/status.mdx)
-(the honest ledger: proven, written, stubbed), [`docs/DELIVERABLES.md`](docs/DELIVERABLES.md)
-(the build sequence) and [`docs/BUILD.md`](docs/BUILD.md) (why things are the way they are).
+Read this first. It is the hand-over for any engineer or agent picking the project up, kept
+current with `main`. The longer records are [`docs-site/operations/status.mdx`](docs-site/operations/status.mdx)
+(the honest ledger: proven, written, stubbed), [`docs/ROADMAP.md`](docs/ROADMAP.md) (milestones
+done and next) and [`docs/BUILD.md`](docs/BUILD.md) (the product and business plan: why things
+are the way they are).
 
 ## What this is
 
-Nelo is an offline stablecoin payment terminal on Solana, for the Solana Mobile CLOCK IN
-hackathon. A merchant's Android phone is the till; it takes payment in naira, priced in USDC.
-Online, any Solana Pay wallet pays it. Offline, the customer's **nelo Pay** app signs a voucher
-with a StrongBox P-256 key against USDC locked in an on-chain vault; the till checks it offline
-and settles it later through Nelo's relayer, which pays the fees.
-
-**Deadline: Thu 8 Oct 2026, 11:59pm PST.** Aim to submit Wed 7 Oct. Graded: signed Android APK,
-a video of at most 3 minutes, this repo (`pnpm install` then `anchor test` green), the deck
-(`docs/deck/index.html`). Scored 25% each on stickiness/PMF, UX, innovation, presentation.
+Nelo is a payments company: a phone-based payment terminal on Solana, launching in Lagos. A
+merchant's Android phone is the till (**nelo for business**); it takes payment in naira, priced
+in USDC. Online, any Solana Pay wallet pays it. Offline, the customer's **nelo pay** app signs a
+voucher with a StrongBox P-256 key against USDC locked in an on-chain vault; the till checks it
+offline and settles it later through Nelo's relayer, which pays the fees. Merchants cash out to
+their own bank through paj.cash (live) and UseAzza (live at launch).
 
 ## Map
 
@@ -25,10 +23,10 @@ a video of at most 3 minutes, this repo (`pnpm install` then `anchor test` green
 | `apps/merchant` | The till (Expo, Android only). MWA wallet or Privy, Solana Pay, offline scan, queue, day-book, cash-out |
 | `apps/payer` | nelo Pay. StrongBox enrolment, vault, pay offline (vouchers as QR), receive from another customer |
 | `packages/*` | Shared logic, each with tests: `voucher` (202-byte wire format), `pay`, `accept`, `till`, `issue`, `queue`, `enrol`, `redeem` (tx builders), `rpc` (failover), `ui` (design system), `attest` (Kotlin StrongBox module), and more |
-| `services/relay` | Relayer: submits vouchers, pays fees, reports double spends, cranks slash. Runs on the Mac |
-| `services/settle` | Ledger and cash-out through paj.cash. Runs on the Mac |
+| `services/relay` | Relayer: submits vouchers, pays fees, reports double spends, cranks slash, co-signs cash-out transfers. Runs on one host behind a tunnel today |
+| `services/settle` | Ledger and cash-out through paj.cash. Runs alongside the relayer |
 | `scripts/` | `setup-env.mts` (writes all env files), `gateway.mts` (one local port for both services), `release-env.mts` (app values to EAS) |
-| `tools/rehearse` | `pnpm rehearse`: the offline gate end to end on devnet with the apps' own code |
+| `tools/rehearse` | `pnpm rehearse`: the offline flow end to end on devnet with the apps' own code |
 | `site/` | Landing page on GitHub Pages (Vite, GSAP); waitlist on Supabase |
 | `docs-site/` | Mintlify docs; `operations/` has the runbooks |
 
@@ -41,19 +39,19 @@ pnpm exec tsc -p tsconfig.check.json                              # + the three 
 pnpm exec tsc -p packages/attest/tsconfig.json --noEmit
 pnpm --filter @nelo/merchant exec tsc --noEmit
 pnpm --filter @nelo/payer exec tsc --noEmit
-anchor test                                                       # the graded one; CI runs it
+anchor test                                                       # the program suite; CI runs it
 cd apps/merchant && npx expo export --platform android            # proves Metro can bundle the app
 ```
 
 Before pushing app code, run the four typechecks and an `expo export` of the app you touched:
 Metro resolves every import at bundle time, and that has caught failures no test did.
 
-Running against phones (on the user's Mac) is in `docs-site/operations/relay.mdx` and
+Running against phones (services on a local machine behind a tunnel) is in `docs-site/operations/relay.mdx` and
 `release.mdx`. The short version: relayer `:8787`, settlement `:8788`, `pnpm gateway` `:8790`,
 `ngrok http 8790 --url=https://<domain>.ngrok-free.app`, then `pnpm setup:env --relay-url … --settle-url …/settle`,
 then Metro per app (`--port 8082` for the second).
 
-## Conventions (the user's, and they override defaults)
+## Conventions (the founder's, and they override defaults)
 
 - **Commit straight to `main`, and push the same commit to `claude/week2-development-progress-2fykje`.**
   No PRs for app, docs or site work. Changes to `programs/` go through a draft PR so CI runs
@@ -69,59 +67,43 @@ then Metro per app (`--port 8082` for the second).
 - **Never commit a keypair, a mnemonic or a real API key.** `.env` files are gitignored; keep
   them so. The program keypair is not in this repo and must not be.
 - The relayer's fee-payer key, `PAJ_API_KEY`, `PAJ_WEBHOOK_SECRET` (`whsec_…`) and the Privy
-  **app secret** live only on the user's Mac (`~/.config/nelo`, `~/.config/solana/nelo`).
+  **app secret** live only on the operator's machine (`~/.config/nelo`, `~/.config/solana/nelo`),
+  and in a secrets manager once the services are hosted.
 - **Cash-outs move real money.** paj.cash has no staging: a cash-out is mainnet USDC. Offline
   payments, vaults and redemptions stay on devnet. Never point a test at paj.cash's API.
 - Every `EXPO_PUBLIC_` value is compiled into the APK and is public. Treat it so.
-- Keep `anchor test` green; it is graded.
+- Keep `anchor test` green; a clean clone must pass it, and CI checks every push.
 - Say what is proven and what is not. "Built" and "ran on a handset" are different claims; the
   status page keeps them apart and so should every message.
 
-## Where it stands (5 Oct)
+## Where it stands (13 Oct)
 
-**Proven on devnet:** the trust model, Trust Stake, and the full offline gate through the
-apps' own code (`pnpm rehearse`, 26 Sep; slash skipped on devnet, passes locally).
+**Live:** signed release APKs of both apps (EAS `production`); a mainnet USDC cash-out paid into
+a Nigerian bank through paj.cash's production API; cash-outs have no daily cap by default.
 
-**On handsets (two phones, one with StrongBox, development builds):** the till works online
-and Solflare pays it; the payer enrolled with a real StrongBox key and funded a vault; the
-offline sale scans both ways and is recorded. **Settling it from the handset has not completed
-yet**, only because the till could not reach the relayer from the network in use (blocks
-cloudflared's port 7844). The fix is ready: ngrok's fixed domain plus `pnpm gateway`.
+**Proven on devnet:** the trust model, Trust Stake, and the full offline flow through the apps'
+own code (`pnpm rehearse`; slash skipped on devnet, passes locally). On handsets the offline sale
+scans both ways and is recorded; settling it needs the fee payer funded on devnet (it is).
 
-**Open, in order:**
-1. Settle an offline sale on the handsets through the stable address.
-2. paj.cash: a first real payout. The integration is on their **v2 API**
-   (`services/settle/src/paj/`, https://docs.paj.cash, answers from their devs on 5 Oct):
-   - `x-api-key` only; no session, login or KYC step on Nelo's side (BVN optional for now,
-     required later). Production only, mainnet USDC `EPjF…Dt1v`.
-   - Flow: bank list (`GET /pub/v2/bank`, NIBSS codes; CBN 3-digit coming), name enquiry =
-     `POST /pub/v2/bank-account` (idempotent, ~30 s), order `POST /pub/v2/offramp` → one-off
-     deposit address, merchant's wallet sends USDC on mainnet, status from
-     `GET /pub/v2/transaction/:id`: `INIT` → `PROCESSING` → `COMPLETED` / `ERROR`.
-   - **Orders, not the standing bank-account address**: deposits there get no webhook or record.
-   - Limits $0.50–$10,000 per payout, checked before an order. Payouts ~20 s, 24/7. `ERROR` is
-     refunded or retried by paj.cash on request (quote the order id). Nelo's fee
-     (`businessUSDCFee`) is added on top.
-   - Webhooks are HMAC-signed (`X-PAJ-Signature: v1=…` over `{ts}.{raw body}`, 5 min) and are
-     still only a prompt to ask the API. Unfunded addresses return to paj.cash's pool after 2 h,
-     so a cash-out unfunded after 90 min is closed unless paj.cash shows the USDC arrived.
-   - Mainnet split: `RELAY_CASHOUT_RPC_URL` gives the relayer's cash-out transfers a mainnet
-     RPC; the till reads the mainnet USDC balance (`EXPO_PUBLIC_CASHOUT_RPC_URL`) and MWA signs
-     cash-outs with `solana:mainnet`.
-   - The dashboard may not show the `whsec_` secret; `pnpm paj:webhook` (services/settle) sets
-     the key's ramp webhook via `PATCH /pub/v2/webhook` and saves the returned secret.
-   - Left for the user: the production key and `whsec_` secret in `settle.env`, a mainnet RPC
-     in `relay.env`, ~0.01 SOL on the fee payer on mainnet, ≥ $0.50 mainnet USDC in the
-     merchant's wallet, then one small cash-out on the handset. Rate limit "nine" (units
-     unclear) is not yet handled beyond the 1-minute rate cache and 1-hour bank cache.
-3. Release APKs: `pnpm release:env`, then `build:release` per app. Configured, not yet built.
-4. Video (3:00 max) and deck (team names; the "What actually ran" slide). The user has asked
-   to leave these until the above is done.
+**How cash-outs run** (paj.cash v2, `services/settle/src/paj/`, https://docs.paj.cash):
+- `x-api-key` only; production only, mainnet USDC `EPjF…Dt1v`. Limits $0.50–$10,000 per payout,
+  ~20 s, 24/7. `ERROR` is refunded or retried by paj.cash on request (quote the order id).
+- Flow: bank list → name enquiry (`POST /pub/v2/bank-account`) → order (`POST /pub/v2/offramp`,
+  one-off deposit address) → the relayer builds the USDC transfer, signs as fee payer first and
+  sets its own priority fee → the merchant's wallet signs on `solana:mainnet` → status from
+  `GET /pub/v2/transaction/:id`. The relayer opens the deposit address's token account if missing.
+- Webhooks are HMAC-signed and only prompt a lookup; `pnpm paj:webhook` registers the URL and
+  saves the `whsec_` secret.
+- Offline payments, vaults and redemptions stay on devnet until the vault audit.
 
-**Declared stubs, not to build now:** rebate payout; the SKR premium (1.5× is a placeholder,
-the reserve model supports about 1.001×); NGN price feed (the till shows paj.cash's rate when the settlement service answers, else a
-fixed rate); NFC (QR only); the replay-window gap for never-redeemed vouchers; one-scan nelo Pay
-when both phones are online (designed, not built); Privy SMS for Nigeria (dashboard setting).
+**Next (see `docs/ROADMAP.md`):** Play Store and dApp Store launch with UseAzza live; hosted
+relayer and settlement service; the till's lookup-retry fix in the next release build; the vault
+audit and offline payments on mainnet.
+
+**Declared stubs, not to build yet:** rebate payout; the SKR premium (1.5× is a placeholder, the
+reserve model supports about 1.001×); NGN price feed (the till shows paj.cash's rate when the
+settlement service answers, else a fixed rate); NFC (QR only); the replay-window gap for
+never-redeemed vouchers; Privy SMS for Nigeria (dashboard setting).
 
 ## Things that have bitten
 
@@ -132,5 +114,7 @@ when both phones are online (designed, not built); Privy SMS for Nigeria (dashbo
 - Cloud EAS builds do not see the gitignored `.env`; `pnpm release:env` puts the values on EAS.
 - Uninstalling the payer app deletes its StrongBox key and strands its vault. Install over it
   (`adb install -r`).
-- This cloud container cannot reach devnet, supabase.co or github.io; verify network behaviour
-  on the user's Mac, and say when something was not verifiable here.
+- Cloud agent containers may not reach devnet, supabase.co or github.io; verify network
+  behaviour on a real machine, and say when something was not verifiable.
+- A phone that cannot resolve the tunnel's host fails with `UnknownHostException`; that is the
+  phone's network (Wi-Fi, private DNS), not the services.

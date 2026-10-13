@@ -129,7 +129,7 @@ request rather than the detector.
 </Note>
 
 <Note>
-**The offline path, once a device is back.** Nothing below has run on a handset.
+**The offline path on handsets.** These steps have now run on two phones; they are kept as the procedure for a new device.
 
 1. **Rebuild both development clients.** `expo-camera` is a new native module in both apps,
    and the payer app also gained Mobile Wallet Adapter, SQLite and SecureStore:
@@ -245,7 +245,7 @@ That is the argument for asserting on the *reason* rather than the fact of a ref
 
 ## The gate rehearsal
 
-The week-3 gate, *two phones in airplane mode, a sale completes, both reconnect, it settles, and the replayed voucher is refused*, run against a real validator with the product's own code rather than a test's. The payer's vault is opened with `@nelo/redeem`'s builders, the voucher issued by `@nelo/issue`, the tills sync with `@nelo/enrol`, decide with `@nelo/till` and keep what they take in its SQLite store, and they settle with `@nelo/queue` through the relayer from `services/relay`, over HTTP. While the phones are offline, `fetch` is switched off in the process, so anything that reached for the network would fail the run.
+The offline gate, *two phones in airplane mode, a sale completes, both reconnect, it settles, and the replayed voucher is refused*, run against a real validator with the product's own code rather than a test's. The payer's vault is opened with `@nelo/redeem`'s builders, the voucher issued by `@nelo/issue`, the tills sync with `@nelo/enrol`, decide with `@nelo/till` and keep what they take in its SQLite store, and they settle with `@nelo/queue` through the relayer from `services/relay`, over HTTP. While the phones are offline, `fetch` is switched off in the process, so anything that reached for the network would fail the run.
 
 ```bash
 pnpm rehearse                                      # RPC from ~/.config/nelo/relay.env
@@ -277,7 +277,7 @@ Two things are stood in for in both: the secure element (a software P-256 key) a
 
 ## The devnet gate
 
-The week-1 trust model has been run end to end on devnet **against the Trust Stake build**: vault funded, `RiskConfig` initialised, voucher redeemed with the device signature verified by the secp256r1 precompile **on a real validator**, double-spend refused, signature-over-other-bytes refused.
+The trust model has been run end to end on devnet **against the Trust Stake build**: vault funded, `RiskConfig` initialised, voucher redeemed with the device signature verified by the secp256r1 precompile **on a real validator**, double-spend refused, signature-over-other-bytes refused.
 
 That distinction matters. The gate had passed before, but against a build that predated the Trust Stake. This run is the first time `RiskConfig` has existed on a real validator and the first time `redeem_voucher` has been exercised on chain with its new account struct — exactly the kind of change LiteSVM can accept and a validator reject.
 
