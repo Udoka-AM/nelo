@@ -14,7 +14,7 @@ hardware at all.
 | | |
 |---|---|
 | **Product** | Two Android apps: **nelo for business** (the till) and **nelo pay** (the customer app) |
-| **Live** | Signed release builds; mainnet USDC cash-out paid into a Nigerian bank through paj.cash |
+| **Live** | Signed release builds; mainnet USDC cash-outs paid into a Nigerian bank through paj.cash, in as little as 91 seconds with the wallet approval ([proof](docs/EVIDENCE.md#mainnet-cash-out-proof)) |
 | **Offline** | Vouchers signed by the phone's secure element, verified on chain by Solana's secp256r1 precompile (devnet) |
 | **Payout partners** | paj.cash (Nigeria, live) and UseAzza (nine-plus currencies, live at launch) |
 | **Engineering** | 500+ tests across the program, services and shared packages, in CI on every push |

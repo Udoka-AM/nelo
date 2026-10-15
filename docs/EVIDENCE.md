@@ -15,7 +15,7 @@ the security model in prose; this page is the index.
 | Payment above the balance or limit refused | ✅ Live on devnet | [Demo 1:48](DEMO.md); `packages/accept`, `redeem_voucher.rs` |
 | Double spend (same sequence twice) refused; forged second voucher freezes the vault | ✅ Proven on devnet and in LiteSVM | `pnpm rehearse`; `programs/nelo_vault/tests/vault.rs` |
 | Stake slashed into the reserve on proven fraud | ✅ Proven in LiteSVM; skipped on devnet (stake mint) | `slash.rs`, `vault.rs` |
-| Cash-out: mainnet USDC → paj.cash → naira in a Nigerian bank | ✅ Live on **mainnet** | [Demo 2:23](DEMO.md); `pnpm proof` (below) |
+| Cash-out: mainnet USDC → paj.cash → naira in a Nigerian bank, paid out in 91 seconds (wallet approval included) | ✅ Live on **mainnet** | [Proof below](#mainnet-cash-out-proof); [demo 2:23](DEMO.md) |
 | Mobile Wallet Adapter signing, including `solana:mainnet` for cash-outs | ✅ Live | `apps/merchant/src/wallet.ts`, `apps/payer/src/wallet.ts` |
 | StrongBox P-256 key generation with attestation | ✅ Ran on a handset | `packages/attest` (Kotlin module) |
 | UseAzza payout partner (9+ currencies) | 🟡 Integration nearly ready; live at Play Store launch | Commercial agreement; adapter to follow `services/settle/src/paj/` |
