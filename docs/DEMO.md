@@ -9,7 +9,7 @@
 | 0:58 | **Offline payment.** Network off on both phones. The till charges, nelo pay scans and signs, the till scans the payer's code and verifies it on the spot. The balance drops; the sale is recorded. |
 | 1:28 | **Settling on reconnect.** Network back on; the merchant taps Settle and the relayer redeems the voucher on Solana. |
 | 1:48 | **Over-limit and double-spend test.** About $7 left in the payer's vault; a ₦15,000 charge is refused. A payment under the vault limit then goes through. |
-| 2:23 | **Cash-out to a Nigerian bank.** The merchant enters bank details, sees the holder's name, approves one mainnet USDC transfer in their wallet, and paj.cash pays naira into the bank; the bank's notification is shown on camera. |
+| 2:23 | **Cash-out to a Nigerian bank** ([proof](EVIDENCE.md#mainnet-cash-out-proof): ₦1,701.54 from 1.26 mainnet USDC). The merchant enters bank details, sees the holder's name, approves one mainnet USDC transfer in their wallet, and paj.cash pays naira into the bank; the bank's notification is shown on camera. |
 
 Offline payments and redemptions run on **devnet** until the vault audit; the cash-out runs on
 **mainnet**. A full transcript and captions are kept with the video.

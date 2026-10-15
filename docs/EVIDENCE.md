@@ -58,6 +58,24 @@ pnpm rehearse                                                      # the offline
 
 ## Mainnet cash-out proof
 
+Two real cash-outs on 12 October 2026, from the merchant app's own wallet on Solana mainnet,
+through paj.cash's production API, into a Nigerian bank account (bank 100004, account ending
+1071). The second is the one in the [demo video](DEMO.md) at 2:23.
+
+| | Cash-out 1 | Cash-out 2 (on camera) |
+|---|---|---|
+| Sent | 0.74 USDC, Solana mainnet | 1.26 USDC, Solana mainnet |
+| Paid out | ₦999.75 | ₦1,701.54 |
+| Opened → paid | 04:02:06 → 04:03:37 UTC (91 s) | 16:57:14 → 17:20:04 UTC (retried through a network fault on the phone) |
+| paj.cash order | `6acc5bc388922b136a79d01b` | `6acd116ff7cab7d6a2210667` |
+| Mainnet transfer | [Solscan](https://solscan.io/tx/JtGPZSkEx6ZuQqXLDYchr7Cj1YshdVHh1UMkW5bUqPBQg8CthxcntqEFsLoLgLLHYekgTiP6msnqPaccdTFsAdq) | [Solscan](https://solscan.io/tx/3EDGeX1yoLdmV7cqBVUHa1tKs97mvignxkbBNwcCLz8vJiqtH3itAmCVJsBydz22Z35qWkMgRF2VswG4QfKBfxLm) |
+
+"Opened → paid" runs from the merchant opening the cash-out to the settlement service seeing
+paj.cash mark it paid, so it includes the merchant's own approval in their wallet.
+
+### Reproducing this table
+
+
 The settlement service keeps a record of every cash-out. On the machine that runs it:
 
 ```bash
