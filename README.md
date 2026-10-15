@@ -18,7 +18,18 @@ hardware at all.
 | **Offline** | Vouchers signed by the phone's secure element, verified on chain by Solana's secp256r1 precompile (devnet) |
 | **Payout partners** | paj.cash (Nigeria, live) and UseAzza (nine-plus currencies, live at launch) |
 | **Engineering** | 500+ tests across the program, services and shared packages, in CI on every push |
-| **Next** | Play Store and Solana dApp Store launch in Lagos; vault audit; offline payments on mainnet |
+| **Next** | Play Store and Solana dApp Store launch in Lagos with UseAzza live; vault audit; offline payments on mainnet |
+
+**▶ [Watch the apps on two real phones](docs/DEMO.md)** — online and offline payments, a refused
+over-limit payment, and a mainnet cash-out into a Nigerian bank (3:30).
+
+**Verify it**
+
+- [`docs/EVIDENCE.md`](docs/EVIDENCE.md) — every claim, live versus roadmap, with the code and tests
+  behind it and the commands to run them.
+- [`docs/SECURITY.md`](docs/SECURITY.md) — the security model: double-spend detection, sequence
+  numbers, freeze and slash, limits, and what happens if a phone or key is compromised.
+- [`docs/DEMO.md`](docs/DEMO.md) — the demo video with chapters, and the app screens.
 
 **Read next**
 
